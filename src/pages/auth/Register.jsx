@@ -84,7 +84,7 @@ const Register = () => {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="min-h-screen flex items-center justify-center bg-[#f7f8f3] py-12 px-4 sm:px-6 lg:px-8 font-sans"
+      className="min-h-screen flex items-center justify-center bg-white py-12 px-4 sm:px-6 lg:px-8 font-sans"
     >
       <div className="max-w-md w-full">
         {/* Logo & Header */}
