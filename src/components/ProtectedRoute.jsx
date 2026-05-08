@@ -52,7 +52,7 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
   if (allowedRoles.length > 0 && !allowedRoles.includes(currentUser.role)) {
     // Redirect based on role if they try to access a route not for them
     if (currentUser.role === 'provider') return <Navigate to="/provider/dashboard" replace />;
-    if (currentUser.role === 'customer') return <Navigate to="/dashboard" replace />;
+    if (currentUser.role === 'customer') return <Navigate to="/customer/dashboard" replace />;
     if (currentUser.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
     return <Navigate to="/" replace />;
   }

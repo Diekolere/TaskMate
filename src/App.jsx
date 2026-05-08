@@ -61,7 +61,7 @@ import AIChat from './components/customer/AIChat';
 
 function AnimatedRoutes() {
   const location = useLocation();
-  const isCustomerPlatform = location.pathname === '/dashboard' || location.pathname.startsWith('/customer');
+  const isCustomerPlatform = location.pathname.startsWith('/customer');
   
   return (
     <>
@@ -73,16 +73,18 @@ function AnimatedRoutes() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         
         {/* Customer Routes */}
+        <Route path="/dashboard" element={<Navigate to="/customer/dashboard" replace />} />
+        <Route path="/customer/dashboard" element={<ProtectedRoute allowedRoles={['customer']}><Dashboard /></ProtectedRoute>} />
         <Route path="/customer/onboarding" element={<ProtectedRoute allowedRoles={['customer']}><Onboarding /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['customer']}><Dashboard /></ProtectedRoute>} />
         <Route path="/customer/post-request" element={<ProtectedRoute allowedRoles={['customer']}><PostRequest /></ProtectedRoute>} />
         <Route path="/customer/browse" element={<ProtectedRoute allowedRoles={['customer']}><BrowseProviders /></ProtectedRoute>} />
         <Route path="/customer/requests" element={<ProtectedRoute allowedRoles={['customer']}><MyRequests /></ProtectedRoute>} />
         <Route path="/customer/request-status/:id" element={<ProtectedRoute allowedRoles={['customer']}><RequestStatus /></ProtectedRoute>} />
         <Route path="/customer/provider/:id" element={<ProtectedRoute allowedRoles={['customer']}><ProviderProfile /></ProtectedRoute>} />
-        <Route path="/customer/service-review" element={<ProtectedRoute allowedRoles={['customer']}><Navigate to="/dashboard" replace /></ProtectedRoute>} />
+        <Route path="/customer/service-review" element={<ProtectedRoute allowedRoles={['customer']}><Navigate to="/customer/dashboard" replace /></ProtectedRoute>} />
         <Route path="/customer/service-review/:id" element={<ProtectedRoute allowedRoles={['customer']}><ServiceReview /></ProtectedRoute>} />
         <Route path="/customer/settings" element={<ProtectedRoute allowedRoles={['customer']}><Settings /></ProtectedRoute>} />
+        <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer']}><Settings /></ProtectedRoute>} /> {/* Reusing settings for profile demo */}
         <Route path="/customer/saved" element={<ProtectedRoute allowedRoles={['customer']}><SavedProviders /></ProtectedRoute>} />
         <Route path="/customer/invite" element={<ProtectedRoute allowedRoles={['customer']}><InviteFriends /></ProtectedRoute>} />
 
