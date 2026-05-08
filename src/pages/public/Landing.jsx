@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -50,6 +50,7 @@ const AccordionItem = ({ title, content, isOpen, onClick }) => {
 const Landing = () => {
   const [openFaq, setOpenFaq] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -79,23 +80,37 @@ const Landing = () => {
   ];
 
   const categories = [
-      { title: "Plumbing", icon: "plumbing", desc: "Leaks, installations, piping" },
-      { title: "Electrical", icon: "electrical_services", desc: "Wiring, repairs, lighting" },
-      { title: "Carpentry", icon: "handyman", desc: "Furniture, wood repairs" },
-      { title: "Cleaning", icon: "cleaning_services", desc: "Deep clean, post-construction" },
-      { title: "Painting", icon: "format_paint", desc: "Interior, exterior, touch-ups" },
-      { title: "HVAC", icon: "ac_unit", desc: "AC repair, ventilation" },
-      { title: "Moving", icon: "local_shipping", desc: "Relocation, heavy lifting" },
-      { title: "Roofing", icon: "roofing", desc: "Repairs, inspections, leaks" },
-      { title: "Appliance Repair", icon: "kitchen", desc: "Fridges, washers, ovens" },
-      { title: "Landscaping", icon: "grass", desc: "Gardening, lawn care" },
-      { title: "Pest Control", icon: "pest_control", desc: "Extermination, prevention" },
-      { title: "Security", icon: "security", desc: "CCTV, locks, alarms" },
+      { title: "Plumbing", icon: "plumbing", desc: "Expert leak repairs, piping installations, and emergency drainage solutions for your home.", color: "from-blue-400 to-blue-600" },
+      { title: "Electrical", icon: "electrical_services", desc: "Certified electricians for wiring, safety inspections, and all electrical maintenance needs.", color: "from-yellow-400 to-orange-500" },
+      { title: "Carpentry", icon: "handyman", desc: "Bespoke furniture crafting, cabinet repairs, and professional woodwork by master artisans.", color: "from-amber-600 to-amber-800" },
+      { title: "Cleaning", icon: "cleaning_services", desc: "Premium deep cleaning, post-construction maintenance, and regular residential upkeep.", color: "from-cyan-400 to-blue-400" },
+      { title: "Painting", icon: "format_paint", desc: "Precision interior and exterior painting with premium finishes and attention to detail.", color: "from-rose-400 to-pink-600" },
+      { title: "HVAC", icon: "ac_unit", desc: "Professional AC repair, ventilation systems, and climate control installations.", color: "from-emerald-400 to-teal-600" },
+      { title: "Moving", icon: "local_shipping", desc: "Safe relocation, heavy lifting, and careful transportation of your valued possessions.", color: "from-indigo-500 to-purple-600" },
+      { title: "Roofing", icon: "roofing", desc: "Durable roof repairs, leak prevention, and comprehensive structural inspections.", color: "from-slate-600 to-slate-800" },
+      { title: "Appliance Repair", icon: "kitchen", desc: "Expert repairs for refrigerators, washing machines, ovens, and other household appliances.", color: "from-red-400 to-red-600" },
+      { title: "Landscaping", icon: "grass", desc: "Professional lawn care, garden design, and outdoor maintenance services.", color: "from-green-500 to-emerald-700" },
   ];
+
+  const scrollLeft = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -400, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: 400, behavior: 'smooth' });
+    }
+  };
 
   return (
     <div className="bg-white text-[#1a2b3c] font-sans selection:bg-[#7AC142] selection:text-white min-h-screen flex flex-col overflow-x-hidden">
-      <style dangerouslySetInnerHTML={{ __html: 'html { scroll-behavior: smooth; }' }} />
+      <style dangerouslySetInnerHTML={{ __html: `
+        html { scroll-behavior: smooth; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      ` }} />
       
       {/* Glassmorphic Navbar */}
       <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'}`}>
@@ -123,10 +138,8 @@ const Landing = () => {
         </div>
       </nav>
 
-      {/* Hero Section - Dark Variant with Image BG */}
+      {/* Hero Section */}
       <section className="relative pt-40 pb-24 md:pt-52 md:pb-32 px-6 w-full flex flex-col items-center text-center bg-[#1a2b3c] overflow-hidden">
-        
-        {/* Background Image with Dark Overlay */}
         <div className="absolute inset-0 z-0">
             <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=2000&auto=format&fit=crop" alt="Group of Artisans" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-[#1a2b3c]/85 backdrop-blur-[1px]"></div>
@@ -157,6 +170,73 @@ const Landing = () => {
                 Learn More
             </Link>
         </Reveal>
+      </section>
+
+      {/* Services Section with Horizontal Scroll */}
+      <section id="services" className="py-24 md:py-32 bg-white w-full relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+            <Reveal>
+                <div className="flex flex-col md:flex-row justify-between items-end gap-8 mb-16">
+                    <div className="max-w-3xl">
+                        <h2 className="text-4xl md:text-6xl font-bold font-serif text-[#1a2b3c] mb-6 leading-tight">
+                            Connect with artisans and handymen that offer a wide variety of services
+                        </h2>
+                        <p className="text-xl text-[#1a2b3c]/70 font-sans">
+                            Scroll to discover verified professionals for every task.
+                        </p>
+                    </div>
+                    <div className="flex gap-4">
+                        <button onClick={scrollLeft} className="h-14 w-14 rounded-full border border-[#1a2b3c]/20 flex items-center justify-center hover:bg-[#1a2b3c] hover:text-white transition-all shadow-sm">
+                            <span className="material-icons">arrow_back</span>
+                        </button>
+                        <button onClick={scrollRight} className="h-14 w-14 rounded-full border border-[#1a2b3c]/20 flex items-center justify-center hover:bg-[#1a2b3c] hover:text-white transition-all shadow-sm">
+                            <span className="material-icons">arrow_forward</span>
+                        </button>
+                    </div>
+                </div>
+            </Reveal>
+
+            {/* Horizontal Scroll Container */}
+            <div 
+              ref={scrollRef}
+              className="flex gap-8 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-12 -mx-4 px-4"
+            >
+                {categories.map((category, idx) => (
+                    <motion.div 
+                        key={idx}
+                        initial={{ opacity: 0, x: 50 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: idx * 0.1 }}
+                        className="min-w-[320px] md:min-w-[400px] h-[500px] snap-center"
+                    >
+                        <Link to="/login" className="group block h-full bg-white/40 backdrop-blur-xl border border-[#1a2b3c]/10 rounded-[40px] overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col">
+                            {/* Top Section (Icon Focus) */}
+                            <div className="flex-1 relative overflow-hidden flex items-center justify-center">
+                                <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-10 group-hover:opacity-20 transition-opacity`}></div>
+                                
+                                <div className="relative z-10 w-32 h-32 md:w-40 md:h-40 rounded-full bg-white/80 backdrop-blur-sm border border-[#1a2b3c]/5 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-700">
+                                    <span className={`material-icons text-6xl md:text-7xl text-[#1a2b3c] transition-colors group-hover:text-[#7AC142]`}>
+                                        {category.icon}
+                                    </span>
+                                </div>
+
+                                <div className="absolute -top-10 -right-10 w-48 h-48 bg-[#7AC142]/10 rounded-full blur-3xl group-hover:bg-[#7AC142]/20 transition-colors duration-700"></div>
+                                <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-[#1a2b3c]/5 rounded-full blur-3xl"></div>
+                            </div>
+
+                            {/* Bottom Section (Title & Link) */}
+                            <div className="p-10 bg-white/60">
+                                <h3 className="text-3xl font-bold font-serif text-[#1a2b3c] mb-6">{category.title}</h3>
+                                <div className="flex items-center gap-2 text-[#7AC142] font-bold text-lg group-hover:gap-4 transition-all">
+                                    Book Now <span className="material-icons">arrow_forward</span>
+                                </div>
+                            </div>
+                        </Link>
+                    </motion.div>
+                ))}
+            </div>
+        </div>
       </section>
 
       {/* Purpose & How it Works Section */}
@@ -219,68 +299,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Services Grid Section - White BG with Multi-colored Glassmorphic Cards */}
-      <section id="services" className="py-24 md:py-32 bg-white px-6 w-full relative">
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-[#7AC142]/5 rounded-full blur-[100px]"></div>
-        </div>
-        
-        <div className="max-w-7xl mx-auto relative z-10">
-            <Reveal>
-                <div className="text-center max-w-3xl mx-auto mb-16">
-                    <h2 className="text-4xl md:text-5xl font-bold font-serif text-[#1a2b3c] mb-6">
-                        Connecting you with artisans that can complete your every need
-                    </h2>
-                    <p className="text-lg text-[#1a2b3c]/70 font-sans">
-                        Whatever the task, we have a verified professional ready to help. Explore our wide range of service categories.
-                    </p>
-                </div>
-            </Reveal>
-
-            {/* 4 columns x 3 rows grid, 2 per row on mobile */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                {categories.map((category, idx) => {
-                    const colors = [
-                        'bg-blue-50/80 border-blue-100',
-                        'bg-green-50/80 border-green-100',
-                        'bg-orange-50/80 border-orange-100',
-                        'bg-purple-50/80 border-purple-100',
-                        'bg-rose-50/80 border-rose-100',
-                        'bg-amber-50/80 border-amber-100',
-                        'bg-cyan-50/80 border-cyan-100',
-                        'bg-indigo-50/80 border-indigo-100',
-                        'bg-teal-50/80 border-teal-100',
-                        'bg-pink-50/80 border-pink-100',
-                        'bg-emerald-50/80 border-emerald-100',
-                        'bg-sky-50/80 border-sky-100'
-                    ];
-                    return (
-                        <Reveal key={idx} delay={idx * 0.05}>
-                            <Link to="/login" className="group block h-full">
-                                <div className={`h-full p-4 md:p-6 rounded-2xl backdrop-blur-md border ${colors[idx % colors.length]} shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center`}>
-                                    <div className="h-14 w-14 md:h-16 md:w-16 bg-[#1a2b3c] rounded-xl flex items-center justify-center text-[#7AC142] group-hover:scale-110 transition-transform duration-300 mb-4 shadow-sm">
-                                        <span className="material-icons text-2xl md:text-3xl">{category.icon}</span>
-                                    </div>
-                                    <h3 className="text-lg md:text-xl font-bold font-serif text-[#1a2b3c] mb-2">{category.title}</h3>
-                                    <p className="text-xs md:text-sm text-[#1a2b3c]/60 font-sans">
-                                        {category.desc}
-                                    </p>
-                                </div>
-                            </Link>
-                        </Reveal>
-                    );
-                })}
-            </div>
-            
-            <Reveal delay={0.3} className="mt-12 text-center">
-                <Link to="/register" className="inline-flex items-center gap-2 text-[#7AC142] font-bold hover:text-[#1a2b3c] transition-colors">
-                    View all service categories <span className="material-icons text-sm">arrow_forward</span>
-                </Link>
-            </Reveal>
-        </div>
-      </section>
-
-      {/* Testimonials Section (Replacing Professionals) */}
+      {/* Testimonials Section */}
       <section id="testimonials" className="py-24 md:py-32 px-6 max-w-7xl mx-auto w-full">
         <Reveal>
             <h2 className="text-4xl md:text-5xl font-bold font-serif text-[#1a2b3c] mb-16 text-center">
@@ -355,19 +374,16 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Footer CTA & Footer */}
+      {/* Footer */}
       <footer className="bg-[#1a2b3c] text-white pt-24 pb-12 px-6 w-full font-sans">
         <div className="max-w-7xl mx-auto">
-            {/* CTA */}
             <div className="bg-[#7AC142] rounded-3xl p-12 md:p-20 flex flex-col md:flex-row items-center justify-between gap-10 mb-24 text-[#1a2b3c] relative overflow-hidden shadow-2xl">
-                {/* Decorative Elements */}
                 <div className="absolute -left-10 -bottom-10 opacity-20">
                     <svg width="200" height="200" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" />
                         <circle cx="50" cy="50" r="25" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" />
                     </svg>
                 </div>
-
                 <div className="relative z-10 max-w-2xl">
                     <h2 className="text-4xl md:text-5xl font-bold font-serif mb-6 leading-tight">Ready to elevate your workforce experience?</h2>
                     <p className="text-lg font-medium opacity-90">Join thousands of customers and professionals building trust and value on TaskMate.</p>
@@ -379,7 +395,6 @@ const Landing = () => {
                 </div>
             </div>
 
-            {/* Footer Links */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
                 <div className="col-span-1 md:col-span-2">
                     <Link to="/" className="flex items-center gap-3 mb-6">
@@ -387,18 +402,14 @@ const Landing = () => {
                         <span className="font-bold text-2xl tracking-tight font-serif text-white">TaskMate</span>
                     </Link>
                     <p className="text-white/70 font-medium max-w-sm text-lg leading-relaxed mb-6">
-                        The trusted platform connecting you with verified local artisans, enabling secure payments and digital reputations.
+                        The trusted platform connecting you with verified local artisans.
                     </p>
-                    <div className="text-white/80 font-medium">
-                        <p className="mb-2">Email: support@taskmate.com</p>
-                    </div>
                 </div>
                 <div>
                     <h4 className="font-bold text-xl mb-6 font-serif text-white">Platform</h4>
                     <ul className="space-y-4 text-white/70 font-medium">
-                        <li><Link to="/login" className="hover:text-[#7AC142] transition-colors">Find a Professional</Link></li>
+                        <li><Link to="/login" className="hover:text-[#7AC142] transition-colors">Find a Pro</Link></li>
                         <li><Link to="/register" className="hover:text-[#7AC142] transition-colors">Become a Tasker</Link></li>
-                        <li><a href="#" className="hover:text-[#7AC142] transition-colors">Trust & Safety</a></li>
                     </ul>
                 </div>
                 <div>
@@ -406,19 +417,12 @@ const Landing = () => {
                     <ul className="space-y-4 text-white/70 font-medium">
                         <li><a href="#about" className="hover:text-[#7AC142] transition-colors">About Us</a></li>
                         <li><a href="#faq" className="hover:text-[#7AC142] transition-colors">FAQ</a></li>
-                        <li><a href="#" className="hover:text-[#7AC142] transition-colors">Legal & Privacy</a></li>
                     </ul>
                 </div>
             </div>
 
-            {/* Copyright */}
             <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/10 text-sm font-medium text-white/50">
-                <p>© {new Date().getFullYear()} TaskMate Inc. All rights reserved.</p>
-                <div className="flex gap-6 mt-4 md:mt-0">
-                    <a href="#" className="hover:text-white transition-colors">Twitter</a>
-                    <a href="#" className="hover:text-white transition-colors">LinkedIn</a>
-                    <a href="#" className="hover:text-white transition-colors">Instagram</a>
-                </div>
+                <p>© {new Date().getFullYear()} TaskMate Inc.</p>
             </div>
         </div>
       </footer>
