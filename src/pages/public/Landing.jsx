@@ -94,62 +94,63 @@ const Landing = () => {
   ];
 
   return (
-    <div className="bg-[#eaebe4] text-[#1a2b3c] font-sans selection:bg-[#7AC142] selection:text-white min-h-screen flex flex-col overflow-x-hidden">
+    <div className="bg-white text-[#1a2b3c] font-sans selection:bg-[#7AC142] selection:text-white min-h-screen flex flex-col overflow-x-hidden">
+      <style dangerouslySetInnerHTML={{ __html: 'html { scroll-behavior: smooth; }' }} />
       
       {/* Glassmorphic Navbar */}
-      <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/70 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'}`}>
+      <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'}`}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <Link to="/" className="flex items-center gap-3 group">
-            <img alt="TaskMate" className="h-10 w-10 transition-transform group-hover:scale-105" src="/icon.png" />
-            <span className="font-bold text-2xl tracking-tight text-[#1a2b3c] font-serif">TaskMate</span>
+            <img alt="TaskMate" className={`h-10 w-10 transition-transform group-hover:scale-105 ${!isScrolled && 'filter brightness-0 invert'}`} src="/icon.png" />
+            <span className={`font-bold text-2xl tracking-tight font-serif transition-colors ${isScrolled ? 'text-[#1a2b3c]' : 'text-white'}`}>TaskMate</span>
           </Link>
           
           <div className="hidden lg:flex items-center gap-10">
-            <a href="#about" className="text-[15px] font-medium text-[#1a2b3c]/80 hover:text-[#1a2b3c] transition-colors">About</a>
-            <a href="#services" className="text-[15px] font-medium text-[#1a2b3c]/80 hover:text-[#1a2b3c] transition-colors">Services</a>
-            <a href="#testimonials" className="text-[15px] font-medium text-[#1a2b3c]/80 hover:text-[#1a2b3c] transition-colors">Testimonials</a>
-            <a href="#faq" className="text-[15px] font-medium text-[#1a2b3c]/80 hover:text-[#1a2b3c] transition-colors">FAQ</a>
+            <a href="#about" className={`text-[15px] font-medium transition-colors ${isScrolled ? 'text-[#1a2b3c]/80 hover:text-[#1a2b3c]' : 'text-white/80 hover:text-white'}`}>About</a>
+            <a href="#services" className={`text-[15px] font-medium transition-colors ${isScrolled ? 'text-[#1a2b3c]/80 hover:text-[#1a2b3c]' : 'text-white/80 hover:text-white'}`}>Services</a>
+            <a href="#testimonials" className={`text-[15px] font-medium transition-colors ${isScrolled ? 'text-[#1a2b3c]/80 hover:text-[#1a2b3c]' : 'text-white/80 hover:text-white'}`}>Testimonials</a>
+            <a href="#faq" className={`text-[15px] font-medium transition-colors ${isScrolled ? 'text-[#1a2b3c]/80 hover:text-[#1a2b3c]' : 'text-white/80 hover:text-white'}`}>FAQ</a>
           </div>
 
           <div className="flex items-center gap-6">
-            <Link to="/login" className="hidden md:block text-[15px] font-medium text-[#1a2b3c]/80 hover:text-[#1a2b3c] transition-colors">
+            <Link to="/login" className={`hidden md:block text-[15px] font-medium transition-colors ${isScrolled ? 'text-[#1a2b3c]/80 hover:text-[#1a2b3c]' : 'text-white/80 hover:text-white'}`}>
               Log in
             </Link>
-            <Link to="/register" className="bg-[#1a2b3c] text-white px-6 py-3 rounded-full text-[15px] font-semibold hover:bg-[#7AC142] hover:text-[#1a2b3c] transition-all duration-300 shadow-md">
+            <Link to="/register" className={`px-6 py-3 rounded-full text-[15px] font-semibold transition-all duration-300 shadow-md ${isScrolled ? 'bg-[#1a2b3c] text-white hover:bg-[#7AC142] hover:text-[#1a2b3c]' : 'bg-[#7AC142] text-[#1a2b3c] hover:bg-white hover:text-[#1a2b3c]'}`}>
               Join TaskMate
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section - Light Theme */}
-      <section className="relative pt-40 pb-24 md:pt-52 md:pb-32 px-6 w-full flex flex-col items-center text-center bg-[#f7f8f3] overflow-hidden">
+      {/* Hero Section - Dark Variant with Image BG */}
+      <section className="relative pt-40 pb-24 md:pt-52 md:pb-32 px-6 w-full flex flex-col items-center text-center bg-[#1a2b3c] overflow-hidden">
         
-        {/* Abstract Background Shapes */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-            <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] rounded-full bg-[#7AC142]/10 blur-[100px]"></div>
-            <div className="absolute top-[20%] -right-[10%] w-[40%] h-[40%] rounded-full bg-[#1a2b3c]/5 blur-[80px]"></div>
+        {/* Background Image with Dark Overlay */}
+        <div className="absolute inset-0 z-0">
+            <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=2000&auto=format&fit=crop" alt="Group of Artisans" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-[#1a2b3c]/85 backdrop-blur-[1px]"></div>
         </div>
 
         <Reveal className="relative z-10 flex flex-col items-center">
-          <div className="flex items-center gap-3 mb-8 bg-white/50 backdrop-blur-sm px-5 py-2 rounded-full border border-[#1a2b3c]/10 shadow-sm">
+          <div className="flex items-center gap-3 mb-8 bg-white/10 backdrop-blur-md px-5 py-2 rounded-full border border-white/10 shadow-sm">
              <img alt="TaskMate" className="h-6 w-6" src="/icon.png" />
-             <span className="font-bold text-sm tracking-widest uppercase text-[#1a2b3c]">TaskMate</span>
+             <span className="font-bold text-sm tracking-widest uppercase text-white">TaskMate</span>
           </div>
-          <h1 className="text-5xl md:text-7xl lg:text-[85px] font-bold tracking-tight leading-[1.1] text-[#1a2b3c] max-w-5xl font-serif">
+          <h1 className="text-5xl md:text-7xl lg:text-[85px] font-bold tracking-tight leading-[1.1] text-white max-w-5xl font-serif">
             Empowering Workers.<br />
             Building Total Trust.
           </h1>
         </Reveal>
         
         <Reveal delay={0.2} className="mt-8 md:mt-10 max-w-3xl relative z-10">
-          <p className="text-lg md:text-xl text-[#1a2b3c]/70 font-sans leading-relaxed">
+          <p className="text-lg md:text-xl text-white/70 font-sans leading-relaxed">
             The trusted workforce platform to find, hire, negotiate with, and securely pay verified local artisans. We enable workers to build digital reputations and financial identities.
           </p>
         </Reveal>
         
         <Reveal delay={0.4} className="mt-12 relative z-10 flex flex-col sm:flex-row gap-4">
-            <Link to="/register" className="bg-[#7AC142] text-[#1a2b3c] px-10 py-4 rounded-full text-lg font-bold hover:bg-[#1a2b3c] hover:text-white hover:-translate-y-1 shadow-lg transition-all duration-300 flex items-center gap-2">
+            <Link to="/register" className="bg-[#7AC142] text-[#1a2b3c] px-10 py-4 rounded-full text-lg font-bold hover:bg-white hover:-translate-y-1 shadow-lg transition-all duration-300 flex items-center gap-2">
                 Find a Professional <span className="material-icons text-sm">arrow_forward_ios</span>
             </Link>
             <Link to="/about" className="bg-white text-[#1a2b3c] px-10 py-4 rounded-full text-lg font-bold hover:bg-[#eaebe4] transition-all duration-300 border border-[#1a2b3c]/10 shadow-sm">
@@ -218,9 +219,11 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Services Grid Section - Glassmorphic Cards */}
+      {/* Services Grid Section - White BG with Multi-colored Glassmorphic Cards */}
       <section id="services" className="py-24 md:py-32 bg-white px-6 w-full relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#f7f8f3] to-white z-0 pointer-events-none"></div>
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-[#7AC142]/5 rounded-full blur-[100px]"></div>
+        </div>
         
         <div className="max-w-7xl mx-auto relative z-10">
             <Reveal>
@@ -234,23 +237,39 @@ const Landing = () => {
                 </div>
             </Reveal>
 
-            {/* 4 columns x 3 rows grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {categories.map((category, idx) => (
-                    <Reveal key={idx} delay={idx * 0.05}>
-                        <Link to="/login" className="group block h-full">
-                            <div className="h-full p-6 rounded-2xl bg-white/40 backdrop-blur-md border border-[#1a2b3c]/5 shadow-[0_4px_20px_-4px_rgba(26,43,60,0.05)] hover:shadow-[0_8px_30px_-4px_rgba(122,193,66,0.15)] hover:-translate-y-1 hover:bg-white/80 transition-all duration-300 flex flex-col items-center text-center">
-                                <div className="h-16 w-16 bg-[#eaebe4] group-hover:bg-[#7AC142] rounded-xl flex items-center justify-center text-[#1a2b3c] group-hover:text-white transition-colors duration-300 mb-5">
-                                    <span className="material-icons text-3xl">{category.icon}</span>
+            {/* 4 columns x 3 rows grid, 2 per row on mobile */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                {categories.map((category, idx) => {
+                    const colors = [
+                        'bg-blue-50/80 border-blue-100',
+                        'bg-green-50/80 border-green-100',
+                        'bg-orange-50/80 border-orange-100',
+                        'bg-purple-50/80 border-purple-100',
+                        'bg-rose-50/80 border-rose-100',
+                        'bg-amber-50/80 border-amber-100',
+                        'bg-cyan-50/80 border-cyan-100',
+                        'bg-indigo-50/80 border-indigo-100',
+                        'bg-teal-50/80 border-teal-100',
+                        'bg-pink-50/80 border-pink-100',
+                        'bg-emerald-50/80 border-emerald-100',
+                        'bg-sky-50/80 border-sky-100'
+                    ];
+                    return (
+                        <Reveal key={idx} delay={idx * 0.05}>
+                            <Link to="/login" className="group block h-full">
+                                <div className={`h-full p-4 md:p-6 rounded-2xl backdrop-blur-md border ${colors[idx % colors.length]} shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center`}>
+                                    <div className="h-14 w-14 md:h-16 md:w-16 bg-[#1a2b3c] rounded-xl flex items-center justify-center text-[#7AC142] group-hover:scale-110 transition-transform duration-300 mb-4 shadow-sm">
+                                        <span className="material-icons text-2xl md:text-3xl">{category.icon}</span>
+                                    </div>
+                                    <h3 className="text-lg md:text-xl font-bold font-serif text-[#1a2b3c] mb-2">{category.title}</h3>
+                                    <p className="text-xs md:text-sm text-[#1a2b3c]/60 font-sans">
+                                        {category.desc}
+                                    </p>
                                 </div>
-                                <h3 className="text-xl font-bold font-serif text-[#1a2b3c] mb-2">{category.title}</h3>
-                                <p className="text-sm text-[#1a2b3c]/60 font-sans">
-                                    {category.desc}
-                                </p>
-                            </div>
-                        </Link>
-                    </Reveal>
-                ))}
+                            </Link>
+                        </Reveal>
+                    );
+                })}
             </div>
             
             <Reveal delay={0.3} className="mt-12 text-center">
@@ -343,7 +362,10 @@ const Landing = () => {
             <div className="bg-[#7AC142] rounded-3xl p-12 md:p-20 flex flex-col md:flex-row items-center justify-between gap-10 mb-24 text-[#1a2b3c] relative overflow-hidden shadow-2xl">
                 {/* Decorative Elements */}
                 <div className="absolute -left-10 -bottom-10 opacity-20">
-                    <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+                    <svg width="200" height="200" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" />
+                        <circle cx="50" cy="50" r="25" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" />
+                    </svg>
                 </div>
 
                 <div className="relative z-10 max-w-2xl">
@@ -362,9 +384,9 @@ const Landing = () => {
                 <div className="col-span-1 md:col-span-2">
                     <Link to="/" className="flex items-center gap-3 mb-6">
                         <img alt="TaskMate" className="h-10 w-10 filter brightness-0 invert" src="/icon.png" />
-                        <span className="font-bold text-2xl tracking-tight font-serif">TaskMate</span>
+                        <span className="font-bold text-2xl tracking-tight font-serif text-white">TaskMate</span>
                     </Link>
-                    <p className="text-white/60 font-medium max-w-sm text-lg leading-relaxed mb-6">
+                    <p className="text-white/70 font-medium max-w-sm text-lg leading-relaxed mb-6">
                         The trusted platform connecting you with verified local artisans, enabling secure payments and digital reputations.
                     </p>
                     <div className="text-white/80 font-medium">
@@ -372,16 +394,16 @@ const Landing = () => {
                     </div>
                 </div>
                 <div>
-                    <h4 className="font-bold text-xl mb-6 font-serif">Platform</h4>
-                    <ul className="space-y-4 text-white/60 font-medium">
+                    <h4 className="font-bold text-xl mb-6 font-serif text-white">Platform</h4>
+                    <ul className="space-y-4 text-white/70 font-medium">
                         <li><Link to="/login" className="hover:text-[#7AC142] transition-colors">Find a Professional</Link></li>
                         <li><Link to="/register" className="hover:text-[#7AC142] transition-colors">Become a Tasker</Link></li>
                         <li><a href="#" className="hover:text-[#7AC142] transition-colors">Trust & Safety</a></li>
                     </ul>
                 </div>
                 <div>
-                    <h4 className="font-bold text-xl mb-6 font-serif">Company</h4>
-                    <ul className="space-y-4 text-white/60 font-medium">
+                    <h4 className="font-bold text-xl mb-6 font-serif text-white">Company</h4>
+                    <ul className="space-y-4 text-white/70 font-medium">
                         <li><a href="#about" className="hover:text-[#7AC142] transition-colors">About Us</a></li>
                         <li><a href="#faq" className="hover:text-[#7AC142] transition-colors">FAQ</a></li>
                         <li><a href="#" className="hover:text-[#7AC142] transition-colors">Legal & Privacy</a></li>
@@ -390,7 +412,7 @@ const Landing = () => {
             </div>
 
             {/* Copyright */}
-            <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/10 text-sm font-medium text-white/40">
+            <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/10 text-sm font-medium text-white/50">
                 <p>© {new Date().getFullYear()} TaskMate Inc. All rights reserved.</p>
                 <div className="flex gap-6 mt-4 md:mt-0">
                     <a href="#" className="hover:text-white transition-colors">Twitter</a>
