@@ -1,110 +1,103 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { resetPassword } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Reset password for:', email);
-    setSubmitted(true);
-    // Add logic here
+    try {
+      setMessage('');
+      setError('');
+      setLoading(true);
+      await resetPassword(email);
+      setMessage('Check your inbox for further instructions');
+      toast.success('Password reset email sent');
+    } catch {
+      setError('Failed to reset password');
+      toast.error('Failed to send reset email');
+    }
+    setLoading(false);
   };
 
   return (
     <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 1.05 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
+      className="min-h-screen flex items-center justify-center bg-[#f7f8f3] py-12 px-4 sm:px-6 lg:px-8 font-sans"
     >
-        {/* Background Pattern */}
-        <div className="absolute inset-0 z-0 opacity-10">
-            <svg className="h-full w-full" width="100%" height="100%" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
-                <g fill="none" stroke="#10B981" strokeWidth="1">
-                    <path d="M769 229L1037 260.9M927 880L731 737 520 660 309 538 40 599 295 764 126.5 879.5 40 599-197 493 102 382-31 229 126.5 79.5-69-63"/>
-                    <path d="M-169 529L135 559.5M-86 539L203 436.5M125 759L-67 563M353 301L534 561M353 301L39.5 541.5"/>
-                    <path d="M784 57L339.5 72.5"/>
-                </g>
-            </svg>
-        </div>
-
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl z-10 border border-gray-100">
-        <div className="text-center">
-             <Link to="/" className="inline-block">
-               <div className="flex items-center justify-center gap-2 mb-2">
-                <img src="/icon.png" alt="TaskMate" className="h-10 w-10" />
-                <span className="font-display font-bold text-3xl text-gray-900">TaskMate</span>
-              </div>
-            </Link>
-          <h2 className="mt-4 text-2xl font-extrabold text-gray-900">Forgot Password?</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            No worries, we'll send you reset instructions.
+      <div className="max-w-md w-full">
+        {/* Logo & Header */}
+        <div className="text-center mb-10">
+          <Link to="/" className="inline-flex items-center gap-2 mb-6">
+            <img src="/icon.png" alt="TaskMate" className="h-10 w-10" />
+            <span className="font-bold text-3xl tracking-tight text-[#1a2b3c] font-serif">TaskMate</span>
+          </Link>
+          <h2 className="text-3xl font-bold text-[#1a2b3c] font-serif">Reset Password</h2>
+          <p className="mt-3 text-[#1a2b3c]/70 text-base">
+            Enter your email address and we'll send you a link to reset your password.
           </p>
         </div>
 
-        {!submitted ? (
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        {/* Card */}
+        <div className="bg-white py-10 px-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-2xl border border-[#1a2b3c]/5">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email-address" className="sr-only">
-                Email address
+              <label htmlFor="email" className="block text-sm font-semibold text-[#1a2b3c] mb-2">
+                Email Address
               </label>
               <input
-                id="email-address"
+                id="email"
                 name="email"
                 type="email"
                 autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent focus:z-10 sm:text-sm transition-all"
-                placeholder="Enter your email"
+                className="appearance-none block w-full px-4 py-3 border border-[#1a2b3c]/20 rounded-lg placeholder-[#1a2b3c]/30 focus:outline-none focus:ring-2 focus:ring-[#7AC142]/50 focus:border-[#7AC142] transition-colors text-[#1a2b3c]"
+                placeholder="you@example.com"
               />
             </div>
 
-            <div>
-              <button
-                type="submit"
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all transform hover:scale-[1.02] shadow-lg hover:shadow-xl shadow-green-200"
-              >
-                Reset Password
-              </button>
-            </div>
-          </form>
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }} 
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-8 text-center"
-          >
-            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-50 mb-6 animate-pulse">
-              <span className="material-icons-outlined text-primary text-3xl">
-                mark_email_read
-              </span>
-            </div>
-            <h3 className="text-xl font-bold text-gray-900">Check your email</h3>
-            <p className="mt-2 text-sm text-gray-500">
-              We have sent a password reset link to <span className="font-semibold text-gray-900">{email}</span>.
-            </p>
-            <div className="mt-6">
-                <button
-                    onClick={() => setSubmitted(false)}
-                    className="text-sm text-primary hover:text-primary-dark font-medium underline"
-                >
-                    Did not receive the email? Click to resend
-                </button>
-            </div>
-          </motion.div>
-        )}
+            {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
+            {message && <p className="text-sm text-[#7AC142] font-medium">{message}</p>}
 
-        <div className="flex items-center justify-center mt-6 pt-4 border-t border-gray-50">
-          <Link to="/login" className="flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors group">
-            <span className="material-icons-outlined text-sm mr-2 group-hover:-translate-x-1 transition-transform">arrow_back</span>
-            Back to log in
-          </Link>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center py-3.5 px-4 rounded-lg text-sm font-bold text-white bg-[#1a2b3c] hover:bg-[#7AC142] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1a2b3c] transition-colors disabled:opacity-70 disabled:cursor-not-allowed shadow-md"
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="animate-spin h-5 w-5 text-white" />
+                  Sending...
+                </div>
+              ) : (
+                "Reset Password"
+              )}
+            </button>
+          </form>
+          
+          <div className="mt-8 text-center">
+            <Link to="/login" className="font-semibold text-[#7AC142] hover:text-[#1a2b3c] transition-colors">
+              &larr; Back to Sign In
+            </Link>
+          </div>
+        </div>
+        
+        {/* Footer */}
+        <div className="mt-8 text-center text-sm text-[#1a2b3c]/50">
+            &copy; {new Date().getFullYear()} TaskMate Inc. All rights reserved.
         </div>
       </div>
     </motion.div>
