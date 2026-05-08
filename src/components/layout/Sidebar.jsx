@@ -1,92 +1,120 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const Sidebar = () => {
-    const [isCollapsed, setIsCollapsed] = useState(false);
-    const { logout } = useAuth();
+    const { currentUser, logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
     const handleLogout = async () => {
         await logout();
         navigate('/');
     };
 
-    const toggleSidebar = () => {
-        setIsCollapsed(!isCollapsed);
-    };
-
-    const navItems = [
-        { icon: 'dashboard', label: 'Dashboard', href: '/dashboard' },
-        { icon: 'search', label: 'Find Providers', href: '/customer/browse' },
-        { icon: 'list_alt', label: 'My Requests', href: '/customer/requests' }, 
-        { icon: 'favorite_border', label: 'Saved Providers', href: '/customer/saved' },
-        { icon: 'group_add', label: 'Invite Friends', href: '/customer/invite' },
+    // Customer Navigation Items
+    const customerNav = [
+        { icon: 'home', label: 'Feed', href: '/customer/dashboard' },
+        { icon: 'explore', label: 'Providers', href: '/customer/browse' },
+        { icon: 'assignment', label: 'Requests', href: '/customer/requests' }, 
+        { icon: 'favorite_border', label: 'Saved', href: '/customer/saved' },
+        { icon: 'notifications_none', label: 'Notifications', href: '/customer/notifications' },
         { icon: 'settings', label: 'Settings', href: '/customer/settings' },
     ];
 
+    // Provider Navigation Items
+    const providerNav = [
+        { icon: 'dashboard', label: 'Overview', href: '/provider/dashboard' },
+        { icon: 'mail_outline', label: 'Requests', href: '/provider/requests' },
+        { icon: 'work_outline', label: 'My Jobs', href: '/provider/jobs' },
+        { icon: 'account_balance_wallet', label: 'Earnings', href: '/provider/earnings' },
+        { icon: 'person_outline', label: 'Profile', href: '/provider/profile' },
+        { icon: 'settings', label: 'Settings', href: '/provider/settings' },
+    ];
+
+    const navItems = currentUser?.role === 'provider' ? providerNav : customerNav;
+
     return (
         <aside 
-            className={`hidden flex-col bg-white border-r border-gray-200 md:flex transition-all duration-300 h-screen ${
-                isCollapsed ? 'w-20' : 'w-64'
-            }`}
+            className={`hidden md:flex flex-col bg-white border-r border-gray-200 h-screen sticky top-0 shrink-0 py-8 transition-all duration-300 ease-in-out z-50 ${isCollapsed ? 'w-[80px] px-2 items-center' : 'w-[260px] px-6'}`}
         >
-            <div className={`flex items-center h-20 px-6 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-                 <div className="flex items-center justify-center">
-                    {isCollapsed ? (
-                        <img alt="TaskMate Icon" className="h-8 w-8 object-contain" src="/icon.png" />
-                    ) : (
-                        <img alt="TaskMate Logo" className="h-18 w-auto object-contain" src="/logo.png" />
-                    )}
-                </div>
-                 <button 
-                    onClick={toggleSidebar}
-                    className={`p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors ${isCollapsed ? 'hidden' : 'block'}`}
-                >
-                    <span className="material-icons-outlined text-xl">chevron_left</span>
-                </button>
+            {/* Logo */}
+            <div className={`flex items-center mb-6 relative ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+                <Link to={currentUser?.role === 'provider' ? '/provider/dashboard' : '/customer/dashboard'} className="flex items-center gap-2.5">
+                    <img 
+                        alt="TaskMate Icon" 
+                        className={`object-contain transition-all duration-300 ${isCollapsed ? 'h-8 w-8' : 'h-8 w-8'}`} 
+                        src="/icon.png" 
+                    />
+                    <span className={`text-[26px] font-extrabold text-slate-900 tracking-tight font-serif ${isCollapsed ? 'hidden' : 'block'}`}>TaskMate</span>
+                </Link>
+                {!isCollapsed && (
+                    <button onClick={() => setIsCollapsed(true)} className="text-gray-400 hover:text-gray-900 transition-colors">
+                        <span className="material-icons-outlined text-sm">chevron_left</span>
+                    </button>
+                )}
             </div>
 
+            {/* Toggle Button for Collapsed State */}
+            {isCollapsed && (
+                <button 
+                    onClick={() => setIsCollapsed(false)}
+                    className="absolute top-10 -right-3 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 shadow-sm z-50"
+                >
+                    <span className="material-icons-outlined text-[10px]">chevron_right</span>
+                </button>
+            )}
+
             {/* Nav Items */}
-            <nav className="flex-1 py-4">
-                <ul className="space-y-1 px-3">
-                    {navItems.map((item) => (
-                        <li key={item.label}>
-                            <Link 
-                                to={item.href} 
-                                className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
-                                    item.active 
-                                        ? 'bg-primary/10 text-primary font-medium' 
-                                        : 'text-gray-500 hover:bg-gray-100'
-                                } ${isCollapsed ? 'justify-center px-2' : ''}`}
-                            >
-                                <span className="material-icons-outlined text-xl">{item.icon}</span>
-                                {!isCollapsed && <span>{item.label}</span>}
-                            </Link>
-                        </li>
-                    ))}
-                     <li>
-                        <button 
-                            onClick={handleLogout}
-                            className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-red-500 hover:bg-red-50 transition-colors ${isCollapsed ? 'justify-center px-2' : ''}`}
+            <nav className={`flex-1 w-full flex flex-col gap-1.5 ${isCollapsed ? 'items-center' : ''}`}>
+                {navItems.map((item, idx) => {
+                    const isActive = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
+                    return (
+                        <Link 
+                            key={idx}
+                            to={item.href} 
+                            className={`flex items-center rounded-xl transition-all duration-200 group w-full ${
+                                isCollapsed ? 'justify-center p-3' : 'px-4 py-3.5 gap-3.5'
+                            } ${
+                                isActive 
+                                    ? 'bg-[#0F172A] text-[#4ADE80] shadow-sm' 
+                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                            }`}
+                            title={isCollapsed ? item.label : ""}
                         >
-                            <span className="material-icons-outlined text-xl">logout</span>
-                            {!isCollapsed && <span>Logout</span>}
-                        </button>
-                    </li>
-                </ul>
+                            <span className={`material-icons-outlined text-[22px] transition-colors shrink-0 ${isActive ? 'text-[#4ADE80]' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                                {item.icon}
+                            </span>
+                            {!isCollapsed && <span className={`font-bold text-[14px] tracking-wide ${isActive ? 'text-[#4ADE80]' : ''}`}>{item.label}</span>}
+                        </Link>
+                    );
+                })}
             </nav>
 
-             {isCollapsed && (
-                <div className="p-4 flex justify-center border-t border-gray-100">
-                    <button 
-                        onClick={toggleSidebar}
-                        className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
-                    >
-                        <span className="material-icons-outlined">chevron_right</span>
-                    </button>
-                </div>
-            )}
+            {/* Bottom Actions - Merged Profile and Logout */}
+            <div className={`w-full flex flex-col mt-auto pt-6 border-t border-gray-100 ${isCollapsed ? 'items-center' : ''}`}>
+                <button 
+                    onClick={handleLogout}
+                    className={`flex items-center rounded-xl transition-all duration-200 group hover:bg-red-50 w-full ${
+                        isCollapsed ? 'justify-center p-3' : 'px-3 py-3 gap-3'
+                    }`}
+                    title={isCollapsed ? "Logout" : ""}
+                >
+                    {!isCollapsed ? (
+                        <>
+                            <img alt="Profile" className="h-8 w-8 rounded-full object-cover shrink-0 border border-gray-200" src={currentUser?.photoURL || currentUser?.avatar_url || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} />
+                            <div className="flex flex-col text-left overflow-hidden flex-1">
+                                <span className="text-[13px] font-bold text-gray-900 truncate group-hover:text-red-600 transition-colors">{currentUser?.displayName || 'User'}</span>
+                                <span className="text-[11px] font-medium text-gray-500 truncate group-hover:text-red-400 transition-colors">Sign Out</span>
+                            </div>
+                            <span className="material-icons-outlined text-[20px] text-gray-400 group-hover:text-red-600 transition-colors">logout</span>
+                        </>
+                    ) : (
+                        <span className="material-icons-outlined text-[22px] text-slate-400 group-hover:text-red-500 transition-colors">logout</span>
+                    )}
+                </button>
+            </div>
         </aside>
     );
 };

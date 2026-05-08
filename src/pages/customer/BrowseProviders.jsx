@@ -1,296 +1,240 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
-import MobileNavBar from '../../components/layout/MobileNavBar';
+import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
-import Tutorial from '../../components/ui/Tutorial';
 
 const BrowseProviders = () => {
+    const navigate = useNavigate();
+    const { currentUser } = useAuth();
     const { getProviders, savedProviderIds, toggleSavedProvider } = useData();
     const [providers, setProviders] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [priceRange, setPriceRange] = useState(50000);
-    const [selectedCategory, setSelectedCategory] = useState("All");
+    
+    // Filters States
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+    const [isSortOpen, setIsSortOpen] = useState(false);
+    const [selectedCategories, setSelectedCategories] = useState([]);
+    const [sortFilter, setSortFilter] = useState('Relevance');
 
-    const tutorialSteps = [
-        {
-            target: '#tour-search-providers',
-            content: 'Use this search bar to quickly find providers by name or specific skills.',
-            disableBeacon: true,
-        },
-        {
-            target: '#tour-filter-sidebar',
-            content: 'Filter providers by service type, minimum rating, or price range to narrow down your options.',
-        },
-        {
-            target: '#tour-sort-options',
-            content: 'Sort the results by recommended, highest rated, or lowest price.',
-        },
-        {
-            target: '#tour-provider-list',
-            content: 'Here are the providers matching your criteria. Click on a provider to view their full profile or heart icon to save them for later.',
-        }
+    const categories = [
+        "Electrical", "Plumbing", "Carpentry", "Painting & Decorating", 
+        "Cleaning Services", "HVAC & AC Repair", "Home Security", "Interior Design"
     ];
+
+    const toggleCategory = (cat) => {
+        if (selectedCategories.includes(cat)) {
+            setSelectedCategories(selectedCategories.filter(c => c !== cat));
+        } else {
+            setSelectedCategories([...selectedCategories, cat]);
+        }
+    };
 
     useEffect(() => {
         const fetchProviders = async () => {
             setLoading(true);
-            const data = await getProviders(selectedCategory);
-            setProviders(data);
+            const data = await getProviders('All');
+            
+            // Enrich mock data
+            const enrichedData = data.map(p => ({
+                ...p,
+                completedJobs: p.completedJobs || Math.floor(Math.random() * 150) + 10,
+                skills: p.preferences || [p.category, 'General Maintenance', 'Diagnostics']
+            }));
+            
+            // Apply category filter if any selected
+            const filteredData = selectedCategories.length > 0 
+                ? enrichedData.filter(p => selectedCategories.includes(p.category))
+                : enrichedData;
+
+            setProviders(filteredData);
             setLoading(false);
         };
         fetchProviders();
-    }, [selectedCategory, getProviders]);
-
-    const handleCategoryChange = (category) => {
-        setSelectedCategory(prev => prev === category ? 'All' : category);
-    };
+    }, [selectedCategories, getProviders]);
 
     return (
-        <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
+        <div className="flex min-h-screen bg-white font-sans text-gray-900">
             <Sidebar />
-            <Tutorial steps={tutorialSteps} tutorialKey="customerFindProviders" />
-            
-            <main className="flex-1 overflow-hidden flex flex-col min-w-0">
-                {/* Header (Simplified for Mobile) */}
-                <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 md:hidden">
-                    <div className="flex items-center gap-2">
-                        <img alt="Logo" className="h-6 w-6" src="/icon.png" />
-                        <span className="text-xl font-bold text-green-800">TaskMate</span>
-                    </div>
-                </header>
 
-                <div className="flex-1 overflow-y-auto p-4 lg:p-8 pb-24">
-                    <div className="mx-auto max-w-7xl">
-                        {/* Page Header */}
-                        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <h1 className="text-2xl font-bold text-gray-900">Browse Providers</h1>
-                                <p className="mt-1 text-sm text-gray-500">Find the best professionals for your needs.</p>
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* Main Content Area */}
+                <main className="flex-1 overflow-y-auto bg-white">
+                    <div className="max-w-[1000px] mx-auto w-full px-4 sm:px-8 py-10">
+                        
+                        {/* Header Section */}
+                        <div className="mb-10">
+                            <h1 className="text-[36px] font-extrabold tracking-tight text-gray-900 mb-6">Browse Providers</h1>
+
+                            {/* Simple Search Bar */}
+                            <div className="flex items-center bg-gray-50 rounded-xl px-4 py-3.5 border border-gray-200 group focus-within:border-gray-400 focus-within:bg-white transition-colors cursor-text mb-4 w-full">
+                                <span className="material-icons-outlined text-[18px] text-gray-400 group-focus-within:text-gray-600">search</span>
+                                <input 
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="bg-transparent border-none outline-none text-[15px] text-gray-800 ml-3 w-full placeholder:text-gray-400 font-medium"
+                                    placeholder="Search by name, skill, or keyword..."
+                                />
+                                <span className="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 ml-2 font-mono font-bold text-gray-500 shrink-0">⌘K</span>
                             </div>
-                            {/* Mobile Filter Toggle could go here */}
-                        </div>
 
-                        <div className="flex flex-col lg:flex-row gap-8">
-                            {/* Filter Sidebar */}
-                            <aside className="w-full lg:w-64 flex-shrink-0 space-y-6">
-                                <div className="relative" id="tour-search-providers">
-                                    <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
-                                    <input 
-                                        className="block w-full rounded-lg border-gray-200 bg-white pl-10 pr-4 py-2.5 text-sm focus:border-green-600 focus:ring-green-600 focus:bg-white transition-colors outline-none shadow-sm border" 
-                                        placeholder="Search providers..." 
-                                        type="text"
-                                    />
-                                </div>
-
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6" id="tour-filter-sidebar">
-                                    {/* Service Type */}
-                                    <div>
-                                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Service Type</h3>
-                                        <div className="space-y-3">
-                                            {['Cleaning', 'Plumbing', 'Electrical', 'Painting', 'Carpentry'].map(service => (
-                                                <label key={service} className="flex items-center group cursor-pointer">
-                                                    <input 
-                                                        className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-600 cursor-pointer" 
-                                                        type="checkbox"
-                                                        checked={selectedCategory === service}
-                                                        onChange={() => handleCategoryChange(service)}
-                                                    />
-                                                    <span className="ml-3 text-sm text-gray-600 group-hover:text-green-700 transition-colors">{service}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <hr className="border-gray-100" />
-
-                                    {/* Rating */}
-                                    <div>
-                                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Rating</h3>
-                                        <div className="space-y-3">
-                                            {[5, 4, 3].map(rating => (
-                                                <label key={rating} className="flex items-center cursor-pointer group">
-                                                    <input 
-                                                        name="rating" 
-                                                        type="radio" 
-                                                        className="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-600 cursor-pointer"
-                                                        defaultChecked={rating === 4} 
-                                                    />
-                                                    <div className="ml-3 flex items-center">
-                                                        <div className="flex text-yellow-400">
-                                                            {[...Array(5)].map((_, i) => (
-                                                                <span key={i} className={`material-icons-outlined text-sm ${i < rating ? 'text-yellow-400' : 'text-gray-200'}`}>star</span>
-                                                            ))}
-                                                        </div>
-                                                        <span className="ml-2 text-sm text-gray-600 group-hover:text-green-700 transition-colors">{rating}.0 & up</span>
-                                                    </div>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <hr className="border-gray-100" />
-
-                                    {/* Price Range */}
-                                    <div>
-                                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Price Range (₦)</h3>
-                                        <div className="space-y-4">
-                                            <div className="flex gap-4">
-                                                <div className="relative w-full">
-                                                    <span className="absolute left-3 top-2 text-xs text-gray-400">₦</span>
-                                                    <input 
-                                                        className="w-full rounded-md border-gray-200 bg-gray-50 pl-6 py-1.5 text-sm focus:border-green-600 focus:ring-0" 
-                                                        placeholder="Min" 
-                                                        type="number"
-                                                    />
-                                                </div>
-                                                <div className="relative w-full">
-                                                    <span className="absolute left-3 top-2 text-xs text-gray-400">₦</span>
-                                                    <input 
-                                                        className="w-full rounded-md border-gray-200 bg-gray-50 pl-6 py-1.5 text-sm focus:border-green-600 focus:ring-0" 
-                                                        placeholder="Max" 
-                                                        type="number"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <input 
-                                                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600" 
-                                                max="100000" 
-                                                min="1000" 
-                                                type="range" 
-                                                value={priceRange}
-                                                onChange={(e) => setPriceRange(e.target.value)}
-                                            />
-                                            <div className="text-xs text-gray-500 text-right">Up to ₦{Number(priceRange).toLocaleString()}</div>
-                                        </div>
-                                    </div>
-
-                                    <button className="w-full rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-800 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all">
-                                        Apply Filters
+                            {/* Filter Pills */}
+                            <div className="flex items-center flex-wrap gap-3 relative z-40">
+                                {/* Category Dropdown (Multiple Selection) */}
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsSortOpen(false); }}
+                                        className="flex items-center gap-2 bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 rounded-xl px-4 py-2.5 hover:border-gray-300 transition-colors shadow-sm"
+                                    >
+                                        {selectedCategories.length === 0 ? 'Category' : `Category (${selectedCategories.length})`}
+                                        <span className="material-icons-outlined text-[16px] text-gray-500">expand_more</span>
                                     </button>
-                                </div>
-                            </aside>
-
-                            {/* Main Content */}
-                            <div className="flex-1">
-                                <div className="mb-6 flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm lg:bg-transparent lg:p-0 lg:border-0 lg:shadow-none">
-                                    <span className="text-sm font-medium text-gray-700">Showing <span className="text-green-700 font-bold">{providers.length}</span> results</span>
-                                    <div className="flex items-center gap-2" id="tour-sort-options">
-                                        <span className="hidden sm:inline text-sm text-gray-500">Sort by:</span>
-                                        <select className="rounded-lg border-gray-200 bg-gray-50 py-1.5 pl-3 pr-8 text-sm focus:border-green-600 focus:ring-green-600 cursor-pointer outline-none">
-                                            <option>Recommended</option>
-                                            <option>Highest Rated</option>
-                                            <option>Lowest Price</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6" id="tour-provider-list">
-                                    {loading ? (
-                                        <div className="col-span-full py-20 text-center">
-                                            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-green-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-                                            <p className="mt-4 text-gray-500">Finding taskers near you...</p>
-                                        </div>
-                                    ) : providers.length === 0 ? (
-                                        <div className="col-span-full py-20 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                                            <span className="material-icons-outlined text-4xl text-gray-300 mb-2">person_off</span>
-                                            <h3 className="text-lg font-bold text-gray-900">No providers found</h3>
-                                            <p className="text-gray-500">Try adjusting your filters or search for something else.</p>
-                                        </div>
-                                    ) : (
-                                        providers.map((provider) => (
-                                        <div key={provider.id} className="group relative flex flex-col overflow-hidden rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300">
-                                            <button 
-                                                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white transition-all active:scale-95"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    toggleSavedProvider(provider.id);
-                                                }}
-                                            >
-                                                <span className={`material-icons text-xl ${savedProviderIds.includes(provider.id) ? 'text-red-500' : 'text-gray-400'}`}>
-                                                    {savedProviderIds.includes(provider.id) ? 'favorite' : 'favorite_border'}
-                                                </span>
-                                            </button>
-                                            
-                                            {/* Header */}
-                                            <div className="p-6 flex flex-col items-center flex-1">
-                                                <div className="relative mb-4">
-                                                    <div className="h-24 w-24 rounded-full p-1 bg-white shadow-sm border border-gray-100 group-hover:border-green-100 transition-colors">
-                                                        <img 
-                                                            alt={provider.displayName} 
-                                                            className="h-full w-full rounded-full object-cover" 
-                                                            src={provider.photoURL || `https://ui-avatars.com/api/?name=${provider.displayName}&background=random`}
-                                                        />
+                                    {isCategoryOpen && (
+                                        <div className="absolute top-full mt-2 w-[280px] bg-white border border-gray-100 rounded-xl shadow-lg py-2 z-50 max-h-[350px] overflow-y-auto">
+                                            {categories.map(cat => (
+                                                <div 
+                                                    key={cat}
+                                                    onClick={() => toggleCategory(cat)}
+                                                    className="w-full flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors group"
+                                                >
+                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedCategories.includes(cat) ? 'bg-[#10B981] border-[#10B981]' : 'border-gray-300 group-hover:border-[#34D399]'}`}>
+                                                        {selectedCategories.includes(cat) && <span className="material-icons text-[12px] text-white font-bold">check</span>}
                                                     </div>
-                                                    <span className="absolute bottom-2 right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500 shadow-sm" title="Online"></span>
+                                                    <span className={`text-[13px] font-bold ${selectedCategories.includes(cat) ? 'text-gray-900' : 'text-gray-600'}`}>{cat}</span>
                                                 </div>
-                                                
-                                                <h3 className="text-lg font-bold text-gray-900 group-hover:text-green-700 transition-colors text-center">{provider.displayName || 'Unnamed Provider'}</h3>
-                                                <p className="text-sm font-medium text-green-600 mb-3 text-center">
-                                                    {provider.category || (provider.preferences && provider.preferences.length > 0 
-                                                        ? provider.preferences.slice(0, 2).join(', ') 
-                                                        : 'Service Provider')}
-                                                </p>
-
-                                                <div className="flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700 mb-4">
-                                                    <span className="material-icons-outlined text-sm text-yellow-500">star</span>
-                                                    {provider.rating ? Number(provider.rating).toFixed(1) : 'New'}
-                                                    <span className="text-yellow-600/60 font-medium ml-1">
-                                                        ({provider.reviews ? provider.reviews.length : 0} reviews)
-                                                    </span>
+                                            ))}
+                                            {selectedCategories.length > 0 && (
+                                                <div className="px-5 pt-3 pb-1 mt-2 border-t border-gray-100">
+                                                    <button onClick={() => { setSelectedCategories([]); setIsCategoryOpen(false); }} className="text-[11px] font-bold text-red-500 hover:text-red-700">Clear Selections</button>
                                                 </div>
-
-                                                <div className="w-full border-t border-gray-50 pt-4 space-y-3 mt-auto">
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-500 flex items-center gap-2">
-                                                            <span className="material-icons-outlined text-gray-400 text-base">location_on</span>
-                                                            Location
-                                                        </span>
-                                                        <span className="font-semibold text-gray-700 truncate max-w-[120px]">{provider.location || 'Remote'}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-500 flex items-center gap-2">
-                                                            <span className="material-icons-outlined text-gray-400 text-base">payments</span>
-                                                            Starting at
-                                                        </span>
-                                                        <span className="font-semibold text-gray-900">₦{Number(provider.baseRate || 5000).toLocaleString()}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Footer Action */}
-                                            <div className="mt-auto p-4 bg-gray-50 border-t border-gray-100 group-hover:bg-green-50/50 transition-colors">
-                                                <Link to={`/customer/provider/${provider.id}`} className="w-full flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-green-700 active:scale-95 shadow-sm">
-                                                    View Profile
-                                                    <span className="material-icons-outlined text-sm">arrow_forward</span>
-                                                </Link>
-                                            </div>
+                                            )}
                                         </div>
-                                    )))}
+                                    )}
                                 </div>
 
-                                {/* Pagination */}
-                                <div className="mt-10 flex justify-center">
-                                    <nav className="flex items-center gap-1 rounded-lg bg-white p-1 shadow-sm border border-gray-200">
-                                        <button className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50 hover:text-gray-600">
-                                            <span className="material-icons-outlined text-lg">chevron_left</span>
-                                        </button>
-                                        <button className="flex h-8 w-8 items-center justify-center rounded-md bg-green-50 text-sm font-semibold text-green-700">1</button>
-                                        <button className="flex h-8 w-8 items-center justify-center rounded-md text-sm font-semibold text-gray-600 hover:bg-gray-50">2</button>
-                                        <button className="flex h-8 w-8 items-center justify-center rounded-md text-sm font-semibold text-gray-600 hover:bg-gray-50">3</button>
-                                        <span className="flex h-8 w-8 items-center justify-center text-gray-400">...</span>
-                                        <button className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50 hover:text-gray-600">
-                                            <span className="material-icons-outlined text-lg">chevron_right</span>
-                                        </button>
-                                    </nav>
+                                {/* Active Green Filter / Sort */}
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => { setIsSortOpen(!isSortOpen); setIsCategoryOpen(false); }}
+                                        className="flex items-center gap-2 bg-[#10B981] border border-[#10B981] text-[13px] font-semibold text-white rounded-xl px-4 py-2.5 hover:bg-[#059669] transition-colors shadow-sm"
+                                    >
+                                        {sortFilter}
+                                        <span className="material-icons-outlined text-[16px] text-white">expand_more</span>
+                                    </button>
+                                    {isSortOpen && (
+                                        <div className="absolute top-full mt-2 w-[180px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50">
+                                            {['Relevance', 'Highest Rated', 'Most Jobs Done'].map(opt => (
+                                                <button key={opt} onClick={() => { setSortFilter(opt); setIsSortOpen(false); }} className="w-full text-left px-4 py-2 text-[13px] hover:bg-gray-50">{opt}</button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
+
+                                {/* Clear All */}
+                                {(selectedCategories.length > 0 || sortFilter !== 'Relevance' || searchQuery !== '') && (
+                                    <button 
+                                        onClick={() => { setSelectedCategories([]); setSortFilter('Relevance'); setSearchQuery(''); }}
+                                        className="text-[13px] font-semibold text-gray-500 underline ml-2 hover:text-gray-900 transition-colors"
+                                    >
+                                        Clear all
+                                    </button>
+                                )}
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <MobileNavBar />
-            </main>
+                        {/* Providers List (Horizontal Rules) */}
+                        <div>
+                            {loading ? (
+                                <div className="py-20 flex justify-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                                </div>
+                            ) : providers.length === 0 ? (
+                                <div className="bg-gray-50 border border-gray-200 rounded-3xl p-16 text-center mt-6">
+                                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm">
+                                        <span className="material-icons-outlined text-2xl text-gray-400">search_off</span>
+                                    </div>
+                                    <h3 className="text-xl font-extrabold text-gray-900">No providers found</h3>
+                                    <p className="text-gray-500 text-sm mt-2 font-medium">Try adjusting your filters or search terms.</p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col relative z-0">
+                                    {providers.map((provider, index) => (
+                                        <div key={provider.id} className={`py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 transition-colors hover:bg-gray-50/50 px-2 rounded-xl -mx-2 ${index !== providers.length - 1 ? 'border-b border-gray-200' : ''}`}>
+                                            
+                                            {/* Provider Info (Left) */}
+                                            <div className="flex gap-5 items-center flex-1">
+                                                <img src={provider.photoURL || provider.avatar_url || `https://ui-avatars.com/api/?name=${provider.displayName || 'Artisan'}&background=random`} alt={provider.displayName} className="w-16 h-16 rounded-full border border-gray-200 object-cover shrink-0" />
+                                                <div>
+                                                    <h3 className="font-extrabold text-[17px] text-gray-900 flex items-center gap-1.5 mb-1 tracking-wide">
+                                                        {provider.displayName || provider.full_name || 'Artisan'}
+                                                        <span className="material-icons text-[#10B981] text-[18px]" title="Verified">verified</span>
+                                                    </h3>
+                                                    <p className="text-[13px] font-medium text-gray-500 flex items-center gap-1.5">
+                                                        <span className="text-gray-700 font-bold">{provider.category || 'General Service'}</span> 
+                                                        <span className="text-gray-300">•</span> 
+                                                        <span className="material-icons-outlined text-[14px]">location_on</span> {provider.location || 'Lagos, Nigeria'}
+                                                    </p>
+                                                    
+                                                    {/* Skills Tags */}
+                                                    <div className="flex flex-wrap gap-2 mt-3">
+                                                        {provider.skills.slice(0, 3).map((skill, idx) => (
+                                                            <span key={idx} className="text-[10px] font-bold text-gray-600 bg-gray-100 border border-gray-200/60 px-2.5 py-1 rounded-md tracking-wide">
+                                                                {skill}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Stats (Middle) */}
+                                            <div className="flex sm:flex-col gap-6 sm:gap-2 sm:items-end justify-center shrink-0">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="material-icons text-yellow-500 text-[18px]">star</span>
+                                                    <span className="font-extrabold text-[15px] text-gray-900">{provider.rating || '4.8'}</span>
+                                                    <span className="text-[11px] font-bold text-gray-400">({provider.reviews?.length || Math.floor(Math.random() * 50) + 10})</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[12px] font-extrabold text-gray-500">
+                                                    <span className="material-icons-outlined text-gray-400 text-[16px]">task_alt</span>
+                                                    {provider.completedJobs} completed
+                                                </div>
+                                                <div className="text-[12px] font-medium text-gray-500 mt-1">
+                                                    Starting from <span className="font-extrabold text-[#10B981] text-[14px]">₦{Number(provider.baseRate || 5000).toLocaleString()}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Actions (Right) */}
+                                            <div className="flex items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0 shrink-0 border-t sm:border-t-0 border-gray-100 pt-4 sm:pt-0">
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        toggleSavedProvider(provider.id);
+                                                    }}
+                                                    className={`h-11 w-11 rounded-xl flex items-center justify-center border-2 transition-colors ${
+                                                        savedProviderIds.includes(provider.id) 
+                                                            ? 'border-red-100 bg-red-50 text-red-500' 
+                                                            : 'border-gray-200 bg-white text-gray-400 hover:border-gray-300 hover:text-gray-900'
+                                                    }`}
+                                                >
+                                                    <span className="material-icons-outlined text-[20px]">
+                                                        {savedProviderIds.includes(provider.id) ? 'favorite' : 'favorite_border'}
+                                                    </span>
+                                                </button>
+                                                <button onClick={() => navigate(`/customer/provider/${provider.id}`)} className="h-11 flex-1 sm:flex-none px-6 text-[13px] font-extrabold bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all shadow-sm">
+                                                    View Profile
+                                                </button>
+                                            </div>
+
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                    </div>
+                </main>
+            </div>
         </div>
     );
 };
