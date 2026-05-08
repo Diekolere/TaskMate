@@ -20,8 +20,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (IS_SIMULATED || !supabase) {
       console.log('🚀 TaskMate running in Simulation Mode');
-      // Default to customer for exploration
-      setCurrentUser(MOCK_USER_CUSTOMER);
+      // Retrieve from localStorage if available
+      const savedUser = localStorage.getItem('taskmate_mock_user');
+      if (savedUser) {
+        setCurrentUser(JSON.parse(savedUser));
+      } else {
+        setCurrentUser(MOCK_USER_CUSTOMER);
+      }
       setLoading(false);
       return;
     }
@@ -84,11 +89,12 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     if (IS_SIMULATED) {
+      let user = MOCK_USER_CUSTOMER;
       if (email.includes('provider')) {
-        setCurrentUser(MOCK_USER_PROVIDER);
-      } else {
-        setCurrentUser(MOCK_USER_CUSTOMER);
+        user = MOCK_USER_PROVIDER;
       }
+      setCurrentUser(user);
+      localStorage.setItem('taskmate_mock_user', JSON.stringify(user));
       return;
     }
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -102,6 +108,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     if (IS_SIMULATED) {
       setCurrentUser(null);
+      localStorage.removeItem('taskmate_mock_user');
       return;
     }
     const { error } = await supabase.auth.signOut();
@@ -112,7 +119,9 @@ export function AuthProvider({ children }) {
     if (!currentUser) return;
     
     if (IS_SIMULATED) {
-      setCurrentUser(prev => ({ ...prev, ...data }));
+      const updatedUser = { ...currentUser, ...data };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('taskmate_mock_user', JSON.stringify(updatedUser));
       return;
     }
 
@@ -131,6 +140,7 @@ export function AuthProvider({ children }) {
     if (IS_SIMULATED) {
       const user = { ...MOCK_USER_CUSTOMER, email, full_name: name, role };
       setCurrentUser(user);
+      localStorage.setItem('taskmate_mock_user', JSON.stringify(user));
       return user;
     }
 
