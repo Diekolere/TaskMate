@@ -1,75 +1,63 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
-import { db } from '../../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useData } from '../../context/DataContext';
 
 const RequestDetails = () => {
     const { id } = useParams();
+    const { requests, users, loading: dataLoading } = useData();
     const [request, setRequest] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchRequest = async () => {
-            try {
-                const docRef = doc(db, 'requests', id);
-                const snap = await getDoc(docRef);
-                
-                if (snap.exists()) {
-                    const data = snap.data();
-                    let customer = { id: data.customerId, name: data.customerName || 'Unknown', email: 'N/A' };
-                    let provider = null;
+        if (!dataLoading && requests) {
+            const req = requests.find(r => r.id === id);
+            
+            if (req) {
+                // Find customer and provider in users list if available
+                let customer = { id: req.customerId, name: req.customerName || 'Unknown', email: 'N/A' };
+                let provider = null;
 
-                    if (data.customerId) {
-                         const userSnap = await getDoc(doc(db, 'users', data.customerId));
-                         if (userSnap.exists()) {
-                             const u = userSnap.data();
-                             customer = { id: userSnap.id, name: u.fullName || 'User', email: u.email };
-                         }
+                if (users) {
+                    const c = users.find(u => u.id === req.customerId);
+                    if (c) customer = { id: c.id, name: c.full_name || c.displayName || 'User', email: c.email };
+
+                    if (req.providerId) {
+                        const p = users.find(u => u.id === req.providerId);
+                        if (p) provider = { id: p.id, name: p.full_name || p.displayName || 'Provider', service: p.trade_category || 'Service', email: p.email };
                     }
-
-                    if (data.providerId) {
-                         const provSnap = await getDoc(doc(db, 'users', data.providerId));
-                         if (provSnap.exists()) {
-                             const p = provSnap.data();
-                             provider = { id: provSnap.id, name: p.fullName || 'Provider', service: p.serviceType || 'Service', email: p.email };
-                         }
-                    }
-                    
-                    // Simple timeline based on status
-                    const timeline = [
-                        { status: 'Request Created', date: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : 'N/A', completed: true },
-                        { status: 'In Progress', date: data.status === 'In Progress' ? 'Now' : '-', completed: data.status === 'In Progress' || data.status === 'Completed' },
-                        { status: 'Completed', date: data.status === 'Completed' ? 'Done' : '-', completed: data.status === 'Completed' },
-                    ];
-
-                    setRequest({
-                        id: snap.id,
-                        status: data.status || 'Open',
-                        service: data.serviceType || 'Service',
-                        amount: data.budget ? `₦${data.budget}` : 'N/A',
-                        description: data.description || 'No Description',
-                        location: data.location || 'No Location',
-                        timeline: timeline,
-                        customer,
-                        provider
-                    });
                 }
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchRequest();
-    }, [id]);
+                
+                // Simple timeline based on status
+                const timeline = [
+                    { status: 'Request Created', date: req.createdAt ? new Date(req.createdAt).toLocaleDateString() : 'Recently', completed: true },
+                    { status: 'In Progress', date: req.status === 'In Progress' ? 'Active' : '-', completed: req.status === 'In Progress' || req.status === 'Completed' || req.status === 'Paid' },
+                    { status: 'Completed', date: (req.status === 'Completed' || req.status === 'Paid') ? 'Done' : '-', completed: req.status === 'Completed' || req.status === 'Paid' },
+                ];
 
-    if (loading) return <div className="p-10 text-center">Loading request details...</div>;
-    if (!request) return <div className="p-10 text-center">Request not found</div>;
+                setRequest({
+                    id: req.id,
+                    status: req.status || 'Open',
+                    service: req.category || req.title || 'Service',
+                    amount: req.budget ? `₦${Number(req.budget).toLocaleString()}` : 'N/A',
+                    description: req.description || 'No Description provided',
+                    location: req.location || req.location_name || 'No Location',
+                    timeline: timeline,
+                    customer,
+                    provider
+                });
+            }
+            setLoading(false);
+        }
+    }, [id, requests, users, dataLoading]);
+
+    if (loading || dataLoading) return <div className="p-10 text-center font-bold text-gray-500 animate-pulse">Loading request details...</div>;
+    if (!request) return <div className="p-10 text-center font-bold text-red-500">Request not found</div>;
 
     const getStatusColor = (status) => {
         switch (status) {
             case 'Completed': return 'bg-green-100 text-green-800';
+            case 'Paid': return 'bg-green-100 text-green-800';
             case 'In Progress': return 'bg-blue-100 text-blue-800';
             case 'Pending': return 'bg-yellow-100 text-yellow-800';
             case 'Cancelled': return 'bg-red-100 text-red-800';
@@ -78,65 +66,67 @@ const RequestDetails = () => {
     };
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in font-sans p-6">
              <div className="flex flex-col gap-2">
                 <Breadcrumbs 
                     items={[
                         { label: 'Requests', path: '/admin/requests' },
-                        { label: request.id, path: `/admin/requests/${id}` }
+                        { label: request.id.toUpperCase(), path: `/admin/requests/${id}` }
                     ]} 
                 />
                 <div className="flex items-center justify-between">
-                    <h1 className="text-3xl font-bold text-gray-900">Request #{request.id.slice(0,8)}</h1>
-                    <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${getStatusColor(request.status)}`}>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Request #{request.id.slice(0,8).toUpperCase()}</h1>
+                    <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusColor(request.status)}`}>
                         {request.status}
                     </span>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
                     {/* Request Overview */}
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4 border-b border-gray-100 pb-2">Overview</h3>
-                        <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6 border-b border-gray-50 pb-4">Overview</h3>
+                        <div className="grid grid-cols-2 gap-8 mb-8">
                             <div>
-                                <p className="text-sm text-gray-500 mb-1">Service Type</p>
-                                <p className="font-medium text-gray-900 text-lg">{request.service}</p>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Service Type</p>
+                                <p className="font-bold text-gray-900 text-xl">{request.service}</p>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-500 mb-1">Agreed Amount</p>
-                                <p className="font-bold text-gray-900 text-lg font-mono">{request.amount}</p>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Agreed Amount</p>
+                                <p className="font-black text-green-700 text-xl">{request.amount}</p>
                             </div>
                         </div>
                         <div>
-                             <p className="text-sm text-gray-500 mb-2">Description</p>
-                             <p className="text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-3">Description</p>
+                             <p className="text-gray-700 bg-gray-50/50 p-6 rounded-2xl border border-gray-100 font-medium leading-relaxed">
                                 {request.description}
                              </p>
                         </div>
-                        <div className="mt-6 pt-4 border-t border-gray-100">
-                            <p className="text-sm text-gray-500 mb-1">Service Location</p>
-                            <div className="flex items-center gap-2 text-gray-900">
-                                <span className="material-icons text-gray-400 text-sm">location_on</span>
-                                {request.location}
+                        <div className="mt-8 pt-6 border-t border-gray-50 flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Service Location</p>
+                                <div className="flex items-center gap-2 text-gray-900 font-bold">
+                                    <span className="material-icons text-green-700 text-sm">location_on</span>
+                                    {request.location}
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Timeline */}
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                        <h3 className="text-lg font-bold text-gray-900 mb-6">Request Timeline</h3>
-                        <div className="relative border-l-2 border-gray-200 ml-3 space-y-8">
+                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-8">Request Timeline</h3>
+                        <div className="relative border-l-2 border-gray-100 ml-4 space-y-10">
                             {request.timeline.map((item, i) => (
-                                <div key={i} className="relative pl-8">
-                                    <span className={`absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white ${
-                                        item.completed ? 'bg-green-500' : 'bg-gray-300'
+                                <div key={i} className="relative pl-10">
+                                    <span className={`absolute -left-[11px] top-0 h-5 w-5 rounded-full border-4 border-white shadow-sm ${
+                                        item.completed ? 'bg-green-600' : 'bg-gray-200'
                                     }`}></span>
-                                    <h4 className={`text-sm font-bold ${item.completed ? 'text-gray-900' : 'text-gray-400'}`}>
+                                    <h4 className={`text-sm font-black uppercase tracking-wider ${item.completed ? 'text-gray-900' : 'text-gray-400'}`}>
                                         {item.status}
                                     </h4>
-                                    <p className="text-xs text-gray-500 mt-1">{item.date}</p>
+                                    <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-widest">{item.date}</p>
                                 </div>
                             ))}
                         </div>
@@ -144,55 +134,57 @@ const RequestDetails = () => {
                 </div>
 
                 {/* Sidebar Info */}
-                <div className="space-y-6">
+                <div className="space-y-8">
                     {/* Customer Card */}
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                        <h3 className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-4">Customer</h3>
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="h-10 w-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold">
+                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 group">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6">Customer</h3>
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="h-12 w-12 bg-green-50 text-green-700 rounded-xl flex items-center justify-center font-black border border-green-100 uppercase">
                                 {(request.customer.name || '?').charAt(0)}
                             </div>
                             <div>
-                                <p className="font-bold text-gray-900">{request.customer.name}</p>
-                                <p className="text-xs text-gray-500">{request.customer.email}</p>
+                                <p className="font-bold text-gray-900 group-hover:text-green-700 transition-colors">{request.customer.name}</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{request.customer.email}</p>
                             </div>
                         </div>
-                        <Link to={`/admin/users/${request.customer.id}`} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                            View Profile &rarr;
+                        <Link to={`/admin/users/${request.customer.id}`} className="text-[10px] font-black text-green-700 hover:text-green-800 uppercase tracking-widest flex items-center gap-2">
+                            View Profile <span className="material-icons text-xs">arrow_forward</span>
                         </Link>
                     </div>
 
                     {/* Provider Card */}
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                        <h3 className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-4">Assigned Provider</h3>
+                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 group">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6">Assigned Provider</h3>
                         {request.provider ? (
                              <>
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="h-10 w-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center font-bold">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="h-12 w-12 bg-green-700 text-white rounded-xl flex items-center justify-center font-black shadow-lg shadow-green-700/20 uppercase">
                                         {request.provider.name.charAt(0)}
                                     </div>
                                     <div>
-                                        <p className="font-bold text-gray-900">{request.provider.name}</p>
-                                        <p className="text-xs text-gray-500">{request.provider.service}</p>
+                                        <p className="font-bold text-gray-900 group-hover:text-green-700 transition-colors">{request.provider.name}</p>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{request.provider.service}</p>
                                     </div>
                                 </div>
-                                <Link to={`/admin/users/${request.provider.id}`} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                                    View Profile &rarr;
+                                <Link to={`/admin/users/${request.provider.id}`} className="text-[10px] font-black text-green-700 hover:text-green-800 uppercase tracking-widest flex items-center gap-2">
+                                    View Profile <span className="material-icons text-xs">arrow_forward</span>
                                 </Link>
                              </>
                         ) : (
-                            <p className="text-sm text-gray-500 italic text-center py-4">No provider assigned</p>
+                            <div className="text-center py-6 border border-dashed border-gray-100 rounded-xl">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No provider assigned</p>
+                            </div>
                         )}
                     </div>
 
                     {/* Actions */}
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                        <h3 className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-4">Admin Actions</h3>
-                        <div className="space-y-3">
-                            <button className="w-full py-2 px-4 rounded-lg bg-gray-900 text-white font-medium text-sm hover:bg-gray-800 transition-colors">
+                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6">Admin Actions</h3>
+                        <div className="space-y-4">
+                            <button className="w-full py-4 px-4 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all active:scale-[0.98]">
                                 Resolve Dispute
                             </button>
-                             <button className="w-full py-2 px-4 rounded-lg border border-red-200 text-red-600 bg-red-50 font-medium text-sm hover:bg-red-100 transition-colors">
+                             <button className="w-full py-4 px-4 rounded-xl border border-red-100 text-red-600 bg-red-50 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-all active:scale-[0.98]">
                                 Cancel Request
                             </button>
                         </div>
