@@ -47,6 +47,31 @@ const AccordionItem = ({ title, content, isOpen, onClick }) => {
     );
 };
 
+const StepCard = ({ num, title, desc, delay = 0, className = "" }) => (
+    <Reveal delay={delay} className={className}>
+        <div className="group bg-[#1a2b3c] p-8 md:p-10 rounded-3xl shadow-xl border border-white/5 hover:-translate-y-2 transition-all duration-300 relative overflow-hidden h-full">
+            {/* SVG Bubbles */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#7AC142]/10 rounded-full blur-3xl group-hover:bg-[#7AC142]/20 transition-colors"></div>
+            <div className="absolute top-20 right-20 w-12 h-12 bg-white/5 rounded-full"></div>
+            <div className="absolute bottom-10 left-20 w-24 h-24 bg-[#7AC142]/5 rounded-full blur-xl"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white/5 rounded-full blur-[80px] pointer-events-none"></div>
+            
+            <div className="flex items-center gap-6 mb-6 relative z-10">
+                <div className="h-14 w-14 bg-[#7AC142] rounded-xl flex items-center justify-center shadow-lg transform rotate-3 group-hover:rotate-0 transition-transform shrink-0">
+                    <span className="text-2xl font-bold text-[#1a2b3c] font-serif" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                        {num}
+                    </span>
+                </div>
+                <h4 className="text-2xl md:text-3xl font-bold text-white font-serif">{title}</h4>
+            </div>
+            
+            <p className="text-white/80 text-lg leading-relaxed font-sans relative z-10">
+                {desc}
+            </p>
+        </div>
+    </Reveal>
+);
+
 const Landing = () => {
   const [openFaq, setOpenFaq] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -174,65 +199,55 @@ const Landing = () => {
 
       {/* Purpose & How it Works Section */}
       <section id="about" className="py-24 md:py-32 px-6 max-w-7xl mx-auto w-full">
-        <div className="flex flex-col lg:flex-row gap-16 items-start">
-            <Reveal className="w-full lg:w-1/2 sticky top-32">
-                <div className="relative">
-                    <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=1000&auto=format&fit=crop" alt="Workers collaborating" className="rounded-2xl shadow-xl w-full h-[600px] object-cover" />
-                    <div className="absolute -bottom-10 -right-10 bg-white/80 backdrop-blur-md p-8 rounded-2xl shadow-xl border border-white hidden md:block max-w-[280px]">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="h-10 w-10 bg-[#7AC142] rounded-full flex items-center justify-center text-white"><span className="material-icons">verified</span></div>
-                            <h4 className="text-[#1a2b3c] font-bold text-xl">100% Verified</h4>
-                        </div>
-                        <p className="text-[#1a2b3c]/70 text-sm">Every artisan undergoes rigorous background checks.</p>
-                    </div>
-                </div>
-            </Reveal>
-            <Reveal delay={0.2} className="w-full lg:w-1/2">
-                <h2 className="text-4xl md:text-5xl font-bold font-serif text-[#1a2b3c] mb-6 leading-tight">
-                    Our Purpose and Aspiration
-                </h2>
-                <p className="text-lg text-[#1a2b3c]/70 leading-relaxed mb-12 font-sans">
-                    We believe in the dignity of local labor. Our aspiration is to formalize the informal sector by providing a platform where skills are recognized, payments are secure, and digital reputations unlock new financial opportunities for every artisan.
-                </p>
-                
-                {/* 3 Step Process - Corrected Alignment */}
-                <h3 className="text-2xl font-bold font-serif text-[#1a2b3c] mb-10">How TaskMate Works</h3>
-                <div className="space-y-6">
-                    {[
-                        { 
-                            num: "1", title: "Find & Compare", 
-                            desc: "Search for the exact service you need. Browse through profiles of verified local artisans, check their trust scores, and read authentic customer reviews to make an informed decision." 
-                        },
-                        { 
-                            num: "2", title: "Negotiate & Hire", 
-                            desc: "Communicate directly with the artisan through our platform. Discuss the scope of work, negotiate pricing fairly, and officially hire them for your project with clear terms." 
-                        },
-                        { 
-                            num: "3", title: "Secure Pay & Review", 
-                            desc: "Funds are held safely in escrow. Once the job is completed to your satisfaction, release the payment. Leave a review to help the artisan build their digital reputation." 
-                        }
-                    ].map((step, idx) => (
-                        <Reveal key={idx} delay={idx * 0.1}>
-                            <div className="group bg-[#1a2b3c] p-8 md:p-10 rounded-3xl shadow-xl border border-white/5 hover:-translate-y-2 transition-all duration-300 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-[#7AC142]/5 rounded-full blur-3xl group-hover:bg-[#7AC142]/10 transition-colors"></div>
-                                
-                                <div className="flex items-center gap-6 mb-6">
-                                    <div className="h-14 w-14 bg-[#7AC142] rounded-xl flex items-center justify-center shadow-lg transform rotate-3 group-hover:rotate-0 transition-transform shrink-0">
-                                        <span className="text-2xl font-bold text-[#1a2b3c] font-serif" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
-                                            {step.num}
-                                        </span>
-                                    </div>
-                                    <h4 className="text-2xl md:text-3xl font-bold text-white font-serif">{step.title}</h4>
-                                </div>
-                                
-                                <p className="text-white/80 text-lg leading-relaxed font-sans">
-                                    {step.desc}
-                                </p>
+        <div className="flex flex-col gap-16">
+            {/* Top Row: About Text + Step 1 */}
+            <div className="flex flex-col lg:flex-row gap-16 items-start">
+                <Reveal className="w-full lg:w-1/2">
+                    <div className="relative">
+                        <img src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=1000&auto=format&fit=crop" alt="Smiling Electrician" className="rounded-2xl shadow-xl w-full h-[500px] object-cover" />
+                        <div className="absolute -bottom-10 -right-10 bg-white/80 backdrop-blur-md p-8 rounded-2xl shadow-xl border border-white hidden md:block max-w-[280px]">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="h-10 w-10 bg-[#7AC142] rounded-full flex items-center justify-center text-white"><span className="material-icons">verified</span></div>
+                                <h4 className="text-[#1a2b3c] font-bold text-xl">100% Verified</h4>
                             </div>
-                        </Reveal>
-                    ))}
+                            <p className="text-[#1a2b3c]/70 text-sm">Every artisan undergoes rigorous background checks.</p>
+                        </div>
+                    </div>
+                </Reveal>
+                
+                <div className="w-full lg:w-1/2 flex flex-col gap-10">
+                    <Reveal>
+                        <h2 className="text-4xl md:text-5xl font-bold font-serif text-[#1a2b3c] mb-6 leading-tight">
+                            Our Purpose and Aspiration
+                        </h2>
+                        <p className="text-lg text-[#1a2b3c]/70 leading-relaxed font-sans">
+                            We believe in the dignity of local labor. Our aspiration is to formalize the informal sector by providing a platform where skills are recognized and payments are secure.
+                        </p>
+                    </Reveal>
+                    
+                    <StepCard 
+                        num="1" 
+                        title="Find & Compare" 
+                        desc="Search for the exact service you need. Browse through profiles of verified local artisans, check their trust scores, and read authentic customer reviews to make an informed decision."
+                    />
                 </div>
-            </Reveal>
+            </div>
+
+            {/* Bottom Row: Step 2 + Step 3 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                <StepCard 
+                    num="2" 
+                    title="Negotiate & Hire" 
+                    desc="Communicate directly with the artisan through our platform. Discuss the scope of work, negotiate pricing fairly, and officially hire them for your project with clear terms."
+                    delay={0.1}
+                />
+                <StepCard 
+                    num="3" 
+                    title="Secure Pay & Review" 
+                    desc="Funds are held safely in escrow. Once the job is completed to your satisfaction, release the payment. Leave a review to help the artisan build their digital reputation."
+                    delay={0.2}
+                />
+            </div>
         </div>
       </section>
 
