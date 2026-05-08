@@ -3,12 +3,10 @@ import { Link } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useData } from '../../context/DataContext';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
 import Tutorial from '../../components/ui/Tutorial';
 
 const SavedProviders = () => {
-    const { savedProviderIds, toggleSavedProvider } = useData();
+    const { savedProviderIds, toggleSavedProvider, getProviders } = useData();
     const [savedProviders, setSavedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -34,22 +32,19 @@ const SavedProviders = () => {
 
             setLoading(true);
             try {
-                const providerPromises = savedProviderIds.map(id => getDoc(doc(db, "users", id)));
-                const providerSnapshots = await Promise.all(providerPromises);
-                
-                const providers = providerSnapshots
-                    .filter(snap => snap.exists() && snap.data().isVerified === true && snap.data().status !== 'Suspended')
-                    .map(snap => {
-                        const data = snap.data();
+                const allProviders = await getProviders('All');
+                const providers = allProviders
+                    .filter(p => savedProviderIds.includes(p.id) || savedProviderIds.includes(p.uid))
+                    .map(data => {
                         return {
-                            id: snap.id,
-                            name: data.displayName || 'Provider',
+                            id: data.id || data.uid,
+                            name: data.displayName || data.full_name || 'Provider',
                             service: data.category || 'Service Provider',
-                            image: data.photoURL || `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
+                            image: data.photoURL || data.avatar_url || `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
                             rating: data.rating || 'New',
-                            rate: data.services?.[0]?.rate || 'Negotiable',
-                            location: data.address || 'Remote',
-                            verified: data.isVerified
+                            rate: data.hourlyRate ? `₦${Number(data.hourlyRate).toLocaleString()}` : (data.hourly_rate_min ? `₦${Number(data.hourly_rate_min).toLocaleString()}` : 'Negotiable'),
+                            location: data.address || data.location_name || 'Remote',
+                            verified: data.isVerified || data.is_verified
                         };
                     });
                 
@@ -62,7 +57,7 @@ const SavedProviders = () => {
         };
 
         fetchSavedProviders();
-    }, [savedProviderIds]);
+    }, [savedProviderIds, getProviders]);
 
     return (
         <div className="flex h-screen bg-[#F8F9FA] font-sans text-gray-900">
@@ -79,7 +74,7 @@ const SavedProviders = () => {
                                 <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Saved Providers</h1>
                                 <p className="mt-1 text-sm text-gray-500">Service professionals you've bookmarked for later.</p>
                             </div>
-                            <Link to="/customer/browse" id="tour-browse-more" className="hidden sm:inline-flex items-center text-sm font-bold text-green-600 hover:text-green-700">
+                            <Link to="/customer/browse" id="tour-browse-more" className="hidden sm:inline-flex items-center text-sm font-bold text-green-700 hover:text-green-800">
                                 Browse more
                                 <span className="material-icons-outlined text-lg ml-1">arrow_forward</span>
                             </Link>
@@ -145,7 +140,6 @@ const SavedProviders = () => {
                                                     <p className="text-xs text-gray-400 font-medium uppercase">Rate</p>
                                                     <div className="flex items-baseline gap-0.5">
                                                         <span className="text-lg font-black text-gray-900">{provider.rate}</span>
-                                                        <span className="text-xs text-gray-500 font-medium">{provider.rate !== 'Negotiable' ? '' : ''}</span>
                                                     </div>
                                                 </div>
                                                 <Link 
@@ -166,7 +160,7 @@ const SavedProviders = () => {
                                 </div>
                                 <h3 className="text-xl font-bold text-gray-900 mb-2">No saved providers yet</h3>
                                 <p className="text-gray-500 max-w-md mx-auto mb-8">Found someone you like? Tap the heart icon on their profile to save them here for quick access later.</p>
-                                <Link to="/customer/browse" className="inline-flex items-center bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 hover:scale-[1.02]">
+                                <Link to="/customer/browse" className="inline-flex items-center bg-green-700 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-800 transition-all shadow-lg shadow-green-700/20 hover:scale-[1.02]">
                                     Browse Providers
                                 </Link>
                             </div>

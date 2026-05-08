@@ -2,8 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
-import { doc, onSnapshot } from 'firebase/firestore'; 
-import { db } from '../../lib/firebase';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import Tutorial from '../../components/ui/Tutorial';
@@ -27,20 +25,17 @@ const Earnings = () => {
 
     // Fetch live commission balance from user profile
     useEffect(() => {
-        if (!currentUser) return;
-        const unsub = onSnapshot(doc(db, "users", currentUser.uid), (docS) => {
-            if(docS.exists()) {
-                setCommissionBalance(docS.data().commissionBalance || 0);
-            }
-        });
-        return () => unsub();
+        if (currentUser) {
+            setCommissionBalance(currentUser.commissionBalance || 0);
+        }
     }, [currentUser]);
 
     const { transactions, weeklyData, totalEarnings, monthlyEarnings, maxVal } = useMemo(() => {
         if (!currentUser) return { transactions: [], weeklyData: Array(7).fill(0), totalEarnings: 0, monthlyEarnings: 0, maxVal: 1000 };
 
+        const userId = currentUser.uid || currentUser.id;
         const completed = jobs.filter(job => 
-            job.providerId === currentUser.uid && 
+            (job.providerId === userId || job.provider_id === userId) && 
             (job.status === 'Completed' || job.status === 'Paid')
         );
 
@@ -50,59 +45,24 @@ const Earnings = () => {
         const currentYear = now.getFullYear();
 
         const monthlyEarnings = completed.reduce((acc, job) => {
-             // Check if job completed in current month
-             let jobDate = null;
-             if (job.completedAt) {
-                 if (job.completedAt.toDate) jobDate = job.completedAt.toDate();
-                 else jobDate = new Date(job.completedAt);
-             } else if (job.updatedAt) { // Fallback
-                  if (job.updatedAt.toDate) jobDate = job.updatedAt.toDate();
-                  else jobDate = new Date(job.updatedAt);
-             }
+             let jobDate = job.completedAt instanceof Date ? job.completedAt : (job.completedAt ? new Date(job.completedAt) : null);
+             if (!jobDate && job.updatedAt) jobDate = job.updatedAt instanceof Date ? job.updatedAt : new Date(job.updatedAt);
 
              if (jobDate && jobDate.getMonth() === currentMonth && jobDate.getFullYear() === currentYear) {
-                 return acc + (Number(job.finalAmount) || Number(job.budget) || 0); // Use finalAmount or budget
+                 return acc + (Number(job.finalAmount) || Number(job.budget) || 0);
              }
              return acc;
         }, 0);
 
-        // Calculate All Time Earnings for comparison or total card if needed, 
-        // but user asked for "that month" earnings to be fixed. 
-        // Let's assume the main card "Total Earnings" is All Time, but maybe there's a monthly stat?
-        // Actually the code previously had `const earnings = completed.reduce(...)` which was ALL TIME.
-        // If the user said "earnings for that month ... isn't updating", they might refer to a specific UI element 
-        // or they might want the main card to show Monthly. 
-        // Let's keep Total as Total + Add a Monthly stat or fix the Weekly Trend to be correct.
-        
-        // Wait, looking at the UI code below:
-        // One card says "Total Earnings".
-        // One section says "Weekly Trend".
-        // Maybe I should update "Total Earnings" to be "Total Earnings (This Month)"? 
-        // Or likely the user means the Total Earnings value itself wasn't updating because it wasn't detecting the recent job completion.
-        
-        // Let's stick to ALL TIME for "Total Earnings" card as that's standard, 
-        // but ensure re-calculation triggers correctly.
-        // And I will add a "This Month" breakdown or ensure the data source `jobs` is fresh.
-        // `useData` provides `jobs`. `Earnings` uses `jobs`. 
-        // The issue might be that `jobs` context isn't updating in real-time or the calculation logic was flawed.
-        
-        // Revised Calculation:
         const allTimeEarnings = completed.reduce((acc, job) => acc + (Number(job.finalAmount) || Number(job.budget) || 0), 0);
-
 
         /* Weekly Data (Sun-Sat) */
         const weekData = Array(7).fill(0);
         completed.forEach(job => {
-            let date = null;
-            if (job.completedAt) date = job.completedAt.toDate ? job.completedAt.toDate() : new Date(job.completedAt);
-            else if (job.updatedAt) date = job.updatedAt.toDate ? job.updatedAt.toDate() : new Date(job.updatedAt);
+            let date = job.completedAt instanceof Date ? job.completedAt : (job.completedAt ? new Date(job.completedAt) : null);
+            if (!date && job.updatedAt) date = job.updatedAt instanceof Date ? job.updatedAt : new Date(job.updatedAt);
             
             if (date) {
-                // Only include if in current week?
-                // Visual indicates S M T W T F S. Let's strictly map to current week to be useful? 
-                // Or just day of week tally? Usually it implies recent activity.
-                // Let's do: Is it in the last 7 days? Or is it this calendar week?
-                // Simple approach: Tally by day index.
                 const day = date.getDay();
                 weekData[day] += (Number(job.finalAmount) || Number(job.budget) || 0);
             }
@@ -115,7 +75,7 @@ const Earnings = () => {
             id: job.id,
             type: 'credit', 
             description: `Job: ${job.serviceType || job.title}`,
-            date: job.completedAt ? (job.completedAt.toDate ? job.completedAt.toDate().toLocaleDateString() : new Date(job.completedAt).toLocaleDateString()) : 'N/A',
+            date: job.completedAt instanceof Date ? job.completedAt.toLocaleDateString() : (job.completedAt ? new Date(job.completedAt).toLocaleDateString() : 'Recently'),
             amount: `₦${(Number(job.finalAmount) || Number(job.budget) || 0).toLocaleString()}`,
             status: 'Completed'
         })).sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -142,7 +102,7 @@ const Earnings = () => {
                     <h1 className="text-xl font-semibold text-gray-800">Wallet & Commissions</h1>
                     <div className="flex gap-2">
                          <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium transition-colors">
-                            <span className="material-symbols-outlined text-lg">history</span>
+                            <span className="material-icons text-lg">history</span>
                             History
                          </button>
                     </div>
@@ -150,23 +110,12 @@ const Earnings = () => {
 
                 <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
                     
-                    {/* Access Warning Banner - HIDDEN FOR EMPTY STATE */}
-                    {/* <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
-                        <span className="material-symbols-outlined text-orange-600">warning</span>
-                        <div>
-                            <h3 className="text-sm font-bold text-gray-900">Commission Payment Due</h3>
-                            <p className="text-sm text-gray-600 mt-1">
-                                Your outstanding commission balance is ₦6,300. Please clear your balance before it exceeds ₦10,000 to avoid temporary account suspension.
-                            </p>
-                        </div>
-                    </div> */}
-
                     {/* Balance Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="tour-commission-block">
                         {/* Outstanding Balance Card */}
                         <div className="bg-red-600 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-10">
-                                <span className="material-symbols-outlined text-9xl">account_balance_wallet</span>
+                                <span className="material-icons text-9xl">account_balance_wallet</span>
                             </div>
                             <div className="relative z-10">
                                 <p className="text-sm font-bold opacity-80 mb-1">Outstanding Commission</p>
@@ -175,15 +124,15 @@ const Earnings = () => {
                                 </h2>
                                 <button className="w-full py-3 bg-white text-red-600 font-bold rounded-xl shadow-md hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
                                     <span>Pay Commission</span>
-                                    <span className="material-symbols-outlined text-lg">payments</span>
+                                    <span className="material-icons text-lg">payments</span>
                                 </button>
                             </div>
                         </div>
 
                         {/* Total Earnings Card */}
-                        <div className="bg-green-600 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+                        <div className="bg-green-700 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-10">
-                                <span className="material-symbols-outlined text-9xl">attach_money</span>
+                                <span className="material-icons text-9xl">attach_money</span>
                             </div>
                             <div className="relative z-10">
                                 <p className="text-sm font-bold opacity-80 mb-1">Total Earnings</p>
@@ -232,7 +181,7 @@ const Earnings = () => {
                                     <h2 className="text-3xl font-bold text-gray-900">₦5,000</h2>
                                 </div>
                                 <div className="p-2 bg-gray-50 text-gray-600 rounded-lg">
-                                    <span className="material-symbols-outlined">verified_user</span>
+                                    <span className="material-icons">verified_user</span>
                                 </div>
                             </div>
                             <p className="text-sm text-gray-500 leading-relaxed">
@@ -259,31 +208,36 @@ const Earnings = () => {
                             <button className="text-sm font-bold text-gray-500 hover:text-gray-900">View All</button>
                         </div>
                         <div className="divide-y divide-gray-100">
-                            {transactions.map((trx) => (
+                            {transactions.length > 0 ? (
+                                transactions.map((trx) => (
                                 <div key={trx.id} className="p-4 md:p-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
                                     <div className="flex items-center gap-4">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                                             trx.type === 'credit' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
                                         }`}>
-                                            <span className="material-symbols-outlined">
+                                            <span className="material-icons">
                                                 {trx.type === 'credit' ? 'check_circle' : 'remove_circle_outline'}
                                             </span>
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold text-gray-900">{trx.description}</p>
-                                            <p className="text-xs text-gray-500">{trx.date} • {trx.id}</p>
+                                            <p className="text-xs text-gray-500">{trx.date} • {trx.id.substring(0, 8)}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className={`text-sm font-bold ${
-                                            trx.type === 'd' ? 'text-green-600' : 'text-gray-900'
-                                        }`}>
+                                        <p className="text-sm font-bold text-gray-900">
                                             {trx.amount}
                                         </p>
                                         <p className="text-xs text-gray-500 font-medium capitalize">{trx.status}</p>
                                     </div>
                                 </div>
-                            ))}
+                                ))
+                            ) : (
+                                <div className="p-12 text-center text-gray-400">
+                                    <span className="material-icons text-4xl mb-2 opacity-30">account_balance_wallet</span>
+                                    <p>No transaction history yet.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -291,11 +245,11 @@ const Earnings = () => {
                     <div className="bg-gray-100 rounded-2xl p-6 border border-gray-200">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Payment Method</h3>
-                            <button className="text-sm font-bold text-primary hover:underline">Change</button>
+                            <button className="text-sm font-bold text-green-700 hover:underline">Change</button>
                         </div>
                         <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-gray-200">
                             <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center">
-                                <span className="material-symbols-outlined text-gray-400 text-2xl">credit_card</span>
+                                <span className="material-icons text-gray-400 text-2xl">credit_card</span>
                             </div>
                             <div>
                                 <p className="text-gray-900 font-bold">Mastercard •••• 4291</p>

@@ -1,14 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
-import { getAI, getGenerativeModel, VertexAIBackend } from "firebase/ai";
-import app from '../../lib/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 const AIChat = () => {
     const { currentUser } = useAuth();
-    const { requests, savedProviderIds } = useData();
+    const { requests, savedProviderIds, isSimulated } = useData();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
         { role: 'model', text: 'Hello! I am your TaskMate AI assistant. How can I help you today?' }
@@ -33,64 +31,32 @@ const AIChat = () => {
         setIsLoading(true);
 
         try {
-            // 1. Initialize Vertex AI
-            const ai = getAI(app, { backend: new VertexAIBackend() });
-            const model = getGenerativeModel(ai, { model: "gemini-2.0-flash"  }); 
-            // Note: User asked for "gemini-3-flash-preview" but provided a list without it in "Available models". 
-            // Actually, the user PROMPT had "gemini-3-flash-preview" in the code block. 
-            // I'll try to use that, but wrap in try/catch to fallback or error.
-            // Using "gemini-2.0-flash" as a safer bet based on standard docs, or "gemini-1.5-flash". 
-            // The user's text "gemini-3-flash-preview" seems like a placeholder or very cutting edge. 
-            // I will use "gemini-1.5-flash" as it is definitely available on Vertex AI for Firebase.
-            // Wait, the user provided a specific list of available models: gemini-2.5-pro, etc. 
-            // I will use "gemini-2.0-flash" as per the list.
+            // SIMULATED AI RESPONSE
+            // In a production app, this would call a Supabase Edge Function 
+            // which handles the AI model interaction securely.
+            
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate latency
 
-            // 2. Build Context
-            const requestContext = requests.map(r => 
-                `- Request: ${r.title} (${r.category}), Status: ${r.status}, Budget: ${r.budget}`
-            ).join('\n');
+            let response = "";
+            const lowerMsg = userMessage.toLowerCase();
 
-            const systemPrompt = `
-You are TaskMate AI, an intelligent assistant for the TaskMate platform in Nigeria.
-Your role is to help the customer (User: ${currentUser?.displayName || 'Guest'}) with their tasks, finding providers, and using the app.
-
-Context:
-- User Role: Customer
-- Saved Providers Count: ${savedProviderIds?.length || 0}
-- Recent Requests:
-${requestContext || 'None'}
-
-Platform Info:
-TaskMate connects users with verified professionals (plumbers, cleaners, mechanics, etc.) in Nigeria.
-Users can post requests, browse providers, chat, and pay securely.
-
-Instructions:
-- Be helpful, concise, and friendly.
-- Use the provided context to give personalized answers.
-- If asked about a specific request, refer to its details.
-- If asked about the platform features, explain them clearly.
-- Do not make up information about providers you don't have access to.
-
-Current User Question: ${userMessage}
-History: ${messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n')}
-            `;
-
-            // 3. Generate Content
-            // Since we are using single-turn generateContent with history injected in prompt (simpler state management)
-            const result = await model.generateContent(systemPrompt);
-            const response = result.response.text();
+            if (lowerMsg.includes('hello') || lowerMsg.includes('hi')) {
+                response = `Hi ${currentUser?.displayName || 'there'}! I can help you find providers, check your request status, or explain how TaskMate works.`;
+            } else if (lowerMsg.includes('request') || lowerMsg.includes('job')) {
+                const count = requests.length;
+                response = count > 0 
+                    ? `You currently have ${count} active requests. One of them is "${requests[0].title}" which is currently ${requests[0].status}.`
+                    : "You don't have any active requests yet. Would you like to post one?";
+            } else if (lowerMsg.includes('provider') || lowerMsg.includes('worker')) {
+                response = "You can browse verified providers in the 'Browse' section. We have electricians, plumbers, and more nearby.";
+            } else {
+                response = "That's a great question! As a TaskMate assistant, I'm here to ensure your service experience is smooth. Is there anything specific about your tasks you'd like to know?";
+            }
 
             setMessages(prev => [...prev, { role: 'model', text: response }]);
         } catch (error) {
             console.error("AI Error:", error);
-            let errorMessage = "Sorry, I couldn't process that. Please try again later.";
-            if (error.message?.includes('403') || error.message?.includes('permission')) {
-                errorMessage = "AI Service is not enabled or permission denied. Please contact support.";
-            } else if (error.message?.includes('not found')) {
-                 // Fallback logic could go here if model name is wrong
-                 errorMessage = "AI Model not available currently.";
-            }
-            setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
+            setMessages(prev => [...prev, { role: 'model', text: "Sorry, I'm having trouble connecting right now." }]);
         } finally {
             setIsLoading(false);
         }
@@ -106,15 +72,15 @@ History: ${messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n')}
                 dragElastic={0.1}
                 dragMomentum={false}
                 onClick={() => setIsOpen(!isOpen)}
-                className="absolute bottom-6 right-6 p-3 bg-primary text-white rounded-full shadow-xl hover:bg-primary-dark transition-colors flex items-center justify-center group pointer-events-auto active:cursor-grabbing"
+                className="absolute bottom-6 right-6 p-3 bg-green-700 text-white rounded-full shadow-xl hover:bg-green-800 transition-colors flex items-center justify-center group pointer-events-auto active:cursor-grabbing"
                 style={{ touchAction: "none" }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
             >
                 {isOpen ? (
-                    <span className="material-symbols-outlined text-2xl">close</span>
+                    <span className="material-icons-outlined text-2xl">close</span>
                 ) : (
-                    <img src="/icon.png" alt="AI" className="w-8 h-8 object-contain brightness-0 invert pointer-events-none" />
+                    <span className="material-icons-outlined text-2xl">smart_toy</span>
                 )}
                  {!isOpen && (
                     <span className="hidden md:block absolute right-full mr-3 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
@@ -134,13 +100,13 @@ History: ${messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n')}
                         className="absolute bottom-24 right-4 w-[calc(100vw-32px)] max-w-sm bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col h-[500px] sm:right-6 sm:w-[380px] pointer-events-auto"
                     >
                         {/* Header */}
-                        <div className="bg-primary p-4 flex items-center justify-between text-white">
+                        <div className="bg-green-700 p-4 flex items-center justify-between text-white">
                             <div className="flex items-center gap-2">
-                                <img src="/icon.png" alt="AI" className="w-6 h-6 object-contain brightness-0 invert" />
+                                <span className="material-icons-outlined">smart_toy</span>
                                 <h3 className="font-bold">TaskMate Assistant</h3>
                             </div>
                             <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 rounded-full p-1">
-                                <span className="material-symbols-outlined text-sm">remove</span>
+                                <span className="material-icons-outlined text-sm">remove</span>
                             </button>
                         </div>
 
@@ -154,7 +120,7 @@ History: ${messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n')}
                                     <div
                                         className={`max-w-[80%] rounded-2xl p-3 text-sm ${
                                             msg.role === 'user'
-                                                ? 'bg-primary text-white rounded-tr-none'
+                                                ? 'bg-green-700 text-white rounded-tr-none'
                                                 : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm'
                                         }`}
                                     >
@@ -165,9 +131,9 @@ History: ${messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n')}
                             {isLoading && (
                                 <div className="flex justify-start">
                                     <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3 shadow-sm flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                        <div className="w-2 h-2 bg-green-700 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                        <div className="w-2 h-2 bg-green-700 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                        <div className="w-2 h-2 bg-green-700 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                                     </div>
                                 </div>
                             )}
@@ -182,18 +148,18 @@ History: ${messages.slice(-5).map(m => `${m.role}: ${m.text}`).join('\n')}
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     placeholder="Ask about your requests..."
-                                    className="flex-1 bg-gray-100 border-0 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all outline-none"
+                                    className="flex-1 bg-gray-100 border-0 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-700/20 focus:bg-white transition-all outline-none"
                                 />
                                 <button
                                     type="submit"
                                     disabled={isLoading || !input.trim()}
-                                    className="p-3 bg-primary text-white rounded-xl hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="p-3 bg-green-700 text-white rounded-xl hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    <span className="material-symbols-outlined text-lg">send</span>
+                                    <span className="material-icons-outlined text-lg">send</span>
                                 </button>
                             </div>
                             <div className="text-center mt-2">
-                                <p className="text-[10px] text-gray-400">Powered by Vertex AI (Gemini)</p>
+                                <p className="text-[10px] text-gray-400">Simulation Mode {isSimulated ? '(Active)' : ''}</p>
                             </div>
                         </form>
                     </motion.div>

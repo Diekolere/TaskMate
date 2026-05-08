@@ -2,52 +2,44 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
 import { format } from 'date-fns';
+import { useData } from '../../context/DataContext';
 
 const RequestStatus = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { requests, getProviders, isSimulated } = useData();
     const [request, setRequest] = useState(null);
     const [providerData, setProviderData] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!id) return;
+        if (!id || requests.length === 0) {
+             if (requests.length === 0 && !isSimulated) setLoading(true);
+             else setLoading(false);
+             return;
+        }
         
-        const unsubscribe = onSnapshot(doc(db, "requests", id), async (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                setRequest({ id: docSnap.id, ...data });
-
-                // Fetch real provider data if assigned
-                if (data.providerId) {
-                    try {
-                        const providerSnap = await getDoc(doc(db, "users", data.providerId));
-                        if (providerSnap.exists()) {
-                            setProviderData(providerSnap.data());
-                        }
-                    } catch (err) {
-                        console.error("Error fetching provider details:", err);
-                    }
-                }
-            } else {
-                console.log("No such request!");
+        const req = requests.find(r => r.id === id);
+        if (req) {
+            setRequest(req);
+            
+            // Fetch real provider data if assigned
+            if (req.providerId || req.provider_id) {
+                const pId = req.providerId || req.provider_id;
+                getProviders('All').then(allProviders => {
+                    const pData = allProviders.find(p => p.id === pId || p.uid === pId);
+                    if (pData) setProviderData(pData);
+                }).catch(err => console.error("Error fetching provider:", err));
             }
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching request:", error);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [id]);
+        }
+        setLoading(false);
+    }, [id, requests, getProviders, isSimulated]);
 
     if (loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
             </div>
         );
     }
@@ -56,7 +48,7 @@ const RequestStatus = () => {
         return (
              <div className="flex h-screen items-center justify-center bg-gray-50 flex-col gap-4">
                 <p className="text-gray-500">Request not found.</p>
-                <button onClick={() => navigate('/dashboard')} className="text-green-600 font-bold hover:underline">Back to Dashboard</button>
+                <button onClick={() => navigate('/customer/dashboard')} className="text-green-700 font-bold hover:underline">Back to Dashboard</button>
             </div>
         );
     }
@@ -64,19 +56,18 @@ const RequestStatus = () => {
     // Status Logic helper
     const getStatusIndex = (status) => {
         switch(status) {
-            case 'Pending': return 0; // Direct request sent
-            case 'Open': return 0; // General request sent
-            case 'Scheduled': return 1; // Provider Assigned
-            case 'In Progress': return 2; // Work started
+            case 'Pending': return 0;
+            case 'Open': return 0;
+            case 'Scheduled': return 1;
+            case 'In Progress': return 2;
             case 'Completed': return 3;
-            case 'Declined': return -1; // Rejected
+            case 'Declined': return -1;
             case 'Rejected': return -1; 
             default: return 0;
         }
     };
     
-    const currentStatusIndex = getStatusIndex(request.status);
-    const dateStr = request.createdAt?.toDate ? format(request.createdAt.toDate(), 'MMM dd, yyyy h:mm a') : 'Just now';
+    const dateStr = request.createdAt instanceof Date ? format(request.createdAt, 'MMM dd, yyyy h:mm a') : 'Just now';
 
     return (
         <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
@@ -127,7 +118,7 @@ const RequestStatus = () => {
                                     {request.status === 'Completed' && !request.review ? (
                                         <button 
                                             onClick={() => navigate(`/customer/service-review/${id}`)}
-                                            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-700 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                                             type="button"
                                         >
                                             <span className="material-icons-outlined text-sm mr-2">star</span>
@@ -160,20 +151,20 @@ const RequestStatus = () => {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 space-y-6">
                                 {/* Provider Profile Card */}
-                                {(request.providerId && providerData) && (request.status !== 'Declined' && request.status !== 'Rejected') && (
+                                {(request.providerId && (providerData || request.providerName)) && (request.status !== 'Declined' && request.status !== 'Rejected') && (
                                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row items-center gap-6">
                                         <div className="size-20 bg-gray-200 rounded-full flex-shrink-0 overflow-hidden">
-                                            {providerData.photoURL || request.providerPhoto ? (
-                                                <img src={providerData.photoURL || request.providerPhoto} alt={providerData.displayName || request.providerName} className="w-full h-full object-cover" />
+                                            {(providerData?.photoURL || providerData?.avatar_url || request.providerPhoto) ? (
+                                                <img src={providerData?.photoURL || providerData?.avatar_url || request.providerPhoto} alt={providerData?.displayName || request.providerName} className="w-full h-full object-cover" />
                                             ) : (
                                                 <span className="material-icons text-4xl text-gray-400 w-full h-full flex items-center justify-center">person</span>
                                             )}
                                         </div>
                                         <div className="flex-1 text-center md:text-left">
-                                            <h3 className="text-lg font-bold text-gray-900">{providerData.displayName || request.providerName || 'Provider Assigned'}</h3>
+                                            <h3 className="text-lg font-bold text-gray-900">{providerData?.displayName || providerData?.full_name || request.providerName || 'Provider Assigned'}</h3>
                                             <div className="flex items-center justify-center md:justify-start gap-1 text-yellow-500 my-1">
                                                 <span className="material-icons text-sm">star</span>
-                                                <span className="text-sm font-bold text-gray-700">{providerData.rating ? Number(providerData.rating).toFixed(1) : 'New'}</span>
+                                                <span className="text-sm font-bold text-gray-700">{providerData?.rating ? Number(providerData.rating).toFixed(1) : 'New'}</span>
                                                 <span className="text-xs text-gray-500">
                                                     (Verified Provider)
                                                 </span>
@@ -181,17 +172,17 @@ const RequestStatus = () => {
                                             <p className="text-sm text-gray-500">Your task has been assigned to this provider.</p>
                                         </div>
                                         <div className="flex flex-col gap-2 w-full md:w-auto">
-                                            {providerData.phoneNumber || request.providerPhone ? (
+                                            {(providerData?.phoneNumber || providerData?.phone_number || request.providerPhone) ? (
                                                 <a 
-                                                    href={`tel:${providerData.phoneNumber || request.providerPhone}`}
-                                                    className="inline-flex justify-center items-center px-4 py-2 border border-green-600 shadow-sm text-sm font-bold rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none w-full md:w-auto"
+                                                    href={`tel:${providerData?.phoneNumber || providerData?.phone_number || request.providerPhone}`}
+                                                    className="inline-flex justify-center items-center px-4 py-2 border border-green-700 shadow-sm text-sm font-bold rounded-md text-white bg-green-700 hover:bg-green-800 focus:outline-none w-full md:w-auto transition-colors"
                                                 >
                                                     <span className="material-icons text-sm mr-2">call</span>
-                                                    {providerData.phoneNumber || request.providerPhone}
+                                                    {providerData?.phoneNumber || providerData?.phone_number || request.providerPhone}
                                                 </a>
                                             ) : (
                                                  <button 
-                                                    className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none w-full md:w-auto"
+                                                    className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none w-full md:w-auto transition-all"
                                                 >
                                                     <span className="material-icons text-sm mr-2">chat</span>
                                                     Message
@@ -200,7 +191,7 @@ const RequestStatus = () => {
                                             
                                             <button 
                                                 onClick={() => navigate(`/customer/provider/${request.providerId}`)}
-                                                className="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none w-full md:w-auto"
+                                                className="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none w-full md:w-auto transition-all"
                                             >
                                                 View Profile
                                             </button>
@@ -225,13 +216,11 @@ const RequestStatus = () => {
                                                     <div className="flex-grow pt-0.5">
                                                         <h3 className="text-sm font-semibold text-gray-900">{event.title}</h3>
                                                         <p className="text-sm text-gray-500 mt-1">{event.description || 'Status updated'}</p>
-                                                        <span className="text-xs text-gray-400 mt-1 block">{event.time || format(new Date(), 'h:mm a')}</span>
+                                                        <span className="text-xs text-gray-400 mt-1 block">{event.time || 'Recently'}</span>
                                                     </div>
                                                 </div>
                                             ))
                                         ) : (
-                                            // Fallback if no timeline array exists yet (e.g. legacy or fresh req)
-                                            <>
                                             <div className="flex items-start mb-8 relative">
                                                 <div className="flex-shrink-0 mr-4">
                                                     <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center ring-4 ring-white z-10">
@@ -244,20 +233,6 @@ const RequestStatus = () => {
                                                     <span className="text-xs text-gray-400 mt-1 block">{dateStr}</span>
                                                 </div>
                                             </div>
-                                            {request.status !== 'Open' && request.status !== 'Pending' && (
-                                                <div className="flex items-start mb-8 relative">
-                                                    <div className="flex-shrink-0 mr-4">
-                                                        <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center ring-4 ring-white z-10">
-                                                            <span className="material-icons-outlined text-white text-sm">person</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex-grow pt-0.5">
-                                                        <h3 className="text-sm font-semibold text-gray-900">Provider Assigned</h3>
-                                                        <p className="text-sm text-gray-500 mt-1">{request.providerName} accepted the job.</p>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            </>
                                         )}
                                     </div>
                                 </div>
@@ -273,7 +248,7 @@ const RequestStatus = () => {
                                         </div>
                                         <div>
                                             <dt className="text-sm font-medium text-gray-500">Budget</dt>
-                                            <dd className="mt-1 text-sm text-gray-900">₦{request.budget}</dd>
+                                            <dd className="mt-1 text-sm text-gray-900">₦{Number(request.budget).toLocaleString()}</dd>
                                         </div>
                                         <div>
                                             <dt className="text-sm font-medium text-gray-500">Description</dt>

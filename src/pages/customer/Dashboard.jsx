@@ -26,8 +26,7 @@ const Dashboard = () => {
     useEffect(() => {
         const fetchRecommended = async () => {
             const allProviders = await getProviders('All');
-            // Simple recommendation: Randomize or slice top 4 for now
-            // In a real app, match with user's past request categories
+            // Simple recommendation: Take first 4
             setRecommendedProviders(allProviders.slice(0, 4));
         };
         fetchRecommended();
@@ -47,12 +46,12 @@ const Dashboard = () => {
         .filter(r => r.status === 'Completed')
         .reduce((sum, r) => sum + (Number(r.budget) || 0), 0);
 
-    // Get Recent Activity (Sorted by createdAt or updatedAt)
+    // Get Recent Activity
     const recentActivity = [...requests]
         .sort((a, b) => {
-            const dateA = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
-            const dateB = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
-            return dateB - dateA;
+            const dateA = a.updatedAt || a.createdAt || 0;
+            const dateB = b.updatedAt || b.createdAt || 0;
+            return (dateB instanceof Date ? dateB.getTime() : 0) - (dateA instanceof Date ? dateA.getTime() : 0);
         })
         .slice(0, 5);
 
@@ -76,13 +75,13 @@ const Dashboard = () => {
                 <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 md:hidden">
                     <div className="flex items-center gap-2">
                         <img alt="Logo" className="h-6 w-6" src="/icon.png" />
-                        <span className="text-xl font-bold text-green-800">TaskMate</span>
+                        <span className="text-xl font-bold text-green-700">TaskMate</span>
                     </div>
                     <div className="flex items-center gap-3">
                          <button className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-600">
                              <span className="material-icons-outlined text-xl">notifications</span>
                          </button>
-                         <img alt="Profile" className="h-8 w-8 rounded-full object-cover border border-gray-200" src={currentUser?.photoURL || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} />
+                         <img alt="Profile" className="h-8 w-8 rounded-full object-cover border border-gray-200" src={currentUser?.photoURL || currentUser?.avatar_url || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} />
                     </div>
                 </header>
 
@@ -93,14 +92,14 @@ const Dashboard = () => {
                         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                             <div>
                                 <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
-                                <p className="mt-2 text-gray-500">Welcome back, {currentUser?.displayName || 'User'}! Here is your daily activity.</p>
+                                <p className="mt-2 text-gray-500">Welcome back, {currentUser?.displayName || currentUser?.full_name || 'User'}! Here is your daily activity.</p>
                             </div>
                             <div className="hidden md:flex items-center gap-4">
                                 <div className="relative group">
-                                    <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors">search</span>
+                                    <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-700 transition-colors">search</span>
                                     <input 
                                         id="tour-search"
-                                        className="h-11 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-4 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 transition-all md:w-72 shadow-sm" 
+                                        className="h-11 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-4 text-sm outline-none focus:border-green-700 focus:ring-2 focus:ring-green-100 transition-all md:w-72 shadow-sm" 
                                         placeholder="Find a service..." 
                                         type="text" 
                                     />
@@ -109,7 +108,7 @@ const Dashboard = () => {
                                     <span className="material-icons-outlined text-gray-600">notifications</span>
                                     <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-red-500 border border-white"></span>
                                 </button>
-                                <img alt="Profile" className="h-11 w-11 rounded-full object-cover border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform" src={currentUser?.photoURL || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} />
+                                <img alt="Profile" className="h-11 w-11 rounded-full object-cover border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform" src={currentUser?.photoURL || currentUser?.avatar_url || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} />
                             </div>
                         </div>
 
@@ -120,7 +119,7 @@ const Dashboard = () => {
                                 {/* Stats Cards */}
                                 <div id="tour-stats" className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                                     <div className="col-span-1 bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 hover:shadow-md transition-shadow">
-                                        <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600 shrink-0">
+                                        <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-green-50 flex items-center justify-center text-green-700 shrink-0">
                                             <span className="material-icons-outlined text-lg md:text-xl">pending_actions</span>
                                         </div>
                                         <div>
@@ -143,7 +142,7 @@ const Dashboard = () => {
                                         </div>
                                         <div className="min-w-0 w-full">
                                             <p className="text-xs md:text-sm font-medium text-gray-500">Total Spent</p>
-                                            <h3 className="text-xl md:text-2xl font-bold text-gray-900 truncate">₦{totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                                            <h3 className="text-xl md:text-2xl font-bold text-gray-900 truncate">₦{totalSpent.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</h3>
                                         </div>
                                     </div>
                                 </div>
@@ -197,13 +196,13 @@ const Dashboard = () => {
                                                                 <div className="flex flex-col items-center">
                                                                     <span className="material-icons-outlined text-4xl text-gray-300 mb-2">assignment</span>
                                                                     <p>No requests found.</p>
-                                                                    <Link to="/customer/post-request" className="text-green-600 hover:text-green-700 font-medium text-sm mt-2">Post your first request</Link>
+                                                                    <Link to="/customer/post-request" className="text-green-700 hover:text-green-800 font-medium text-sm mt-2">Post your first request</Link>
                                                                 </div>
                                                             </td>
                                                         </tr>
                                                     ) : (
                                                     filteredRequests.map((req) => {
-                                                        const date = req.createdAt && req.createdAt.toDate ? format(req.createdAt.toDate(), 'MMM dd, yyyy') : 'Just now';
+                                                        const date = req.createdAt ? (req.createdAt instanceof Date ? format(req.createdAt, 'MMM dd, yyyy') : 'Recently') : 'Recently';
                                                         const providerName = req.providerName || "Pending...";
                                                         const providerAvatar = req.providerAvatar || `https://ui-avatars.com/api/?name=${providerName}&background=random`;
                                                         
@@ -237,7 +236,7 @@ const Dashboard = () => {
                                                                     {req.status}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-6 py-4 text-right font-bold text-gray-900">₦{req.budget || 0}</td>
+                                                            <td className="px-6 py-4 text-right font-bold text-gray-900">₦{Number(req.budget).toLocaleString()}</td>
                                                             <td className="px-6 py-4 text-center relative">
                                                                 <button 
                                                                     onClick={(e) => toggleDropdown(e, req.id)}
@@ -288,12 +287,9 @@ const Dashboard = () => {
                                             recentActivity.map((activity) => {
                                                 const hasTimeline = activity.timeline && activity.timeline.length > 0;
                                                 const lastEvent = hasTimeline ? activity.timeline[activity.timeline.length - 1] : null;
-                                                // Fallback to basic created/updated info if no timeline
                                                 const eventTitle = lastEvent?.title || `Request ${activity.status}`;
                                                 const eventDesc = lastEvent?.description || `Status updated to ${activity.status}`;
-                                                const eventTime = activity.updatedAt?.toDate 
-                                                    ? format(activity.updatedAt.toDate(), 'MMM dd, h:mm a') 
-                                                    : (activity.createdAt?.toDate ? format(activity.createdAt.toDate(), 'MMM dd') : 'Recently');
+                                                const eventTime = activity.updatedAt ? (activity.updatedAt instanceof Date ? format(activity.updatedAt, 'MMM dd, h:mm a') : 'Recently') : 'Recently';
 
                                                 return (
                                                     <div key={activity.id} className="relative pl-8 py-1 group cursor-pointer" onClick={() => navigate(`/customer/request-status/${activity.id}`)}>
@@ -303,7 +299,7 @@ const Dashboard = () => {
                                                             'bg-blue-500'
                                                         }`}></div>
                                                         
-                                                        <p className="text-sm font-bold text-gray-900 leading-none mb-1 group-hover:text-green-600 transition-colors">
+                                                        <p className="text-sm font-bold text-gray-900 leading-none mb-1 group-hover:text-green-700 transition-colors">
                                                             {eventTitle}
                                                         </p>
                                                         <p className="text-xs text-gray-500 truncate">{activity.title} - {eventDesc}</p>
@@ -329,7 +325,7 @@ const Dashboard = () => {
                                         <p className="mt-1 text-sm text-gray-300 opacity-90">Invite friends to TaskMate and earn bonus credits.</p>
                                         <button className="mt-4 text-xs font-bold bg-white text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">Invite Friends</button>
                                     </div>
-                                    <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-green-500 rounded-full blur-3xl opacity-20"></div>
+                                    <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-green-700 rounded-full blur-3xl opacity-20"></div>
                                 </div>
                              </div>
                          </div>
@@ -357,7 +353,7 @@ const Dashboard = () => {
                                     <Link to={`/customer/provider/${provider.id}`} key={provider.id} className="group bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                                         <div className="flex items-start justify-between mb-4">
                                              <div className="relative">
-                                                <img src={provider.photoURL || `https://ui-avatars.com/api/?name=${provider.displayName}&background=random`} alt={provider.displayName} className="h-14 w-14 rounded-full object-cover border-2 border-white shadow-sm" />
+                                                <img src={provider.photoURL || provider.avatar_url || `https://ui-avatars.com/api/?name=${provider.displayName}&background=random`} alt={provider.displayName} className="h-14 w-14 rounded-full object-cover border-2 border-white shadow-sm" />
                                                 <div className="absolute -bottom-1 -right-1 bg-green-500 border-2 border-white w-4 h-4 rounded-full"></div>
                                              </div>
                                              <div className="flex flex-col items-end">
@@ -368,14 +364,14 @@ const Dashboard = () => {
                                              </div>
                                         </div>
                                         <div>
-                                            <h3 className="font-bold text-gray-900 group-hover:text-green-700 transition-colors truncate">{provider.displayName || 'Service Provider'}</h3>
+                                            <h3 className="font-bold text-gray-900 group-hover:text-green-700 transition-colors truncate">{provider.displayName || provider.full_name || 'Service Provider'}</h3>
                                             <p className="text-xs text-gray-500 font-medium truncate">{provider.category || 'General'}</p>
                                         </div>
                                         <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
                                             <div className="flex flex-col">
                                                 <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Rate</span>
                                                 <span className="text-sm font-bold text-gray-900">
-                                                    {provider.hourlyRate ? `₦${Number(provider.hourlyRate).toLocaleString()}` : 'Negotiable'}
+                                                    {provider.hourlyRate ? `₦${Number(provider.hourlyRate).toLocaleString()}` : (provider.hourly_rate_min ? `₦${Number(provider.hourly_rate_min).toLocaleString()}` : 'Negotiable')}
                                                 </span>
                                             </div>
                                             <button className="bg-gray-900 text-white p-2 rounded-lg group-hover:bg-green-700 transition-colors">
@@ -403,4 +399,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

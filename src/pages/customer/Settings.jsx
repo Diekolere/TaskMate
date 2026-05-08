@@ -3,10 +3,6 @@ import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { toast, Toaster } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { storage, auth, db } from '../../lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { reauthenticateWithCredential, updatePassword, EmailAuthProvider } from 'firebase/auth';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const Settings = () => {
     const { currentUser, updateUserProfile } = useAuth();
@@ -25,10 +21,10 @@ const Settings = () => {
     useEffect(() => {
         if (currentUser) {
             setProfileForm({
-                displayName: currentUser.displayName || '',
-                phoneNumber: currentUser.phoneNumber || '',
-                address: currentUser.location || '', // Assuming location is stored as address
-                photoURL: currentUser.photoURL || ''
+                displayName: currentUser.displayName || currentUser.full_name || '',
+                phoneNumber: currentUser.phoneNumber || currentUser.phone_number || '',
+                address: currentUser.location || currentUser.address || '', 
+                photoURL: currentUser.photoURL || currentUser.avatar_url || ''
             });
         }
     }, [currentUser]);
@@ -47,17 +43,17 @@ const Settings = () => {
 
         try {
             setIsLoading(true);
-            const storageRef = ref(storage, `profile_pictures/${currentUser.uid}`);
-            await uploadBytes(storageRef, file);
-            const downloadURL = await getDownloadURL(storageRef);
-            
-            await updateUserProfile({ photoURL: downloadURL });
-            setProfileForm(prev => ({ ...prev, photoURL: downloadURL }));
-            toast.success("Profile picture updated!");
+            // Simulated upload
+            setTimeout(async () => {
+                const mockUrl = URL.createObjectURL(file);
+                await updateUserProfile({ photoURL: mockUrl });
+                setProfileForm(prev => ({ ...prev, photoURL: mockUrl }));
+                toast.success("Profile picture updated!");
+                setIsLoading(false);
+            }, 1000);
         } catch (error) {
             console.error("Error uploading photo:", error);
             toast.error("Failed to upload photo");
-        } finally {
             setIsLoading(false);
         }
     };
@@ -97,37 +93,17 @@ const Settings = () => {
             return;
         }
 
-        const user = auth.currentUser;
-        if (!user) {
-            toast.error("You must be logged in to change your password");
-            return;
-        }
-
         setIsLoading(true);
-
         try {
-            // Re-authenticate
-            const credential = EmailAuthProvider.credential(user.email, securityForm.currentPassword);
-            await reauthenticateWithCredential(user, credential);
-
-            // Update Password
-            await updatePassword(user, securityForm.newPassword);
-
-            toast.success("Password updated successfully");
-            setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-
+            // Simulated update
+            setTimeout(() => {
+                toast.success("Password updated successfully");
+                setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                setIsLoading(false);
+            }, 1000);
         } catch (error) {
             console.error("Error updating password:", error);
-            if (error.code === 'auth/wrong-password') {
-                toast.error("Incorrect current password");
-            } else if (error.code === 'auth/weak-password') {
-                toast.error("Password is too weak");
-            } else if (error.code === 'auth/too-many-requests') {
-                toast.error("Too many attempts. Try again later.");
-            } else {
-                toast.error("Failed to update password: " + error.message);
-            }
-        } finally {
+            toast.error("Failed to update password");
             setIsLoading(false);
         }
     };
@@ -141,23 +117,15 @@ const Settings = () => {
         
         setIsLoading(true);
         try {
-            await addDoc(collection(db, "support_tickets"), {
-                userId: currentUser.uid,
-                userEmail: currentUser.email,
-                userName: currentUser.displayName,
-                userRole: 'customer',
-                subject: supportForm.subject,
-                message: supportForm.message,
-                status: 'Open',
-                createdAt: serverTimestamp()
-            });
-            
-            toast.success("Message sent to support team");
-            setSupportForm({ subject: '', message: '' });
+            // Simulated support ticket creation
+            setTimeout(() => {
+                toast.success("Message sent to support team");
+                setSupportForm({ subject: '', message: '' });
+                setIsLoading(false);
+            }, 1000);
         } catch (error) {
             console.error("Error sending support message:", error);
             toast.error("Failed to send message. Please try again.");
-        } finally {
             setIsLoading(false);
         }
     };
@@ -171,7 +139,7 @@ const Settings = () => {
                         onClick={() => setActiveTab(tab)}
                         className={`pb-4 px-1 text-sm font-bold border-b-2 transition-all ${
                             activeTab === tab 
-                            ? 'border-green-600 text-green-700' 
+                            ? 'border-green-700 text-green-700' 
                             : 'border-transparent text-gray-500 hover:text-gray-900'
                         }`}
                     >
@@ -206,8 +174,8 @@ const Settings = () => {
                                 <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-white border border-gray-200 rounded-2xl shadow-sm gap-4">
                                     <div className="flex items-center gap-6">
                                         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>
-                                            <img src={currentUser?.photoURL || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} alt="Profile" className="h-24 w-24 rounded-full object-cover border-4 border-gray-100 shadow-sm group-hover:opacity-90 transition-opacity" />
-                                            <div className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md border border-gray-100 text-green-600">
+                                            <img src={profileForm.photoURL || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} alt="Profile" className="h-24 w-24 rounded-full object-cover border-4 border-gray-100 shadow-sm group-hover:opacity-90 transition-opacity" />
+                                            <div className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md border border-gray-100 text-green-700">
                                                 <span className="material-icons-outlined text-lg">edit</span>
                                             </div>
                                             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
@@ -225,8 +193,8 @@ const Settings = () => {
                                 {/* Personal Information Form */}
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
-                                        <h3 className="text-xl font-bold flex items-center gap-2">
-                                            <span className="material-icons-outlined text-green-600">person</span>
+                                        <h3 className="text-xl font-bold flex items-center gap-2 text-gray-800">
+                                            <span className="material-icons-outlined text-green-700">person</span>
                                             Personal Information
                                         </h3>
                                     </div>
@@ -252,7 +220,7 @@ const Settings = () => {
                                             <label className="text-sm font-semibold text-gray-700">Phone Number</label>
                                             <div className="relative">
                                                 <input 
-                                                    className="w-full pl-4 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" 
+                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" 
                                                     type="tel" 
                                                     placeholder="+234 800 000 0000"
                                                     value={profileForm.phoneNumber || ''}
@@ -277,7 +245,7 @@ const Settings = () => {
                                     <button 
                                         onClick={handleSaveProfile}
                                         disabled={isLoading}
-                                        className="px-8 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-600/20 hover:bg-green-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50"
+                                        className="px-8 py-3 bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-700/20 hover:bg-green-800 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50"
                                     >
                                         {isLoading ? 'Saving...' : 'Save Changes'}
                                     </button>
@@ -326,9 +294,10 @@ const Settings = () => {
                                     <div className="pt-2 flex justify-end">
                                         <button 
                                             type="submit"
-                                            className="px-6 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors"
+                                            disabled={isLoading}
+                                            className="px-6 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50"
                                         >
-                                            Update Password
+                                            {isLoading ? 'Updating...' : 'Update Password'}
                                         </button>
                                     </div>
                                 </form>
@@ -362,7 +331,7 @@ const Settings = () => {
                                             <h3 className="font-bold text-gray-900">{item.title}</h3>
                                             <p className="text-sm text-gray-500 mt-1 max-w-md">{item.desc}</p>
                                         </div>
-                                        <button className={`w-12 h-6 rounded-full p-1 transition-colors ${item.default ? 'bg-green-500' : 'bg-gray-200'}`}>
+                                        <button className={`w-12 h-6 rounded-full p-1 transition-colors ${item.default ? 'bg-green-600' : 'bg-gray-200'}`}>
                                             <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform ${item.default ? 'translate-x-6' : ''}`}></div>
                                         </button>
                                     </div>
@@ -373,13 +342,13 @@ const Settings = () => {
                         {/* Support Tab (Contact Form) */}
                         {activeTab === 'Support' && (
                             <div className="max-w-2xl mx-auto animate-fade-in">
-                                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-8 text-center">
-                                    <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <div className="bg-green-50 border border-green-100 rounded-2xl p-6 mb-8 text-center">
+                                    <div className="w-12 h-12 bg-green-100 text-green-700 rounded-full flex items-center justify-center mx-auto mb-3">
                                         <span className="material-icons-outlined">support_agent</span>
                                     </div>
                                     <h3 className="text-lg font-bold text-gray-900">Need Help?</h3>
                                     <p className="text-sm text-gray-600 mt-1">
-                                        Our support team is available 24/7. Fill out the form below or email us at <a href="mailto:support@taskmate.ng" className="text-blue-600 font-bold hover:underline">support@taskmate.ng</a>
+                                        Our support team is available 24/7. Fill out the form below or email us at <a href="mailto:support@taskmate.ng" className="text-green-700 font-bold hover:underline">support@taskmate.ng</a>
                                     </p>
                                 </div>
 
@@ -418,7 +387,7 @@ const Settings = () => {
                                         <button 
                                             type="submit"
                                             disabled={isLoading}
-                                            className="w-full py-3.5 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-600/20 hover:bg-green-700 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                                            className="w-full py-3.5 bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-700/20 hover:bg-green-800 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                                         >
                                             {isLoading ? (
                                                 <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>

@@ -8,9 +8,6 @@ import { toast } from 'sonner';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc, arrayUnion } from 'firebase/firestore'; 
-import { db, storage } from '../../lib/firebase';
 
 // Fix for Leaflet marker icons in React
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -63,7 +60,7 @@ const PostRequest = () => {
     const providerName = location.state?.providerName || editingRequest?.providerName;
     const initialCategory = location.state?.category || editingRequest?.category;
 
-    const { createRequest } = useData();
+    const { createRequest, isSimulated } = useData();
     const [loading, setLoading] = useState(false);
     const { currentUser } = useAuth();
     
@@ -94,11 +91,11 @@ const PostRequest = () => {
         // If editing, map is already set. If not editing, try user address/geo
         if (editingRequest) return; 
 
-        if (currentUser?.address) {
-            setAddress(currentUser.address);
+        if (currentUser?.location_name) {
+            setAddress(currentUser.location_name);
             
             // Forward Geocode the address to show on map
-            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(currentUser.address)}`)
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(currentUser.location_name)}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data && data.length > 0) {
@@ -130,17 +127,6 @@ const PostRequest = () => {
         }
     }, [currentUser]);
 
-    // Update map marker when map is clicked (handled by LocationMarker)
-    const handleMapClick = (latlng) => {
-        setMarkerPos(latlng);
-        // Reverse geocode
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
-            .then(res => res.json())
-            .then(data => {
-                 if(data.display_name) setAddress(data.display_name);
-            });
-    };
-
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -154,21 +140,12 @@ const PostRequest = () => {
         setLoading(true);
         const formData = new FormData(e.target);
         
-        // Handle explicit form data access for clarity, though updating state could work too.
-        // We'll trust FormData + State hybrids
+        let fileUrl = editingRequest?.image || previewUrl;
         
-        let fileUrl = editingRequest?.image || null;
-        if (selectedFile) {
-            try {
-                const storageRef = ref(storage, `requests/${Date.now()}_${selectedFile.name}`);
-                const snapshot = await uploadBytes(storageRef, selectedFile);
-                fileUrl = await getDownloadURL(snapshot.ref);
-            } catch (error) {
-                console.error("Error uploading file:", error);
-                toast.error("Failed to upload image. Please try again.");
-                setLoading(false);
-                return;
-            }
+        // Simulation: We don't upload the file, just use the blob preview
+        if (!isSimulated && selectedFile) {
+            // TODO: Implement Supabase Storage upload
+            toast.info("Supabase storage upload not yet implemented.");
         }
         
         const data = {
@@ -181,9 +158,9 @@ const PostRequest = () => {
             urgency: urgency, 
             image: fileUrl,
             providerId: providerId || null,
-            status: providerId ? 'Pending' : 'Open', // Reset status if it was Rejected/Declined
+            status: providerId ? 'Pending' : 'Open', 
             providerName: providerName || null,
-            customerPhone: currentUser.phoneNumber || null, // Include customer phone
+            customerPhone: currentUser.phoneNumber || null, 
         };
 
         if (!data.title || !data.description || !data.location || !data.budget) {
@@ -194,45 +171,10 @@ const PostRequest = () => {
 
         try {
             if (editingRequest) {
-                // Update specific request
-                const reqRef = doc(db, "requests", editingRequest.id);
-                // We should also clear any rejection data
-                const updatedData = {
-                    ...data,
-                    rejectedBy: null,
-                    rejectedByName: null,
-                    rejectionReason: null,
-                    updatedAt: new Date(),
-                    timeline: arrayUnion({
-                        title: 'Request Updated',
-                        description: 'Request was edited and resubmitted.',
-                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        date: new Date().toDateString(),
-                        status: 'info'
-                    })
-                };
-                
-                // If it was declined, we add a "Resubmitted" event
-                if (editingRequest.status === 'Declined' || editingRequest.status === 'Rejected') {
-                     updatedData.timeline = arrayUnion({
-                        title: 'Request Resubmitted',
-                        description: `Customer updated request for ${providerName || 'review'}.`,
-                        time: new Date().toLocaleTimeString(),
-                        status: 'info'
-                     });
-                     // Force status back to Pending if provider involved
-                     updatedData.status = providerId ? 'Pending' : 'Open';
-                }
-
-                await updateDoc(reqRef, updatedData);
-                toast.success('Request updated and resubmitted!');
+                // TODO: Implement Supabase update
+                toast.info("Update logic not yet migrated to Supabase.");
+                navigate('/customer/dashboard');
             } else {
-                // Create New
-                 // Manually add timeline here since createRequest doesn't usually allow timeline arg
-                 // Actually createRequest in context might override status
-                 // Let's modify data to include timeline if createRequest supports it.
-                 // Looking at createRequest in Context, it spreads everything.
-                 
                  data.timeline = [
                     {
                         title: 'Request Posted',
@@ -246,7 +188,7 @@ const PostRequest = () => {
                 toast.success('Request posted successfully!');
             }
             
-            navigate('/dashboard');
+            navigate('/customer/dashboard');
         } catch (error) {
             console.error(error);
             toast.error('Failed to post request.');
@@ -254,9 +196,6 @@ const PostRequest = () => {
             setLoading(false);
         }
     };
-    
-    // UI Render
-    // We replace inputs with state values where needed
     
     return (
         <div className="font-body bg-gray-50 text-gray-900 min-h-screen">
@@ -271,7 +210,7 @@ const PostRequest = () => {
 
                     <div className="max-w-3xl mx-auto mt-8">
                         <div className="mb-8">
-                            <Link className="inline-flex items-center text-sm text-gray-500 hover:text-green-600 mb-4 transition-colors" to="/dashboard">
+                            <Link className="inline-flex items-center text-sm text-gray-500 hover:text-green-600 mb-4 transition-colors" to="/customer/dashboard">
                                 <span className="material-icons-outlined text-lg mr-1">arrow_back</span>
                                 Back to Dashboard
                             </Link>
@@ -312,9 +251,8 @@ const PostRequest = () => {
                                                     name="category"
                                                     value={category}
                                                     onChange={(e) => setCategory(e.target.value)}
-                                                    disabled={!!initialCategory} // Only disable if passed via state
+                                                    disabled={!!initialCategory} 
                                                 >
-                                                    {/* Ensure unique options */}
                                                     {[
                                                         'Plumbing', 'Electrical', 'Cleaning', 
                                                         'Moving', 'Painting', 'Landscaping', 'Other'
@@ -328,7 +266,6 @@ const PostRequest = () => {
                                                     <option value="Landscaping">Landscaping</option>
                                                     <option value="Other">Other</option>
                                                 </select>
-                                                {/* If disabled, we must include a hidden input to submit the value */}
                                                 {category && <input type="hidden" name="category" value={category} />}
                                             </div>
                                             <div>
@@ -344,7 +281,7 @@ const PostRequest = () => {
                                                         value={budget}
                                                         onChange={(e) => setBudget(e.target.value)}
                                                         placeholder="0.00" 
-                                                        type="number" // Changed to number for easier input
+                                                        type="number" 
                                                         step="0.01" 
                                                     />
                                                 </div>
@@ -421,7 +358,6 @@ const PostRequest = () => {
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="location">Service Location (Select on Map)</label>
                                             <div className="space-y-4">
-                                                {/* Location Input with Map Integration */}
                                                 <div className="relative">
                                                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                                         <span className="material-icons-outlined text-gray-400 text-sm">place</span>
@@ -445,7 +381,6 @@ const PostRequest = () => {
                                                                     navigator.geolocation.getCurrentPosition((pos) => {
                                                                         setMarkerPos([pos.coords.latitude, pos.coords.longitude]);
                                                                         setMapCenter([pos.coords.latitude, pos.coords.longitude]);
-                                                                        // Reverse geocode
                                                                         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
                                                                             .then(res => res.json())
                                                                             .then(data => data.display_name && setAddress(data.display_name));
@@ -459,7 +394,6 @@ const PostRequest = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Leaflet Map */}
                                                 <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-200 shadow-inner z-0 relative">
                                                     <MapContainer 
                                                         center={mapCenter} 

@@ -5,13 +5,10 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import { Toaster, toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { storage, db } from '../../lib/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 
 const Profile = () => {
   const { currentUser, updateUserProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState('details'); // details, services, reviews
+  const [activeTab, setActiveTab] = useState('details'); 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -33,49 +30,18 @@ const Profile = () => {
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [newService, setNewService] = useState({ name: '', rate: '', unit: 'per hour' });
 
-  // Listen for real-time updates to user profile (ratings, jobs, etc.)
   useEffect(() => {
-    if (!currentUser?.uid) return;
-
-    const unsubscribe = onSnapshot(doc(db, "users", currentUser.uid), (docSnap) => {
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            setProfile(prev => ({
-                ...prev,
-                name: data.displayName || prev.name,
-                email: data.email || prev.email,
-                phone: data.phoneNumber || prev.phone,
-                location: data.address || prev.location,
-                bio: data.description || data.bio || prev.bio,
-                rating: data.rating || 0,
-                jobsCompleted: data.jobsCompleted || 0,
-                memberSince: data.createdAt ? new Date(data.createdAt).toLocaleDateString() : prev.memberSince,
-                avatar: data.photoURL || prev.avatar,
-                banner: data.banner || prev.banner,
-                reviews: data.reviews || []
-            }));
-            if (data.services) {
-                setServices(data.services);
-            }
-        }
-    });
-
-    return () => unsubscribe();
-  }, [currentUser]);
-
-  // Fallback initial load from AuthContext while listener connects
-  useEffect(() => {
-    if (currentUser && !profile.email) {
+    if (currentUser) {
       setProfile({
-        name: currentUser.displayName || '',
+        name: currentUser.displayName || currentUser.full_name || '',
         email: currentUser.email || '',
-        phone: currentUser.phoneNumber || '',
+        phone: currentUser.phoneNumber || currentUser.phone_number || '',
         location: currentUser.address || '',
         bio: currentUser.description || currentUser.bio || '',
         rating: currentUser.rating || 0,
         jobsCompleted: currentUser.jobsCompleted || 0,
         memberSince: currentUser.createdAt ? new Date(currentUser.createdAt).toLocaleDateString() : '---',
-        avatar: currentUser.photoURL || 'https://via.placeholder.com/150',
+        avatar: currentUser.photoURL || currentUser.avatar_url || 'https://via.placeholder.com/150',
         banner: currentUser.banner || null,
         reviews: currentUser.reviews || []
       });
@@ -83,7 +49,7 @@ const Profile = () => {
         setServices(currentUser.services);
       }
     }
-  }, [currentUser, profile.email]);
+  }, [currentUser]);
 
   const handleSave = async () => {
     setLoading(true);
@@ -93,7 +59,7 @@ const Profile = () => {
         phoneNumber: profile.phone,
         address: profile.location,
         bio: profile.bio,
-        description: profile.bio, // Keep description in sync
+        description: profile.bio, 
         services: services 
       });
       setIsEditing(false);
@@ -112,12 +78,12 @@ const Profile = () => {
           return;
       }
       const service = { ...newService, id: Date.now() };
-      setServices([...services, service]);
-      setNewService({ name: '', rate: '', unit: 'per hour' }); // Reset
+      const updatedServices = [...services, service];
+      setServices(updatedServices);
+      setNewService({ name: '', rate: '', unit: 'per hour' }); 
       setShowServiceModal(false);
       
-      // Auto-save services to Firestore
-      updateUserProfile({ services: [...services, service] })
+      updateUserProfile({ services: updatedServices })
         .then(() => toast.success("Service added"))
         .catch(() => toast.error("Failed to save service"));
   };
@@ -126,7 +92,6 @@ const Profile = () => {
       const updatedServices = services.filter(s => s.id !== id);
       setServices(updatedServices);
       
-      // Auto-save deletion
       updateUserProfile({ services: updatedServices })
         .then(() => toast.success("Service removed"))
         .catch(() => toast.error("Failed to remove service"));
@@ -141,12 +106,11 @@ const Profile = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type and size
     if (!file.type.startsWith('image/')) {
         toast.error('Please select an image file');
         return;
     }
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 5 * 1024 * 1024) { 
         toast.error('Image size should be less than 5MB');
         return;
     }
@@ -154,34 +118,19 @@ const Profile = () => {
     const toastId = toast.loading(`Uploading ${type}...`);
 
     try {
-        const storageRef = ref(storage, `${type === 'avatar' ? 'profile_pictures' : 'banners'}/${currentUser.uid}/${file.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-
-        uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                // Optional: Update progress in UI
-            },
-            (error) => {
-                console.error("Upload error:", error);
-                toast.error(`Failed to upload ${type}`, { id: toastId });
-            },
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                
-                // Update Firestore and Local State immediately
-                const updateData = type === 'avatar' ? { photoURL: downloadURL } : { banner: downloadURL };
-                await updateUserProfile(updateData);
-                
-                setProfile(prev => ({ 
-                    ...prev, 
-                    [type === 'avatar' ? 'avatar' : 'banner']: downloadURL 
-                }));
-                
-                toast.success(`${type === 'avatar' ? 'Profile picture' : 'Banner'} updated!`, { id: toastId });
-            }
-        );
+        // Simulated upload for now
+        setTimeout(async () => {
+            const mockUrl = URL.createObjectURL(file);
+            const updateData = type === 'avatar' ? { photoURL: mockUrl } : { banner: mockUrl };
+            await updateUserProfile(updateData);
+            
+            setProfile(prev => ({ 
+                ...prev, 
+                [type === 'avatar' ? 'avatar' : 'banner']: mockUrl 
+            }));
+            
+            toast.success(`${type === 'avatar' ? 'Profile picture' : 'Banner'} updated!`, { id: toastId });
+        }, 1000);
     } catch (error) {
         console.error("Error setting up upload:", error);
         toast.error("An error occurred", { id: toastId });
@@ -196,7 +145,7 @@ const Profile = () => {
     <div className="min-h-screen bg-gray-50 flex font-sans text-gray-800">
       <ProviderSidebar />
       <ProviderMobileNavBar />
-      <Toaster position="top-right" />
+      <Toaster position="top-right" richColors />
 
       <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
         <header className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 md:px-8 h-16 flex items-center justify-between">
@@ -213,14 +162,14 @@ const Profile = () => {
                  <button 
                     onClick={handleSave} 
                     disabled={loading}
-                    className="px-4 py-1.5 rounded-lg bg-primary text-primary-content font-bold shadow-sm disabled:opacity-50 flex items-center gap-2"
+                    className="px-4 py-1.5 rounded-lg bg-green-700 text-white font-bold shadow-sm disabled:opacity-50 flex items-center gap-2"
                 >
-                    {loading ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span> : null}
+                    {loading ? <span className="material-icons animate-spin text-sm">progress_activity</span> : null}
                     Save Changes
                 </button>
              </div>
           ) : (
-             <button onClick={() => setIsEditing(true)} className="text-primary font-medium hover:underline">Edit Profile</button>
+             <button onClick={() => setIsEditing(true)} className="text-green-700 font-medium hover:underline">Edit Profile</button>
           )}
         </header>
 
@@ -245,13 +194,13 @@ const Profile = () => {
           {/* Profile Header Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div 
-                className={`h-32 bg-primary/10 relative group ${isEditing ? 'cursor-pointer hover:bg-primary/20' : ''}`} 
+                className={`h-32 bg-green-50 relative group ${isEditing ? 'cursor-pointer hover:bg-green-100' : ''}`} 
                 onClick={() => isEditing && handleImageUploadClick('cover')}
             >
                {profile.banner && <img src={profile.banner} alt="Banner" className="w-full h-full object-cover" />}
                {isEditing && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="material-symbols-outlined text-white text-3xl drop-shadow-md">upload</span>
+                      <span className="material-icons text-white text-3xl drop-shadow-md">upload</span>
                   </div>
                )}
             </div>
@@ -269,7 +218,7 @@ const Profile = () => {
                         onClick={(e) => { e.stopPropagation(); handleImageUploadClick('avatar'); }}
                         className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border-4 border-transparent cursor-pointer"
                     >
-                         <span className="material-symbols-outlined text-white">photo_camera</span>
+                         <span className="material-icons text-white">photo_camera</span>
                     </button>
                   )}
                   {!isEditing && <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>}
@@ -282,7 +231,7 @@ const Profile = () => {
                             name="name"
                             value={profile.name}
                             onChange={handleChange}
-                            className="text-2xl font-bold text-gray-900 border-b border-gray-300 focus:border-primary outline-none bg-transparent w-full pb-1"
+                            className="text-2xl font-bold text-gray-900 border-b border-gray-300 focus:border-green-700 outline-none bg-transparent w-full pb-1"
                             placeholder="Your Name"
                           />
                           <label className="block text-xs text-gray-400 uppercase font-semibold mt-2">Location</label>
@@ -290,7 +239,7 @@ const Profile = () => {
                             name="location"
                             value={profile.location}
                             onChange={handleChange}
-                            className="text-gray-500 text-sm border-b border-gray-300 focus:border-primary outline-none bg-transparent w-full pb-1"
+                            className="text-gray-500 text-sm border-b border-gray-300 focus:border-green-700 outline-none bg-transparent w-full pb-1"
                             placeholder="City, State"
                           />
                       </div>
@@ -298,7 +247,7 @@ const Profile = () => {
                       <>
                         <h2 className="text-2xl font-bold text-gray-900">{profile.name}</h2>
                         <p className="text-gray-500 flex items-center gap-1 text-sm">
-                            <span className="material-symbols-outlined text-lg">location_on</span>
+                            <span className="material-icons text-lg">location_on</span>
                             {profile.location || 'Location not set'}
                         </p>
                       </>
@@ -323,7 +272,7 @@ const Profile = () => {
                         name="bio"
                         value={profile.bio}
                         onChange={handleChange}
-                        className="w-full p-3 border border-gray-200 rounded-xl focus:border-primary outline-none text-gray-600 leading-relaxed min-h-[100px]"
+                        className="w-full p-3 border border-gray-200 rounded-xl focus:border-green-700 outline-none text-gray-600 leading-relaxed min-h-[100px]"
                         placeholder="Tell customers about your experience and skills..."
                     />
                   </div>
@@ -343,7 +292,7 @@ const Profile = () => {
                 onClick={() => setActiveTab(tab)}
                 className={`px-6 py-3 font-medium text-sm transition-colors whitespace-nowrap border-b-2 ${
                   activeTab === tab 
-                    ? 'border-primary text-primary' 
+                    ? 'border-green-700 text-green-700' 
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -363,7 +312,7 @@ const Profile = () => {
                   <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-2">Contact Information</h3>
                   <div>
                     <label className="text-xs font-semibold text-gray-500 uppercase">Email Address</label>
-                    <p className="text-gray-900 font-medium text-gray-500 cursor-not-allowed" title="Contact support to change email">{profile.email}</p>
+                    <p className="text-gray-900 font-medium text-gray-400 cursor-not-allowed" title="Contact support to change email">{profile.email}</p>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-500 uppercase">Phone Number</label>
@@ -372,7 +321,7 @@ const Profile = () => {
                             name="phone"
                             value={profile.phone}
                             onChange={handleChange}
-                            className="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:border-primary outline-none"
+                            className="w-full mt-1 p-2 border border-gray-300 rounded-lg focus:border-green-700 outline-none"
                         />
                     ) : (
                         <p className="text-gray-900 font-medium">{profile.phone}</p>
@@ -391,15 +340,15 @@ const Profile = () => {
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 text-gray-600">
-                      <span className="material-symbols-outlined text-green-600">check_circle</span>
+                      <span className="material-icons text-green-600">check_circle</span>
                       <span className="text-sm">Identity Verified (NIN)</span>
                     </div>
                     <div className="flex items-center gap-3 text-gray-600">
-                      <span className="material-symbols-outlined text-green-600">check_circle</span>
+                      <span className="material-icons text-green-600">check_circle</span>
                       <span className="text-sm">Address Verified</span>
                     </div>
                     <div className="flex items-center gap-3 text-gray-600">
-                      <span className="material-symbols-outlined text-green-600">check_circle</span>
+                      <span className="material-icons text-green-600">check_circle</span>
                       <span className="text-sm">Background Check Cleared</span>
                     </div>
                   </div>
@@ -417,9 +366,9 @@ const Profile = () => {
                     <h3 className="font-bold text-gray-900">Services Offered</h3>
                     <button 
                         onClick={() => setShowServiceModal(true)}
-                        className="text-sm font-bold text-primary flex items-center gap-1 hover:underline"
+                        className="text-sm font-bold text-green-700 flex items-center gap-1 hover:underline"
                     >
-                        <span className="material-symbols-outlined text-lg">add</span>
+                        <span className="material-icons text-lg">add</span>
                         Add Service
                     </button>
                  </div>
@@ -432,9 +381,9 @@ const Profile = () => {
                                 placeholder="Service Name (e.g. Consulting)" 
                                 value={newService.name}
                                 onChange={(e) => setNewService({...newService, name: e.target.value})}
-                                className="border border-gray-300 rounded-lg p-2 text-sm focus:border-primary outline-none"
+                                className="border border-gray-300 rounded-lg p-2 text-sm focus:border-green-700 outline-none"
                             />
-                            <div className="flex bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:border-primary">
+                            <div className="flex bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:border-green-700">
                                 <span className="bg-gray-100 px-3 py-2 text-gray-500 text-sm border-r border-gray-300">₦</span>
                                 <input 
                                     placeholder="Rate" 
@@ -447,7 +396,7 @@ const Profile = () => {
                             <select 
                                 value={newService.unit}
                                 onChange={(e) => setNewService({...newService, unit: e.target.value})}
-                                className="border border-gray-300 rounded-lg p-2 text-sm focus:border-primary outline-none bg-white"
+                                className="border border-gray-300 rounded-lg p-2 text-sm focus:border-green-700 outline-none bg-white"
                             >
                                 <option value="per hour">per hour</option>
                                 <option value="per visit">per visit</option>
@@ -464,7 +413,7 @@ const Profile = () => {
                             </button>
                             <button 
                                 onClick={handleAddService}
-                                className="px-4 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-dark"
+                                className="px-4 py-2 bg-green-700 text-white text-sm font-bold rounded-lg hover:bg-green-800"
                             >
                                 Add Service
                             </button>
@@ -483,7 +432,6 @@ const Profile = () => {
                             <div className="flex items-center gap-4">
                                 <div className="text-right">
                                     <p className="font-bold text-gray-900">
-                                        {/* Handle both number and formatted string for robustness */}
                                         {isNaN(service.rate) ? service.rate : `₦${Number(service.rate).toLocaleString()}`}
                                     </p>
                                 </div>
@@ -492,14 +440,14 @@ const Profile = () => {
                                     className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all rounded-full hover:bg-red-50"
                                     title="Remove Service"
                                 >
-                                    <span className="material-symbols-outlined">delete</span>
+                                    <span className="material-icons">delete</span>
                                 </button>
                             </div>
                         </div>
                     ))
                     ) : (
                         <div className="p-8 text-center text-gray-400">
-                            <span className="material-symbols-outlined text-4xl mb-2 opacity-30">design_services</span>
+                            <span className="material-icons text-4xl mb-2 opacity-30">design_services</span>
                             <p>No services listed. Add services to attract customers!</p>
                         </div>
                     )}
@@ -518,7 +466,7 @@ const Profile = () => {
                             <div key={idx} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold border border-green-200">
+                                        <div className="h-10 w-10 rounded-full bg-green-50 flex items-center justify-center text-green-700 font-bold border border-green-100">
                                             {review.user ? review.user.charAt(0).toUpperCase() : 'C'}
                                         </div>
                                         <div>
@@ -528,7 +476,7 @@ const Profile = () => {
                                     </div>
                                     <div className="flex text-yellow-500">
                                         {[...Array(5)].map((_, i) => (
-                                            <span key={i} className={`material-symbols-outlined text-sm ${i < (review.rating || 0) ? 'fill-current' : 'text-gray-300'}`}>star</span>
+                                            <span key={i} className={`material-icons text-sm ${i < (review.rating || 0) ? 'text-yellow-500' : 'text-gray-300'}`}>star</span>
                                         ))}
                                     </div>
                                 </div>
@@ -546,7 +494,7 @@ const Profile = () => {
                         ))
                     ) : (
                         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center text-gray-500">
-                            <span className="material-symbols-outlined text-4xl mb-2 opacity-50">reviews</span>
+                            <span className="material-icons text-4xl mb-2 opacity-50">reviews</span>
                             <p>No reviews recieved yet. Complete jobs to earn ratings!</p>
                         </div>
                     )}

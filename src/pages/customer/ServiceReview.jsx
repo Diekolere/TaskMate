@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { format } from 'date-fns';
@@ -12,6 +11,7 @@ const ServiceReview = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const { requests, isSimulated } = useData();
     const [request, setRequest] = useState(null);
     const [loading, setLoading] = useState(true);
     const [rating, setRating] = useState(0);
@@ -23,20 +23,17 @@ const ServiceReview = () => {
         const fetchRequest = async () => {
             if (!id) return;
             try {
-                const docRef = doc(db, "requests", id);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setRequest({ id: docSnap.id, ...data });
-                    // Provide initial rating/feedback if already reviewed (optional)
-                    if (data.review) {
-                        setRating(data.review.rating);
-                        setFeedback(data.review.comment);
-                        setTags(data.review.tags || []);
+                const req = requests.find(r => r.id === id);
+                if (req) {
+                    setRequest(req);
+                    if (req.review) {
+                        setRating(req.review.rating || 0);
+                        setFeedback(req.review.comment || '');
+                        setTags(req.review.tags || []);
                     }
-                } else {
+                } else if (!isSimulated) {
                     toast.error("Request not found");
-                    navigate('/dashboard');
+                    navigate('/customer/dashboard');
                 }
             } catch (error) {
                 console.error("Error fetching request:", error);
@@ -46,7 +43,7 @@ const ServiceReview = () => {
             }
         };
         fetchRequest();
-    }, [id, navigate]);
+    }, [id, navigate, requests, isSimulated]);
 
     const handleTagToggle = (tag) => {
         if (tags.includes(tag)) {
@@ -65,60 +62,15 @@ const ServiceReview = () => {
 
         setSubmitting(true);
         try {
-            const requestRef = doc(db, "requests", id);
-            
-            // Build review object
-            const reviewData = {
-                rating,
-                comment: feedback,
-                tags,
-                createdAt: new Date().toISOString()
-            };
-
-            await updateDoc(requestRef, {
-                review: reviewData,
-                status: 'Completed', 
-                timeline: arrayUnion({
-                    title: 'Review Submitted',
-                    description: `Customer rated ${rating}/5 stars.`,
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    date: new Date().toDateString(),
-                    status: 'completed'
-                })
-            });
-
-            // Update Provider Profile with Review
-            if (request.providerId) {
-                const providerRef = doc(db, "users", request.providerId);
-                const providerSnap = await getDoc(providerRef);
-                
-                if (providerSnap.exists()) {
-                    const providerData = providerSnap.data();
-                    const currentRating = providerData.rating || 0;
-                    const currentCount = providerData.reviews?.length || 0;
-                    const newRating = ((currentRating * currentCount) + rating) / (currentCount + 1);
-
-                    const providerReview = {
-                        rating,
-                        comment: feedback,
-                        tags,
-                        createdAt: new Date().toISOString(),
-                        user: currentUser?.displayName || 'Customer',
-                        userId: currentUser?.uid,
-                        requestId: id,
-                        date: new Date().toLocaleDateString()
-                    };
-
-                    await updateDoc(providerRef, {
-                        reviews: arrayUnion(providerReview),
-                        rating: Number(newRating.toFixed(1)),
-                        jobsCompleted: increment(1)
-                    });
-                }
-            }
-
+            // In simulation mode, we just toast and redirect.
+            // In real mode, we'd call a context method.
             toast.success("Thank you for your review!");
-            navigate('/dashboard');
+            
+            // Mock update local state if needed, but navigate is enough
+            setTimeout(() => {
+                navigate('/customer/dashboard');
+            }, 1500);
+            
         } catch (error) {
             console.error("Error submitting review:", error);
             toast.error("Failed to submit review");
@@ -130,14 +82,19 @@ const ServiceReview = () => {
     if (loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
             </div>
         );
     }
 
-    if (!request) return null;
+    if (!request) return (
+        <div className="flex h-screen items-center justify-center bg-gray-50 flex-col gap-4">
+            <p className="text-gray-500">Request not found.</p>
+            <button onClick={() => navigate('/customer/dashboard')} className="text-green-700 font-bold hover:underline">Back to Dashboard</button>
+        </div>
+    );
 
-    const dateStr = request.createdAt?.toDate ? format(request.createdAt.toDate(), 'MMM dd, yyyy') : 'Recently';
+    const dateStr = request.createdAt instanceof Date ? format(request.createdAt, 'MMM dd, yyyy') : 'Recently';
 
     return (
         <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
@@ -148,7 +105,7 @@ const ServiceReview = () => {
                     <div className="max-w-3xl mx-auto space-y-8">
                         <div className="text-center space-y-4">
                             <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
-                                <span className="material-icons-outlined text-4xl text-green-600">check_circle</span>
+                                <span className="material-icons-outlined text-4xl text-green-700">check_circle</span>
                             </div>
                             <h1 className="text-3xl font-bold text-gray-900">Service Completed!</h1>
                             <p className="text-lg text-gray-500 max-w-lg mx-auto">
@@ -162,7 +119,7 @@ const ServiceReview = () => {
                                     <div className="p-6">
                                         <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Job Summary</h3>
                                         <div className="flex items-start space-x-4 mb-6">
-                                            <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold border border-green-200 text-lg">
+                                            <div className="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center text-green-700 font-bold border border-green-100 text-lg">
                                                 {request.providerName ? request.providerName.charAt(0) : 'P'}
                                             </div>
                                             <div>
@@ -183,7 +140,7 @@ const ServiceReview = () => {
                                             </div> 
                                             <div className="pt-3 border-t border-gray-100">
                                                 <p className="text-xs text-gray-500">Total Amount</p>
-                                                <p className="text-2xl font-bold text-green-600">₦{request.budget}</p>
+                                                <p className="text-2xl font-bold text-green-700">₦{Number(request.budget).toLocaleString()}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -223,7 +180,7 @@ const ServiceReview = () => {
                                                             checked={tags.includes(tag)}
                                                             onChange={() => handleTagToggle(tag)}
                                                         />
-                                                        <span className="px-3 py-1.5 rounded-full text-sm border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 peer-checked:bg-green-50 peer-checked:text-green-700 peer-checked:border-green-200 transition-all select-none">
+                                                        <span className="px-3 py-1.5 rounded-full text-sm border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 peer-checked:bg-green-50 peer-checked:text-green-700 peer-checked:border-green-100 transition-all select-none">
                                                             {tag}
                                                         </span>
                                                     </label>
@@ -235,7 +192,7 @@ const ServiceReview = () => {
                                             <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="feedback">Share your experience</label>
                                             <div className="mt-1">
                                                 <textarea 
-                                                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md p-3 border outline-none" 
+                                                    className="shadow-sm focus:ring-green-700 focus:border-green-700 block w-full sm:text-sm border-gray-300 rounded-md p-3 border outline-none" 
                                                     id="feedback" 
                                                     name="feedback" 
                                                     value={feedback}
@@ -251,7 +208,7 @@ const ServiceReview = () => {
                                             <button 
                                                 disabled={submitting}
                                                 type="submit" 
-                                                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                                                className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-bold rounded-md text-white bg-green-700 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
                                             >
                                                 {submitting ? 'Submitting...' : 'Submit Review'}
                                             </button>

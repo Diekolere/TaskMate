@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
 import { toast } from 'sonner';
 import { useData } from '../../context/DataContext';
 
 const ProviderProfile = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { savedProviderIds, toggleSavedProvider } = useData();
+    const { savedProviderIds, toggleSavedProvider, getProviders } = useData();
     const [activeTab, setActiveTab] = useState('About');
     const [provider, setProvider] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -18,35 +16,35 @@ const ProviderProfile = () => {
     useEffect(() => {
         const fetchProvider = async () => {
             try {
-                const docRef = doc(db, "users", id);
-                const docSnap = await getDoc(docRef);
+                // Use the context method to fetch providers (handles simulation automatically)
+                const allProviders = await getProviders('All');
+                const data = allProviders.find(p => p.id === id || p.uid === id);
                 
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    // Transform data to match UI needs
+                if (data) {
                     setProvider({
-                        id: docSnap.id,
-                        name: data.displayName || 'Provider',
+                        id: data.id || data.uid,
+                        name: data.displayName || data.full_name || 'Provider',
                         role: data.category || 'Service Provider',
                         verified: data.isVerified || false,
-                        location: data.address || 'Location Hidden',
-                        distance: data.distance || 'Nearby', // Mock or calculate
-                        avatar: data.photoURL || `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
+                        location: data.location_name || data.address || 'Location Hidden',
+                        distance: 'Nearby', 
+                        avatar: data.photoURL || data.avatar_url || `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
                         coverImage: data.banner || "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069&auto=format&fit=crop",
                         rating: data.rating || 'New',
                         reviewCount:  data.reviews?.length || 0,
                         jobsCompleted: data.jobsCompleted || 0,
-                        hourlyRate: data.hourlyRate ? `₦${Number(data.hourlyRate).toLocaleString()}` : "Negotiable",
+                        hourlyRate: data.hourlyRate ? `₦${Number(data.hourlyRate).toLocaleString()}` : (data.hourly_rate_min ? `₦${Number(data.hourly_rate_min).toLocaleString()}` : "Negotiable"),
                         about: data.description || data.bio || "No description provided.",
-                        skills: data.services ? data.services.map(s => s.name) : [], 
-                        yearsOfExperience: data.yearsOfExperience || 'N/A', // Added
+                        skills: data.services ? data.services.map(s => s.name) : (data.trade_category || []), 
+                        yearsOfExperience: data.years_experience || data.yearsOfExperience || 'N/A',
                         category: data.category || 'Service Provider',
-                        reviews: data.reviews || [], // Expecting array of review objects
+                        reviews: data.reviews || [], 
                         portfolio: data.portfolio || []
                     });
                 }
             } catch (error) {
                 console.error("Error fetching provider details:", error);
+                toast.error("Could not load provider profile.");
             } finally {
                 setLoading(false);
             }
@@ -55,12 +53,12 @@ const ProviderProfile = () => {
         if (id) {
             fetchProvider();
         }
-    }, [id]);
+    }, [id, getProviders]);
 
     if (loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
             </div>
         );
     }
@@ -69,7 +67,7 @@ const ProviderProfile = () => {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-50 flex-col gap-4">
                 <p className="text-gray-500">Provider not found.</p>
-                <Link to="/customer/browse" className="text-green-600 font-bold hover:underline">Back to Browse</Link>
+                <Link to="/customer/browse" className="text-green-700 font-bold hover:underline">Back to Browse</Link>
             </div>
         );
     }
@@ -162,7 +160,7 @@ const ProviderProfile = () => {
                                                 onClick={() => setActiveTab(tab)}
                                                 className={`pb-4 text-sm font-bold border-b-2 transition-all ${
                                                     activeTab === tab 
-                                                    ? 'border-green-600 text-green-600' 
+                                                    ? 'border-green-700 text-green-700' 
                                                     : 'border-transparent text-gray-400 hover:text-gray-600'
                                                 }`}
                                             >
@@ -210,9 +208,9 @@ const ProviderProfile = () => {
                                                             <div className="flex items-center justify-between mb-2">
                                                                 <div className="flex items-center gap-2">
                                                                      <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold border border-green-200">
-                                                                        {review.user ? review.user.charAt(0).toUpperCase() : 'C'}
-                                                                    </div>
-                                                                    <div className="font-bold text-gray-900">{review.user || 'Customer'}</div>
+                                                                         {review.user ? review.user.charAt(0).toUpperCase() : 'C'}
+                                                                     </div>
+                                                                     <div className="font-bold text-gray-900">{review.user || 'Customer'}</div>
                                                                 </div>
                                                                 <span className="text-xs text-gray-400">{review.date || 'Recent'}</span>
                                                             </div>
@@ -265,7 +263,7 @@ const ProviderProfile = () => {
                                     <div className="space-y-4">
                                         <button 
                                             onClick={() => navigate('/customer/post-request', { state: { providerId: id, providerName: provider.name, category: provider.category } })}
-                                            className="w-full py-4 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-600/20 hover:bg-green-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                            className="w-full py-4 bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-700/20 hover:bg-green-800 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                                         >
                                             Request Service
                                             <span className="material-icons-outlined">arrow_forward</span>
@@ -281,7 +279,7 @@ const ProviderProfile = () => {
 
                                     <div className="mt-6 pt-6 border-t border-gray-100">
                                         <div className="flex items-center justify-center gap-2 text-xs text-gray-500 font-medium">
-                                            <span className="material-icons-outlined text-green-600 text-base">security</span>
+                                            <span className="material-icons-outlined text-green-700 text-base">security</span>
                                             Secure payments & buyer protection
                                         </div>
                                     </div>

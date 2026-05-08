@@ -6,8 +6,6 @@ import Confetti from 'react-confetti';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
-import { storage } from '../../lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Fix for Leaflet default icon issues in React
 import L from 'leaflet';
@@ -31,7 +29,7 @@ function ChangeView({ center }) {
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { updateUserProfile, currentUser } = useAuth();
+  const { updateUserProfile, currentUser, isSimulated } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
@@ -109,7 +107,7 @@ const Onboarding = () => {
     if (step < 3) {
       setStep((prev) => prev + 1);
     } else {
-      navigate('/dashboard'); // Placeholder
+      navigate('/dashboard'); 
     }
   };
 
@@ -141,6 +139,37 @@ const Onboarding = () => {
     { name: 'Gardening', sub: 'Lawn & plants', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBvzPlqWesT97x5nPQi4pjOQt7nGcEmXPkGTeY2GIBPFvI7SdBJfxZSqh9mjLmaRswxzEi5ql8a-B7cP_wiRG6ASZY3ZQyFBxFII8foQf2ttI69M06DMVLLAseLEMalq_ddPA8B4PSvXrEPG_fuO9NJwTcoMUixVtmbeGHWdDhCLkcGB-z9MqqnaOF58lUjS0Hga8cg1sDPEGY4kvNI6MtTFGLqGh5b9pXkox0dV3NJkf_9W-5CYQBOpsxL2ro-rOPUbQ-mVLTHFR4' },
   ];
 
+  const handleFinish = async () => {
+    setLoading(true);
+    try {
+        let photoURL = previewUrl;
+        
+        // In simulation mode, we just use the preview URL (blob)
+        // In production, we would upload to Supabase Storage
+        if (!isSimulated && formData.photo) {
+            // TODO: Implement Supabase Storage upload
+            toast.info("Supabase storage upload not yet implemented. Using preview URL.");
+        }
+
+        await updateUserProfile({
+            full_name: formData.displayName,
+            phone_number: formData.phoneNumber,
+            location_name: formData.location,
+            preferences: formData.selectedCategories,
+            avatar_url: photoURL,
+            onboarding_completed: true
+        });
+        
+        setStep(4); // Success State
+        setTimeout(() => navigate('/customer/dashboard'), 3000); 
+    } catch (error) {
+        console.error(error);
+        toast.error("Failed to save profile");
+    } finally {
+        setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
       {/* Top Navigation */}
@@ -167,7 +196,7 @@ const Onboarding = () => {
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                     <div 
-                        className="bg-primary h-2 rounded-full transition-all duration-500 ease-out"
+                        className="bg-green-700 h-2 rounded-full transition-all duration-500 ease-out"
                         style={{ width: step === 1 ? '33%' : '66%' }}
                     />
                 </div>
@@ -203,10 +232,10 @@ const Onboarding = () => {
                             onClick={() => fileInputRef.current.click()}
                         >
                             <div 
-                                className="w-32 h-32 rounded-full bg-cover bg-center border-4 border-green-100 group-hover:border-primary transition-colors"
-                                style={{ backgroundImage: `url("${previewUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuABplLBk7icrBibPhz9f8PO7ktp9McM1pVa3-mCWbz3VtFlN67AQ7ew3JqmxAjh-pM0_gwIvyCAAhjQcOT2XR4IgM3pbDSDoTfk-TEUx4nkAxJLRhXLbRVjZUC_Zv6Q0C2OrebB_fGQ-insqhVJ29PTK670Irho2dzUrTWR65_TnTxYUwsDN5N2IieMThEaHKop5fCGdexGeaigKHPGBbXv_Yr5646Xkjwvql2LN2_eF_Htr4oQNx5IyC-wMw9d5UpnAPwEEOtrtAw'}")` }}
+                                className="w-32 h-32 rounded-full bg-cover bg-center border-4 border-green-100 group-hover:border-green-700 transition-colors"
+                                style={{ backgroundImage: `url("${previewUrl || 'https://ui-avatars.com/api/?name=' + (formData.displayName || 'User')}")` }}
                             ></div>
-                            <div className="absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full shadow-lg border-2 border-white">
+                            <div className="absolute bottom-1 right-1 bg-green-700 text-white p-2 rounded-full shadow-lg border-2 border-white">
                                 <span className="material-icons-outlined text-sm block">add_a_photo</span>
                             </div>
                         </div>
@@ -220,7 +249,7 @@ const Onboarding = () => {
                             <label className="block text-sm font-bold text-gray-900 mb-2">Display Name</label>
                             <input 
                                 type="text" 
-                                className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-medium"
+                                className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-700/50 focus:border-green-700 transition-all font-medium"
                                 placeholder="e.g. Ade wale"
                                 value={formData.displayName}
                                 onChange={(e) => setFormData({...formData, displayName: e.target.value})}
@@ -231,7 +260,7 @@ const Onboarding = () => {
                             <label className="block text-sm font-bold text-gray-900 mb-2">Phone Number</label>
                             <input 
                                 type="tel" 
-                                className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-medium"
+                                className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-700/50 focus:border-green-700 transition-all font-medium"
                                 placeholder="e.g. 08012345678"
                                 value={formData.phoneNumber}
                                 onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
@@ -243,7 +272,7 @@ const Onboarding = () => {
                                 <label className="block text-sm font-bold text-gray-900">Primary Location</label>
                                 <button 
                                     onClick={handleUseCurrentLocation}
-                                    className="text-primary text-xs font-bold flex items-center hover:underline"
+                                    className="text-green-700 text-xs font-bold flex items-center hover:underline"
                                 >
                                     <span className="material-icons-outlined text-sm mr-1">my_location</span>
                                     Use Current Location
@@ -253,7 +282,7 @@ const Onboarding = () => {
                                 <span className="material-icons-outlined absolute left-4 top-3.5 text-gray-400">search</span>
                                 <input 
                                     type="text" 
-                                    className="w-full pl-11 pr-4 py-3 rounded-t-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-medium"
+                                    className="w-full pl-11 pr-4 py-3 rounded-t-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-700/50 focus:border-green-700 transition-all font-medium"
                                     placeholder="Enter neighborhood or city (e.g. Lekki, Abuja)"
                                     value={formData.location}
                                     onChange={(e) => setFormData({...formData, location: e.target.value})}
@@ -284,7 +313,7 @@ const Onboarding = () => {
                     <div className="p-8 bg-gray-50 flex flex-col gap-3">
                         <button 
                             onClick={handleNext}
-                            className="w-full py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all flex items-center justify-center gap-2"
+                            className="w-full py-4 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all flex items-center justify-center gap-2"
                         >
                             Continue
                             <span className="material-icons-outlined">arrow_forward</span>
@@ -315,7 +344,7 @@ const Onboarding = () => {
                      <span className="material-icons-outlined absolute left-4 top-4 text-gray-400">search</span>
                      <input 
                         type="text" 
-                        className="w-full pl-12 pr-4 py-4 rounded-xl bg-white border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-lg"
+                        className="w-full pl-12 pr-4 py-4 rounded-xl bg-white border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-green-700/50 focus:border-green-700 transition-all text-lg"
                         placeholder="Search for services..."
                     />
                   </div>
@@ -328,13 +357,13 @@ const Onboarding = () => {
                             onClick={() => handleCategoryToggle(cat.name)}
                             className={`
                                 cursor-pointer rounded-xl p-3 border-2 transition-all hover:shadow-lg group flex flex-col gap-3
-                                ${formData.selectedCategories.includes(cat.name) ? 'border-primary bg-green-50' : 'border-transparent bg-white'}
+                                ${formData.selectedCategories.includes(cat.name) ? 'border-green-700 bg-green-50' : 'border-transparent bg-white'}
                             `}
                         >
                              <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
                                 <img src={cat.img} alt={cat.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                                 {formData.selectedCategories.includes(cat.name) && (
-                                    <div className="absolute top-2 right-2 h-6 w-6 bg-primary rounded-full flex items-center justify-center shadow-md">
+                                    <div className="absolute top-2 right-2 h-6 w-6 bg-green-700 rounded-full flex items-center justify-center shadow-md">
                                         <span className="material-icons-outlined text-white text-xs font-bold">check</span>
                                     </div>
                                 )}
@@ -353,7 +382,7 @@ const Onboarding = () => {
                       </button>
                       <button 
                          onClick={handleNext}
-                         className="px-8 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all flex items-center gap-2"
+                         className="px-8 py-3 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all flex items-center gap-2"
                       >
                           Next Step
                           <span className="material-icons-outlined">arrow_forward</span>
@@ -373,7 +402,7 @@ const Onboarding = () => {
                 >
                     <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100 max-w-md w-full text-center">
                         <div className="mx-auto h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
-                            <span className="material-icons-outlined text-4xl text-primary">verified_user</span>
+                            <span className="material-icons-outlined text-4xl text-green-700">verified_user</span>
                         </div>
                         <h2 className="text-2xl font-display font-extrabold text-gray-900 mb-4">You're almost done!</h2>
                         <p className="text-gray-500 mb-8">
@@ -382,39 +411,9 @@ const Onboarding = () => {
                         
                         <div className="space-y-4">
                             <button 
-                                onClick={async () => {
-                                    setLoading(true);
-                                    try {
-                                        let photoURL = currentUser?.photoURL;
-                                        
-                                        if (formData.photo) {
-                                            const storageRef = ref(storage, `profile_pictures/${currentUser.uid}`);
-                                            await uploadBytes(storageRef, formData.photo);
-                                            photoURL = await getDownloadURL(storageRef);
-                                        }
-
-                                        setFormData({...formData, consent: true});
-                                        // Save to Firebase
-                                        await updateUserProfile({
-                                            displayName: formData.displayName,
-                                            phoneNumber: formData.phoneNumber,
-                                            location: formData.location,
-                                            preferences: formData.selectedCategories,
-                                            photoURL: photoURL,
-                                            onboardingCompleted: true
-                                        });
-                                        
-                                        setStep(4); // Success State
-                                        setTimeout(() => navigate('/dashboard'), 3000); 
-                                    } catch (error) {
-                                        console.error(error);
-                                        toast.error("Failed to save profile");
-                                    } finally {
-                                        setLoading(false);
-                                    }
-                                }}
+                                onClick={handleFinish}
                                 disabled={loading}
-                                className="w-full py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all disabled:opacity-50"
+                                className="w-full py-4 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all disabled:opacity-50"
                             >
                                 {loading ? 'Saving...' : 'Agree & Finish'}
                             </button>
@@ -436,7 +435,7 @@ const Onboarding = () => {
                     <Confetti numberOfPieces={200} recycle={false} />
                     <div className="mb-6 relative">
                         <div className="h-24 w-24 bg-green-100 rounded-full flex items-center justify-center animate-pulse"></div>
-                        <span className="material-icons-outlined text-6xl text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">check_circle</span>
+                        <span className="material-icons-outlined text-6xl text-green-700 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">check_circle</span>
                     </div>
                     <h2 className="text-3xl font-display font-extrabold text-gray-900 mb-2">Setup Complete!</h2>
                     <p className="text-gray-500">Redirecting you to your dashboard...</p>
