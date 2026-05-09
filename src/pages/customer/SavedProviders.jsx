@@ -42,7 +42,7 @@ const SavedProviders = () => {
                             name: data.displayName || data.full_name || 'Provider',
                             service: data.category || 'Service Provider',
                             image: data.photoURL || data.avatar_url || `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
-                            rating: data.rating || 'New',
+                            rating: data.rating || null,
                             rate: data.hourlyRate ? `₦${Number(data.hourlyRate).toLocaleString()}` : (data.hourly_rate_min ? `₦${Number(data.hourly_rate_min).toLocaleString()}` : 'Negotiable'),
                             location: data.address || data.location_name || 'Remote',
                             verified: data.isVerified || data.is_verified
@@ -111,27 +111,18 @@ const SavedProviders = () => {
                                         </div>
 
                                         {/* Stats (Middle) */}
-                                        <div className="flex sm:flex-col gap-6 sm:gap-2 sm:items-end justify-center shrink-0">
-                                            <div className="flex items-center gap-1.5">
+                                        {provider.rating && (
+                                            <div className="flex items-center gap-1.5 shrink-0">
                                                 <span className="material-icons text-yellow-500 text-[18px]">star</span>
                                                 <span className="font-extrabold text-[15px] text-gray-900">{provider.rating}</span>
                                             </div>
-                                        </div>
+                                        )}
 
                                         {/* Actions (Right) */}
-                                        <div className="flex items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0 shrink-0 border-t sm:border-t-0 border-gray-100 pt-4 sm:pt-0">
-                                            <button 
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    toggleSavedProvider(provider.id);
-                                                }}
-                                                className="h-11 w-11 rounded-xl flex items-center justify-center border-2 border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
-                                            >
-                                                <span className="material-icons text-[20px]">favorite</span>
-                                            </button>
+                                        <div className="flex items-center gap-3 shrink-0 mt-4 sm:mt-0">
                                             <Link 
                                                 to={`/customer/provider/${provider.id}`} 
-                                                className="h-11 flex items-center justify-center flex-1 sm:flex-none px-6 text-[13px] font-extrabold bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all shadow-sm"
+                                                className="h-10 flex items-center justify-center px-5 text-[13px] font-extrabold bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all shadow-sm"
                                             >
                                                 View Profile
                                             </Link>

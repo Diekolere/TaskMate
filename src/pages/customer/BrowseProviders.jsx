@@ -63,13 +63,19 @@ const BrowseProviders = () => {
                 filteredData.sort((a, b) => (b.rating || 4.5) - (a.rating || 4.5));
             } else if (sortFilter === 'Most Jobs Done') {
                 filteredData.sort((a, b) => (b.completedJobs || 0) - (a.completedJobs || 0));
+            } else if (sortFilter === 'Nearest') {
+                // Mock proximity: stable sort using provider id hash so "nearest" feels consistent
+                filteredData.sort((a, b) => {
+                    const hashId = (id) => String(id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+                    return (hashId(a.id) % 50) - (hashId(b.id) % 50);
+                });
             }
 
             setProviders(filteredData);
             setLoading(false);
         };
         fetchProviders();
-    }, [selectedCategories, ratingFilter, getProviders]);
+    }, [selectedCategories, sortFilter, ratingFilter, getProviders]);
 
     return (
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
@@ -162,8 +168,8 @@ const BrowseProviders = () => {
                                         <span className="material-icons-outlined text-[16px] text-white">expand_more</span>
                                     </button>
                                     {isSortOpen && (
-                                        <div className="absolute top-full mt-2 w-[180px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50">
-                                            {['Highest Rated', 'Most Jobs Done'].map(opt => (
+                                        <div className="absolute top-full mt-2 w-[200px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50">
+                                            {['Highest Rated', 'Most Jobs Done', 'Nearest'].map(opt => (
                                                 <button key={opt} onClick={() => { setSortFilter(opt); setIsSortOpen(false); }} className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">{opt}</button>
                                             ))}
                                         </div>
