@@ -77,10 +77,10 @@ const ProviderProfile = () => {
             <Sidebar />
             
             <main className="flex-1 overflow-hidden flex flex-col min-w-0">
-                <div className="flex-1 overflow-y-auto pb-24 relative">
+                <div className="flex-1 overflow-y-auto pb-24 md:pb-10 relative">
                     
                     {/* Hero Banner */}
-                    <div className="h-72 w-full relative">
+                    <div className="h-48 sm:h-72 w-full relative">
                         <img src={provider.coverImage} alt="Cover" className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent opacity-90"></div>
                         
@@ -103,16 +103,16 @@ const ProviderProfile = () => {
                         </div>
                     </div>
 
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-10">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 -mt-16 sm:-mt-24 relative z-10">
                         <div className="flex flex-col lg:flex-row gap-8">
                             
                             {/* Left Column (Main Info) */}
                             <div className="flex-1 min-w-0">
                                 {/* Profile Card */}
-                                <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 p-6 md:p-8 border border-white">
-                                    <div className="flex flex-col sm:flex-row gap-6 items-start">
+                                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl shadow-gray-200/50 p-4 sm:p-6 md:p-8 border border-white">
+                                    <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start">
                                         <div className="relative shrink-0">
-                                            <img src={provider.avatar} alt={provider.name} className="w-32 h-32 rounded-2xl object-cover shadow-lg border-4 border-white" />
+                                            <img src={provider.avatar} alt={provider.name} className="w-20 h-20 sm:w-32 sm:h-32 rounded-xl sm:rounded-2xl object-cover shadow-lg border-4 border-white" />
                                             {provider.verified && (
                                                 <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-1.5 rounded-full border-4 border-white shadow-sm" title="Verified Provider">
                                                     <span className="material-icons-outlined text-sm block">verified</span>
@@ -123,7 +123,7 @@ const ProviderProfile = () => {
                                         <div className="flex-1 min-w-0 pt-2">
                                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                                 <div>
-                                                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">{provider.name}</h1>
+                                            <h1 className="text-xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">{provider.name}</h1>
                                                     <p className="text-gray-500 font-medium">{provider.role}</p>
                                                 </div>
                                                 <div className="flex items-center gap-4">
@@ -139,7 +139,7 @@ const ProviderProfile = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-4 mt-6 text-sm text-gray-500">
+                                            <div className="flex items-center gap-3 sm:gap-4 mt-4 sm:mt-6 text-[12px] sm:text-sm text-gray-500 flex-wrap">
                                                 <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full">
                                                     <span className="material-icons-outlined text-gray-400 text-lg">location_on</span>
                                                     {provider.location}
@@ -153,7 +153,7 @@ const ProviderProfile = () => {
                                     </div>
 
                                     {/* Tabs */}
-                                    <div className="flex items-center gap-8 mt-10 border-b border-gray-100">
+                                    <div className="flex items-center gap-4 sm:gap-8 mt-6 sm:mt-10 border-b border-gray-100 overflow-x-auto no-scrollbar">
                                         {['About', 'Reviews', 'Portfolio'].map((tab) => (
                                             <button 
                                                 key={tab}
