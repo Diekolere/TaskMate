@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -105,31 +105,60 @@ const Register = () => {
         {/* Card */}
         <div className="bg-white py-8 px-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-2xl border border-[#1a2b3c]/5">
           
-          {/* User Type Toggle */}
-          <div className="flex p-1 bg-[#f7f8f3] rounded-lg mb-6 border border-[#1a2b3c]/5">
-              <button
-                type="button"
-                onClick={() => handleUserTypeChange('customer')}
-                className={`flex-1 py-2 text-sm font-bold rounded-md transition-all duration-200 ${
-                    formData.userType === 'customer' 
-                    ? 'bg-white text-[#1a2b3c] shadow-sm ring-1 ring-[#1a2b3c]/5' 
-                    : 'text-[#1a2b3c]/50 hover:text-[#1a2b3c] hover:bg-white/50'
-                }`}
-              >
-                I need a service
+          {/* User Type Toggle — matches login page */}
+          <div className="mb-6 p-1 bg-gray-100 rounded-xl flex gap-1">
+            <button
+              type="button"
+              onClick={() => handleUserTypeChange('customer')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                formData.userType === 'customer'
+                  ? 'bg-white text-[#1a2b3c] shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <span className={`material-icons-outlined text-base ${formData.userType === 'customer' ? 'text-[#7AC142]' : 'text-gray-400'}`}>
+                person
+              </span>
+              Regular User
             </button>
             <button
-                type="button"
-                onClick={() => handleUserTypeChange('provider')}
-                className={`flex-1 py-2 text-sm font-bold rounded-md transition-all duration-200 ${
-                    formData.userType === 'provider' 
-                    ? 'bg-[#1a2b3c] text-white shadow-sm' 
-                    : 'text-[#1a2b3c]/50 hover:text-[#1a2b3c] hover:bg-white/50'
-                }`}
-              >
-                I offer services
+              type="button"
+              onClick={() => handleUserTypeChange('provider')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                formData.userType === 'provider'
+                  ? 'bg-[#0F172A] text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <span className={`material-icons-outlined text-base ${formData.userType === 'provider' ? 'text-[#10B981]' : 'text-gray-400'}`}>
+                handyman
+              </span>
+              Service Pro
             </button>
           </div>
+
+          {/* Context hint */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={formData.userType}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.2 }}
+              className={`mb-6 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm ${
+                formData.userType === 'provider'
+                  ? 'bg-[#0F172A]/[0.03] border-[#0F172A]/10 text-[#0F172A]/70'
+                  : 'bg-[#7AC142]/[0.06] border-[#7AC142]/20 text-[#1a2b3c]/70'
+              }`}
+            >
+              <span className={`material-icons-outlined text-base shrink-0 ${formData.userType === 'provider' ? 'text-[#10B981]' : 'text-[#7AC142]'}`}>
+                {formData.userType === 'provider' ? 'verified' : 'check_circle'}
+              </span>
+              {formData.userType === 'provider'
+                ? "You'll set up a provider profile to offer services and receive job requests."
+                : "You'll set up a customer account to book and manage service requests."}
+            </motion.div>
+          </AnimatePresence>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
@@ -228,43 +257,47 @@ const Register = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-3.5 px-4 rounded-lg text-sm font-bold text-white bg-[#1a2b3c] hover:bg-[#7AC142] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1a2b3c] transition-colors disabled:opacity-70 disabled:cursor-not-allowed shadow-md mt-6"
+              className={`w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md mt-2 ${
+                formData.userType === 'provider'
+                  ? 'bg-[#0F172A] hover:bg-slate-700'
+                  : 'bg-[#1a2b3c] hover:bg-[#7AC142]'
+              }`}
             >
               {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="animate-spin h-5 w-5 text-white" />
-                  Creating Account...
-                </div>
+                <>
+                  <Loader2 className="animate-spin h-4 w-4" />
+                  Creating Account…
+                </>
               ) : (
-                "Create Account"
+                `Create Account as ${formData.userType === 'provider' ? 'Service Pro' : 'Customer'}`
               )}
             </button>
           </form>
 
-          <div className="mt-8">
+          <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#1a2b3c]/10" />
+                <div className="w-full border-t border-gray-100" />
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-[#1a2b3c]/50 font-medium">Or sign up with</span>
+              <div className="relative flex justify-center text-xs">
+                <span className="px-4 bg-white text-gray-400 font-medium">Or sign up with</span>
               </div>
             </div>
 
-            <div className="mt-8 grid grid-cols-2 gap-4">
+            <div className="mt-5 grid grid-cols-2 gap-3">
               <button
                 type="button"
-                className="w-full inline-flex justify-center py-3 px-4 border border-[#1a2b3c]/20 rounded-lg shadow-sm bg-white text-sm font-medium hover:bg-[#f7f8f3] transition-colors"
+                className="w-full inline-flex justify-center items-center gap-2 py-2.5 px-4 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                 <img className="h-5 w-5" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" />
-                 <span className="sr-only">Sign up with Google</span>
+                <img className="h-4 w-4" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" />
+                Google
               </button>
-               <button
+              <button
                 type="button"
-                className="w-full inline-flex justify-center py-3 px-4 border border-[#1a2b3c]/20 rounded-lg shadow-sm bg-white text-sm font-medium hover:bg-[#f7f8f3] transition-colors"
+                className="w-full inline-flex justify-center items-center gap-2 py-2.5 px-4 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                 <img className="h-5 w-5" src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="" />
-                 <span className="sr-only">Sign up with Facebook</span>
+                <img className="h-4 w-4" src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="" />
+                Facebook
               </button>
             </div>
           </div>
