@@ -191,7 +191,8 @@ export function DataProvider({ children }) {
         id: `job-${Math.random()}`,
         customer_id: currentUser.id,
         created_at: new Date().toISOString(),
-        status: 'open'
+        status: requestData.status || 'open',
+        timeline: requestData.timeline || []
       });
       setRequests(prev => [newJob, ...prev]);
       toast.success("Job request created (Simulated)");
@@ -207,8 +208,12 @@ export function DataProvider({ children }) {
             category: requestData.category || 'General',
             budget_estimate: requestData.budget,
             location_name: requestData.location,
+            coordinates: requestData.coordinates,
+            urgency: requestData.urgency,
+            image: requestData.image,
             customer_id: currentUser.id,
-            status: requestData.status || 'open'
+            status: requestData.status || 'open',
+            timeline: requestData.timeline || []
           }])
           .select()
           .single();
@@ -220,6 +225,69 @@ export function DataProvider({ children }) {
         console.error("Error creating job:", error);
         throw error;
     }
+  };
+
+  const updateJobStatus = async (jobId, newStatus, additionalData = {}) => {
+    if (!currentUser) return;
+
+    if (isSimulated) {
+      // Update local state
+      setRequests(prev => prev.map(job => 
+        job.id === jobId ? { ...job, status: newStatus, ...additionalData } : job
+      ));
+      setJobs(prev => prev.map(job => 
+        job.id === jobId ? { ...job, status: newStatus, ...additionalData } : job
+      ));
+      toast.success(`Job status updated to ${newStatus}`);
+      return;
+    }
+
+    try {
+      const updateData = { status: newStatus, ...additionalData };
+      if (additionalData.worker_id) updateData.worker_id = additionalData.worker_id;
+      if (additionalData.final_budget) updateData.final_budget = additionalData.final_budget;
+
+      const { error } = await supabase
+        .from('jobs')
+        .update(updateData)
+        .eq('id', jobId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error updating job status:", error);
+      throw error;
+    }
+  };
+
+  const acceptJob = async (jobId) => {
+    if (!currentUser) return;
+    
+    await updateJobStatus(jobId, 'provider_accepted', { worker_id: currentUser.id });
+    toast.success('Job accepted successfully!');
+  };
+
+  const startNegotiation = async (jobId) => {
+    await updateJobStatus(jobId, 'negotiating');
+  };
+
+  const finalizeAgreement = async (jobId, finalBudget) => {
+    await updateJobStatus(jobId, 'awaiting_payment', { final_budget: finalBudget });
+  };
+
+  const securePayment = async (jobId) => {
+    await updateJobStatus(jobId, 'payment_secured');
+  };
+
+  const markJobInProgress = async (jobId) => {
+    await updateJobStatus(jobId, 'in_progress');
+  };
+
+  const completeJob = async (jobId) => {
+    await updateJobStatus(jobId, 'completed');
+  };
+
+  const releasePayment = async (jobId) => {
+    await updateJobStatus(jobId, 'payment_released');
   };
 
   const toggleSavedProvider = async (providerId) => {
@@ -311,6 +379,14 @@ export function DataProvider({ children }) {
     earnings,
     loading,
     createRequest,
+    updateJobStatus,
+    acceptJob,
+    startNegotiation,
+    finalizeAgreement,
+    securePayment,
+    markJobInProgress,
+    completeJob,
+    releasePayment,
     getProviders,
     savedProviderIds, 
     toggleSavedProvider,

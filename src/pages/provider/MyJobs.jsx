@@ -12,6 +12,11 @@ const statusConfig = {
     Canceled:   { bg: 'bg-red-50',        text: 'text-red-600',    border: 'border-red-100' },
     Scheduled:  { bg: 'bg-blue-50',       text: 'text-blue-700',   border: 'border-blue-100' },
     Pending:    { bg: 'bg-amber-50',      text: 'text-amber-700',  border: 'border-amber-100' },
+    provider_accepted: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-100' },
+    negotiating: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-100' },
+    awaiting_payment: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-100' },
+    payment_secured: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-100' },
+    payment_released: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100' },
     default:    { bg: 'bg-gray-50',       text: 'text-gray-600',   border: 'border-gray-200' },
 };
 
@@ -32,8 +37,8 @@ const MyJobs = () => {
     const [activeTab, setActiveTab] = useState('active');
 
     const myJobs = allJobs.filter(j => j.providerId === currentUser?.uid);
-    const activeJobs = myJobs.filter(j => !['Completed', 'Canceled'].includes(j.status));
-    const completedJobs = myJobs.filter(j => ['Completed', 'Canceled'].includes(j.status));
+    const activeJobs = myJobs.filter(j => !['Completed', 'Canceled', 'payment_released'].includes(j.status));
+    const completedJobs = myJobs.filter(j => ['Completed', 'Canceled', 'payment_released'].includes(j.status));
     const displayJobs = activeTab === 'active' ? activeJobs : completedJobs;
 
     const tabs = [
@@ -152,10 +157,10 @@ const MyJobs = () => {
                                                             </p>
                                                         </div>
                                                         <Link
-                                                            to={`/provider/jobs/${job.id}`}
+                                                            to={job.status === 'negotiating' || job.status === 'provider_accepted' ? `/provider/negotiation/${job.id}` : `/provider/jobs/${job.id}`}
                                                             className="border border-gray-200 hover:border-[#10B981] hover:text-[#10B981] text-gray-700 font-semibold text-sm px-5 py-2.5 rounded-xl transition-all whitespace-nowrap"
                                                         >
-                                                            View Details
+                                                            {job.status === 'negotiating' || job.status === 'provider_accepted' ? 'Negotiate' : 'View Details'}
                                                         </Link>
                                                     </div>
                                                 </div>

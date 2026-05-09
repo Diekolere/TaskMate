@@ -21,7 +21,7 @@ const rejectionReasons = [
 const RequestDetails = () => {
     const { id } = useParams();
     const { currentUser } = useAuth();
-    const { jobs, isSimulated } = useData();
+    const { jobs, acceptJob, isSimulated } = useData();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -55,8 +55,7 @@ const RequestDetails = () => {
             return;
         }
         try {
-            if (isSimulated) await new Promise(r => setTimeout(r, 600));
-            toast.success('Job Accepted!', { description: "Find it in 'My Jobs'." });
+            await acceptJob(id);
             navigate('/provider/jobs');
         } catch {
             toast.error('Failed to accept job');

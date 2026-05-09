@@ -12,7 +12,7 @@ import InvoiceUploadModal from '../../components/provider/InvoiceUploadModal';
 const JobDetails = () => {
     const { id } = useParams();
     const { currentUser } = useAuth();
-    const { jobs, isSimulated } = useData();
+    const { jobs, markJobInProgress, completeJob, isSimulated } = useData();
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [uploadedInvoice, setUploadedInvoice] = useState(null);
@@ -47,7 +47,15 @@ const JobDetails = () => {
     }, [id, jobs, isSimulated]);
 
     const getStatusLabel = (code) => {
-        const map = { on_way: 'On the way', arrived: 'Arrived', started: 'In Progress', parts: 'Paused (Parts)', completed: 'Completed' };
+        const map = { 
+            on_way: 'On the way', 
+            arrived: 'Arrived', 
+            started: 'In Progress', 
+            parts: 'Paused (Parts)', 
+            completed: 'Completed',
+            payment_secured: 'Payment Secured',
+            in_progress: 'In Progress'
+        };
         return map[code] || 'Active';
     };
 
@@ -63,11 +71,26 @@ const JobDetails = () => {
         }
     };
 
-    const handleInvoiceUpload = (file, amount) => {
+    const handleInvoiceUpload = async (file, amount) => {
         setIsInvoiceModalOpen(false);
-        toast.success('Job Completed', { description: `Commission of ₦${(amount * 0.1).toLocaleString()} added to outstanding balance.` });
-        setJob({ ...job, status: 'Completed', statusCode: 'completed' });
-        setUploadedInvoice({ name: file?.name || 'Payment Record', amount, date: new Date().toLocaleDateString() });
+        try {
+            await completeJob(id);
+            toast.success('Job marked as completed! Awaiting customer confirmation for payment release.');
+            setJob({ ...job, status: 'Completed', statusCode: 'completed' });
+            setUploadedInvoice({ name: file?.name || 'Payment Record', amount, date: new Date().toLocaleDateString() });
+        } catch (error) {
+            toast.error('Failed to complete job');
+        }
+    };
+
+    const handleStartJob = async () => {
+        try {
+            await markJobInProgress(id);
+            toast.success('Job started! Customer has been notified.');
+            setJob({ ...job, status: 'In Progress', statusCode: 'in_progress' });
+        } catch (error) {
+            toast.error('Failed to start job');
+        }
     };
 
     if (loading) {
@@ -243,33 +266,41 @@ const JobDetails = () => {
                                         <span className="text-xs bg-gray-100 px-2.5 py-1 rounded-lg text-gray-600 font-semibold">{job.pricing.method}</span>
                                     </div>
                                     <div className="flex flex-col gap-3">
-                                        {job.statusCode !== 'completed' && (
+                                        {job.statusCode === 'payment_secured' && (
+                                            <button
+                                                onClick={handleStartJob}
+                                                className="w-full py-3 rounded-xl bg-[#10B981] hover:bg-[#059669] text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <span className="material-icons-outlined text-base">play_arrow</span>
+                                                Start Job
+                                            </button>
+                                        )}
+                                        {job.statusCode === 'in_progress' && (
                                             <button
                                                 onClick={() => setIsStatusModalOpen(true)}
                                                 className="w-full py-3 rounded-xl bg-[#0F172A] hover:bg-slate-700 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                                             >
-                                                Update Status
+                                                Update Progress
                                                 <span className="material-icons-outlined text-base">arrow_forward</span>
                                             </button>
                                         )}
-                                        {job.statusCode === 'completed' ? (
-                                            <div className="bg-[#10B981]/10 border border-[#10B981]/20 rounded-xl p-3 flex items-start gap-2">
-                                                <span className="material-icons-outlined text-[#10B981] text-lg shrink-0">check_circle</span>
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-900">Job Completed</p>
-                                                    {uploadedInvoice && (
-                                                        <p className="text-xs text-gray-500 mt-0.5">Commission: <span className="font-bold">₦{(uploadedInvoice.amount * 0.1).toLocaleString()}</span></p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ) : (
+                                        {job.statusCode !== 'completed' && job.statusCode !== 'payment_secured' && (
                                             <button
                                                 onClick={() => setIsInvoiceModalOpen(true)}
                                                 className="w-full py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors text-gray-700 font-semibold text-sm flex items-center justify-center gap-2"
                                             >
-                                                <span className="material-icons-outlined text-base">payments</span>
-                                                Record Payment & Complete
+                                                <span className="material-icons-outlined text-base">check_circle</span>
+                                                Mark as Completed
                                             </button>
+                                        )}
+                                        {job.statusCode === 'completed' && (
+                                            <div className="bg-[#10B981]/10 border border-[#10B981]/20 rounded-xl p-3 flex items-start gap-2">
+                                                <span className="material-icons-outlined text-[#10B981] text-lg shrink-0">check_circle</span>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">Job Completed</p>
+                                                    <p className="text-xs text-gray-500 mt-0.5">Awaiting customer confirmation for payment release</p>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </div>

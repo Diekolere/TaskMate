@@ -20,6 +20,8 @@ import ServiceReview from './pages/customer/ServiceReview';
 import Settings from './pages/customer/Settings';
 import SavedProviders from './pages/customer/SavedProviders';
 import MyRequests from './pages/customer/MyRequests';
+import Negotiation from './pages/customer/Negotiation';
+import Payment from './pages/customer/Payment';
 
 // Provider Pages
 import ProfessionalInfo from './pages/provider/onboarding/ProfessionalInfo';
@@ -39,6 +41,7 @@ import MyProfile from './pages/provider/Profile';
 import ProviderSettings from './pages/provider/Settings';
 import ChangePassword from './pages/provider/ChangePassword';
 import Support from './pages/provider/Support';
+import ProviderNegotiation from './pages/provider/Negotiation';
 import Privacy from './pages/public/Privacy';
 import Terms from './pages/public/Terms';
 
@@ -80,6 +83,8 @@ function AnimatedRoutes() {
         <Route path="/customer/browse" element={<ProtectedRoute allowedRoles={['customer']}><BrowseProviders /></ProtectedRoute>} />
         <Route path="/customer/requests" element={<ProtectedRoute allowedRoles={['customer']}><MyRequests /></ProtectedRoute>} />
         <Route path="/customer/request-status/:id" element={<ProtectedRoute allowedRoles={['customer']}><RequestStatus /></ProtectedRoute>} />
+        <Route path="/customer/negotiation/:id" element={<ProtectedRoute allowedRoles={['customer']}><Negotiation /></ProtectedRoute>} />
+        <Route path="/customer/payment/:id" element={<ProtectedRoute allowedRoles={['customer']}><Payment /></ProtectedRoute>} />
         <Route path="/customer/provider/:id" element={<ProtectedRoute allowedRoles={['customer']}><ProviderProfile /></ProtectedRoute>} />
         <Route path="/customer/service-review" element={<ProtectedRoute allowedRoles={['customer']}><Navigate to="/customer/dashboard" replace /></ProtectedRoute>} />
         <Route path="/customer/service-review/:id" element={<ProtectedRoute allowedRoles={['customer']}><ServiceReview /></ProtectedRoute>} />
@@ -101,6 +106,7 @@ function AnimatedRoutes() {
         <Route path="/provider/requests/:id" element={<ProtectedRoute allowedRoles={['provider']}><RequestDetails /></ProtectedRoute>} />
         <Route path="/provider/jobs" element={<ProtectedRoute allowedRoles={['provider']}><MyJobs /></ProtectedRoute>} />
         <Route path="/provider/jobs/:id" element={<ProtectedRoute allowedRoles={['provider']}><JobDetails /></ProtectedRoute>} />
+        <Route path="/provider/negotiation/:id" element={<ProtectedRoute allowedRoles={['provider']}><ProviderNegotiation /></ProtectedRoute>} />
         <Route path="/provider/earnings" element={<ProtectedRoute allowedRoles={['provider']}><Earnings /></ProtectedRoute>} />
         <Route path="/provider/profile" element={<ProtectedRoute allowedRoles={['provider']}><MyProfile /></ProtectedRoute>} />
         <Route path="/provider/settings" element={<ProtectedRoute allowedRoles={['provider']}><ProviderSettings /></ProtectedRoute>} />
