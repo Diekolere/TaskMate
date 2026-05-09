@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
+import KYCModal from '../../components/provider/KYCModal';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 
@@ -20,6 +21,8 @@ const ProviderDashboard = () => {
     const { jobs } = useData();
 
     const isVerified = currentUser?.isVerified || currentUser?.is_verified || true;
+    const kycCompleted = currentUser?.kycCompleted ?? true;
+    const [kycOpen, setKycOpen] = useState(false);
 
     const completedJobs = jobs.filter(j =>
         (j.providerId === currentUser?.id || j.provider_id === currentUser?.id) &&
@@ -102,6 +105,32 @@ const ProviderDashboard = () => {
                                 </div>
                             </label>
                         </div>
+
+                        {/* ── KYC nudge ── */}
+                        {!kycCompleted && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm"
+                            >
+                                <div className="flex items-start sm:items-center gap-3">
+                                    <div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">
+                                        <span className="material-icons text-amber-500 text-lg">badge</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900">Identity verification required</p>
+                                        <p className="text-xs text-gray-400 mt-0.5">Complete KYC to receive payments and access all jobs.</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setKycOpen(true)}
+                                    className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-[#0F172A] text-white text-xs font-bold rounded-xl hover:bg-slate-700 transition-colors"
+                                >
+                                    <span className="material-icons text-sm">verified_user</span>
+                                    Complete Now
+                                </button>
+                            </motion.div>
+                        )}
 
                         {/* ── Stats — 2 cards, half each ── */}
                         <div className={`grid grid-cols-2 gap-3 sm:gap-5 ${!isVerified ? 'opacity-40 pointer-events-none select-none' : ''}`}>
@@ -253,6 +282,12 @@ const ProviderDashboard = () => {
             </div>
 
             <ProviderMobileNavBar />
+
+            <KYCModal
+                open={kycOpen}
+                onClose={() => setKycOpen(false)}
+                onComplete={() => setKycOpen(false)}
+            />
         </div>
     );
 };
