@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
+import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { toast, Toaster } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
@@ -131,7 +132,7 @@ const Settings = () => {
     };
 
     const renderTabs = () => (
-        <div className="border-b border-gray-200 mb-8 overflow-x-auto no-scrollbar">
+        <div className="border-b border-gray-100 mb-8 overflow-x-auto no-scrollbar">
             <nav className="flex gap-8 min-w-max">
                 {['Profile', 'Security', 'Notifications', 'Support'].map((tab) => (
                     <button
@@ -139,12 +140,12 @@ const Settings = () => {
                         onClick={() => setActiveTab(tab)}
                         className={`pb-4 px-1 text-sm font-bold border-b-2 transition-all ${
                             activeTab === tab 
-                            ? 'border-green-700 text-green-700' 
+                            ? 'border-[#10B981] text-[#10B981]' 
                             : 'border-transparent text-gray-500 hover:text-gray-900'
                         }`}
                     >
                         {tab}
-                        {tab === 'Support' && <span className="ml-2 bg-red-100 text-red-600 text-[10px] px-1.5 py-0.5 rounded-full">New</span>}
+                        {tab === 'Support' && <span className="ml-2 bg-red-50 text-red-500 text-[10px] px-1.5 py-0.5 rounded-full">New</span>}
                     </button>
                 ))}
             </nav>
@@ -152,13 +153,15 @@ const Settings = () => {
     );
 
     return (
-        <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
+        <div className="flex min-h-screen bg-white font-sans text-gray-900">
             <Sidebar />
             <Toaster position="top-right" richColors />
             
-            <main className="flex-1 overflow-hidden flex flex-col min-w-0">
-                <div className="flex-1 overflow-y-auto pb-24 md:pb-8">
-                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="flex-1 flex flex-col min-w-0">
+                <TopNavbar breadcrumbs={['Customer', 'Settings']} />
+                
+                <main className="flex-1 overflow-y-auto bg-white">
+                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 pb-24 md:pb-10">
                         {/* Page Heading */}
                         <div className="mb-8">
                             <h2 className="text-3xl font-black text-gray-900 tracking-tight">Account Settings</h2>
@@ -171,11 +174,11 @@ const Settings = () => {
                         {activeTab === 'Profile' && (
                             <div className="space-y-10 animate-fade-in">
                                 {/* Profile Picture Section */}
-                                <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-white border border-gray-200 rounded-2xl shadow-sm gap-4">
+                                <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-white border border-gray-100 rounded-2xl shadow-sm gap-4">
                                     <div className="flex items-center gap-6">
                                         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>
-                                            <img src={profileForm.photoURL || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} alt="Profile" className="h-24 w-24 rounded-full object-cover border-4 border-gray-100 shadow-sm group-hover:opacity-90 transition-opacity" />
-                                            <div className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md border border-gray-100 text-green-700">
+                                            <img src={profileForm.photoURL || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} alt="Profile" className="h-24 w-24 rounded-full object-cover border-4 border-gray-50 shadow-sm group-hover:opacity-90 transition-opacity" />
+                                            <div className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md border border-gray-100 text-[#10B981]">
                                                 <span className="material-icons-outlined text-lg">edit</span>
                                             </div>
                                             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
@@ -194,7 +197,7 @@ const Settings = () => {
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-xl font-bold flex items-center gap-2 text-gray-800">
-                                            <span className="material-icons-outlined text-green-700">person</span>
+                                            <span className="material-icons-outlined text-[#10B981]">person</span>
                                             Personal Information
                                         </h3>
                                     </div>
@@ -202,7 +205,7 @@ const Settings = () => {
                                         <div className="flex flex-col gap-2">
                                             <label className="text-sm font-semibold text-gray-700">Full Name</label>
                                             <input 
-                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" 
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-50 focus:border-[#10B981] outline-none transition-all" 
                                                 type="text" 
                                                 placeholder="Enter your full name"
                                                 value={profileForm.displayName || ''}
@@ -220,7 +223,7 @@ const Settings = () => {
                                             <label className="text-sm font-semibold text-gray-700">Phone Number</label>
                                             <div className="relative">
                                                 <input 
-                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" 
+                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-50 focus:border-[#10B981] outline-none transition-all" 
                                                     type="tel" 
                                                     placeholder="+234 800 000 0000"
                                                     value={profileForm.phoneNumber || ''}
@@ -231,7 +234,7 @@ const Settings = () => {
                                         <div className="flex flex-col gap-2 md:col-span-2">
                                             <label className="text-sm font-semibold text-gray-700">Address</label>
                                             <input 
-                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all" 
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-green-50 focus:border-[#10B981] outline-none transition-all" 
                                                 placeholder="Enter your address" 
                                                 type="text" 
                                                 value={profileForm.address || ''}
@@ -241,11 +244,11 @@ const Settings = () => {
                                     </div>
                                 </div>
                                 
-                                <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
+                                <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
                                     <button 
                                         onClick={handleSaveProfile}
                                         disabled={isLoading}
-                                        className="px-8 py-3 bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-700/20 hover:bg-green-800 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50"
+                                        className="px-8 py-3 bg-[#10B981] text-white font-bold rounded-xl shadow-lg shadow-[#10B981]/20 hover:bg-[#059669] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50"
                                     >
                                         {isLoading ? 'Saving...' : 'Save Changes'}
                                     </button>
@@ -253,18 +256,19 @@ const Settings = () => {
                             </div>
                         )}
 
+                        {/* Other tabs follow similar pattern... */}
                         {/* Security Tab */}
                         {activeTab === 'Security' && (
                             <div className="space-y-8 animate-fade-in">
-                                <form onSubmit={handleSaveSecurity} className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm space-y-6">
-                                    <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-4">Change Password</h3>
+                                <form onSubmit={handleSaveSecurity} className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+                                    <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-4">Change Password</h3>
                                     
                                     <div className="space-y-4">
                                         <div className="space-y-1.5">
                                             <label className="text-sm font-semibold text-gray-700">Current Password</label>
                                             <input 
                                                 type="password" 
-                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all"
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-50 focus:border-[#10B981] outline-none transition-all"
                                                 value={securityForm.currentPassword}
                                                 onChange={e => setSecurityForm({...securityForm, currentPassword: e.target.value})}
                                             />
@@ -274,7 +278,7 @@ const Settings = () => {
                                                 <label className="text-sm font-semibold text-gray-700">New Password</label>
                                                 <input 
                                                     type="password" 
-                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all"
+                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-50 focus:border-[#10B981] outline-none transition-all"
                                                     value={securityForm.newPassword}
                                                     onChange={e => setSecurityForm({...securityForm, newPassword: e.target.value})}
                                                 />
@@ -283,7 +287,7 @@ const Settings = () => {
                                                 <label className="text-sm font-semibold text-gray-700">Confirm Password</label>
                                                 <input 
                                                     type="password" 
-                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all"
+                                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-50 focus:border-[#10B981] outline-none transition-all"
                                                     value={securityForm.confirmPassword}
                                                     onChange={e => setSecurityForm({...securityForm, confirmPassword: e.target.value})}
                                                 />
@@ -301,25 +305,12 @@ const Settings = () => {
                                         </button>
                                     </div>
                                 </form>
-
-                                <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-gray-900">Two-Factor Authentication</h3>
-                                        <p className="text-sm text-gray-500 mt-1">Add an extra layer of security to your account.</p>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-sm font-medium text-gray-500">Off</span>
-                                        <button className="w-12 h-6 bg-gray-200 rounded-full p-1 cursor-pointer transition-colors hover:bg-gray-300">
-                                            <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
                         )}
-
-                        {/* Notifications Tab */}
+                        
+                        {/* Notifications and Support tabs should be updated similarly if needed */}
                         {activeTab === 'Notifications' && (
-                            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100 animate-fade-in">
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 animate-fade-in">
                                 {[
                                     { title: 'Task Updates', desc: 'Get notified when a provider accepts your request or completes a task.', default: true },
                                     { title: 'Promotional Emails', desc: 'Receive offers, discounts and news about TaskMate.', default: false },
@@ -331,7 +322,7 @@ const Settings = () => {
                                             <h3 className="font-bold text-gray-900">{item.title}</h3>
                                             <p className="text-sm text-gray-500 mt-1 max-w-md">{item.desc}</p>
                                         </div>
-                                        <button className={`w-12 h-6 rounded-full p-1 transition-colors ${item.default ? 'bg-green-600' : 'bg-gray-200'}`}>
+                                        <button className={`w-12 h-6 rounded-full p-1 transition-colors ${item.default ? 'bg-[#10B981]' : 'bg-gray-200'}`}>
                                             <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform ${item.default ? 'translate-x-6' : ''}`}></div>
                                         </button>
                                     </div>
@@ -339,27 +330,26 @@ const Settings = () => {
                             </div>
                         )}
 
-                        {/* Support Tab (Contact Form) */}
                         {activeTab === 'Support' && (
                             <div className="max-w-2xl mx-auto animate-fade-in">
                                 <div className="bg-green-50 border border-green-100 rounded-2xl p-6 mb-8 text-center">
-                                    <div className="w-12 h-12 bg-green-100 text-green-700 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <div className="w-12 h-12 bg-white text-[#10B981] rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
                                         <span className="material-icons-outlined">support_agent</span>
                                     </div>
                                     <h3 className="text-lg font-bold text-gray-900">Need Help?</h3>
                                     <p className="text-sm text-gray-600 mt-1">
-                                        Our support team is available 24/7. Fill out the form below or email us at <a href="mailto:support@taskmate.ng" className="text-green-700 font-bold hover:underline">support@taskmate.ng</a>
+                                        Our support team is available 24/7. Fill out the form below or email us at <a href="mailto:support@taskmate.ng" className="text-[#10B981] font-bold hover:underline">support@taskmate.ng</a>
                                     </p>
                                 </div>
 
-                                <form onSubmit={handleSendSupport} className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+                                <form onSubmit={handleSendSupport} className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm space-y-6">
                                     <h3 className="text-xl font-bold text-gray-900">Report an Issue</h3>
                                     
                                     <div className="space-y-4">
                                         <div className="space-y-1.5">
                                             <label className="text-sm font-semibold text-gray-700">Subject</label>
                                             <select 
-                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all bg-white"
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-50 focus:border-[#10B981] outline-none transition-all bg-white"
                                                 value={supportForm.subject}
                                                 onChange={e => setSupportForm({...supportForm, subject: e.target.value})}
                                             >
@@ -375,7 +365,7 @@ const Settings = () => {
                                             <label className="text-sm font-semibold text-gray-700">Message</label>
                                             <textarea 
                                                 rows="5"
-                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all resize-none"
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-50 focus:border-[#10B981] outline-none transition-all resize-none"
                                                 placeholder="Describe your issue in detail..."
                                                 value={supportForm.message}
                                                 onChange={e => setSupportForm({...supportForm, message: e.target.value})}
@@ -387,7 +377,7 @@ const Settings = () => {
                                         <button 
                                             type="submit"
                                             disabled={isLoading}
-                                            className="w-full py-3.5 bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-700/20 hover:bg-green-800 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                                            className="w-full py-3.5 bg-[#10B981] text-white font-bold rounded-xl shadow-lg shadow-[#10B981]/20 hover:bg-[#059669] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                                         >
                                             {isLoading ? (
                                                 <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
@@ -404,9 +394,9 @@ const Settings = () => {
                         )}
 
                     </div>
-                </div>
+                </main>
                 <MobileNavBar />
-            </main>
+            </div>
         </div>
     );
 };
