@@ -1,64 +1,83 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
+import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useData } from '../../context/DataContext';
 import { format } from 'date-fns';
 
 const MyRequests = () => {
     const navigate = useNavigate();
-    const { requests: allRequests } = useData(); // Aliasing
+    const { requests: allRequests } = useData();
     const [activeTab, setActiveTab] = useState('All');
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'Completed': return 'bg-green-100 text-green-700 border-green-200';
-            case 'In Progress': return 'bg-blue-100 text-blue-700 border-blue-200';
-            case 'Scheduled': return 'bg-purple-100 text-purple-700 border-purple-200';
-            case 'Cancelled': return 'bg-red-100 text-red-700 border-red-200';
-            case 'Open': return 'bg-orange-100 text-orange-700 border-orange-200';
-            default: return 'bg-gray-100 text-gray-700 border-gray-200';
+            case 'Completed': return 'bg-green-50 text-green-700 border-green-200';
+            case 'In Progress': return 'bg-blue-50 text-blue-700 border-blue-200';
+            case 'Scheduled': return 'bg-purple-50 text-purple-700 border-purple-200';
+            case 'Cancelled': return 'bg-red-50 text-red-700 border-red-200';
+            case 'Open': return 'bg-orange-50 text-orange-700 border-orange-200';
+            case 'Declined': return 'bg-red-50 text-red-700 border-red-200';
+            case 'Rejected': return 'bg-red-50 text-red-700 border-red-200';
+            default: return 'bg-gray-50 text-gray-700 border-gray-200';
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'Completed': return 'check_circle';
+            case 'In Progress': return 'autorenew';
+            case 'Scheduled': return 'event';
+            case 'Cancelled': return 'cancel';
+            case 'Open': return 'radio_button_unchecked';
+            case 'Declined': return 'block';
+            case 'Rejected': return 'block';
+            default: return 'pending';
         }
     };
 
     const filteredRequests = activeTab === 'All' 
         ? allRequests 
         : activeTab === 'History' 
-            ? allRequests.filter(r => ['Completed', 'Cancelled'].includes(r.status))
-            : allRequests.filter(r => ['Open', 'In Progress', 'Scheduled'].includes(r.status));
+            ? allRequests.filter(r => ['Completed', 'Cancelled', 'Declined', 'Rejected'].includes(r.status))
+            : allRequests.filter(r => ['Open', 'In Progress', 'Scheduled', 'Pending'].includes(r.status));
 
     return (
-        <div className="flex h-screen bg-[#F8F9FA] font-sans text-gray-900">
+        <div className="flex h-screen bg-white font-sans text-gray-900">
             <Sidebar />
 
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                <div className="flex-1 overflow-y-auto">
-                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                <TopNavbar breadcrumbs={['Customer', 'My Requests']} />
+                
+                <main className="flex-1 overflow-y-auto bg-white">
+                    <div className="max-w-[900px] mx-auto px-4 sm:px-8 py-6 sm:py-10 pb-24 md:pb-10">
                         
                         {/* Header */}
-                        <div className="md:flex md:items-center md:justify-between mb-8">
+                        <div className="flex items-end justify-between mb-6 sm:mb-8">
                             <div>
-                                <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">My Requests</h1>
-                                <p className="mt-1 text-sm text-gray-500">Manage and track all your service requests.</p>
+                                <h1 className="text-[24px] sm:text-[32px] font-extrabold text-gray-900 tracking-tight">My Requests</h1>
+                                <p className="mt-1 text-[13px] sm:text-[15px] font-medium text-gray-500">Track and manage all your service requests.</p>
                             </div>
-                            <div className="mt-4 md:mt-0">
-                                <Link to="/customer/post-request" className="inline-flex items-center px-5 py-2.5 rounded-xl shadow-lg shadow-green-600/20 bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition-all hover:scale-[1.02] active:scale-[0.98]">
-                                    <span className="material-icons-outlined text-lg mr-2">add</span>
-                                    New Request
-                                </Link>
-                            </div>
+                            <Link 
+                                to="/customer/post-request" 
+                                className="hidden sm:inline-flex items-center gap-1.5 text-[13px] font-bold text-white bg-[#10B981] px-4 py-2.5 rounded-xl hover:bg-[#059669] transition-colors shadow-sm"
+                            >
+                                <span className="material-icons-outlined text-[16px]">add</span>
+                                New Request
+                            </Link>
                         </div>
 
                         {/* Tabs */}
-                        <div className="bg-white rounded-2xl p-1.5 inline-flex shadow-sm border border-gray-100 mb-8">
+                        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-6 sm:mb-8 w-full sm:w-auto sm:inline-flex">
                             {['All', 'Active', 'History'].map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
-                                    className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                                    className={`flex-1 sm:flex-none px-5 sm:px-7 py-2 sm:py-2.5 rounded-lg text-[13px] font-bold transition-all duration-200 ${
                                         activeTab === tab
-                                            ? 'bg-gray-900 text-white shadow-md'
-                                            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                                            ? 'bg-white text-gray-900 shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700'
                                     }`}
                                 >
                                     {tab}
@@ -66,82 +85,93 @@ const MyRequests = () => {
                             ))}
                         </div>
 
-                        {/* Requests List */}
-                        <div className="space-y-4">
-                            {filteredRequests.length > 0 ? (
-                                filteredRequests.map((req) => {
-                                    const date = req.createdAt && req.createdAt.toDate ? format(req.createdAt.toDate(), 'MMM dd, yyyy') : 'Just now';
-                                    const providerName = req.providerName || "Pending Assign...";
-                                    const providerAvatar = req.providerAvatar || `https://ui-avatars.com/api/?name=${providerName}&background=random`;
-                                    
-                                    return (
-                                    <div 
-                                        key={req.id}
-                                        onClick={() => navigate(req.status === 'Completed' ? `/customer/service-review/${req.id}` : `/customer/request-status/${req.id}`)}
-                                        className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:border-gray-200 transition-all cursor-pointer group"
-                                    >
-                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                            
-                                            {/* Left: Service & Provider */}
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                                                    <span className="material-icons-outlined text-gray-400">handyman</span>
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-green-700 transition-colors">
-                                                        {req.title || req.category}
-                                                    </h3>
-                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                        {req.providerName ? (
-                                                            <>
-                                                                <img src={providerAvatar} alt={providerName} className="w-4 h-4 rounded-full" />
-                                                                <span className="text-sm text-gray-500 font-medium">{providerName}</span>
-                                                            </>
-                                                        ) : (
-                                                            <span className="text-xs text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md font-medium">Looking for provider...</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Middle: Date & Time */}
-                                            <div className="hidden md:block text-left md:text-center">
-                                                <div className="text-sm font-bold text-gray-900">{date}</div>
-                                                <div className="text-xs text-gray-400 capitalize">{req.urgency || 'Standard'} Priority</div>
-                                            </div>
-
-                                            {/* Right: Amount & Status */}
-                                            <div className="flex items-center justify-between md:justify-end gap-4 md:gap-8 w-full md:w-auto mt-2 md:mt-0 pl-16 md:pl-0">
-                                                <div className="text-right">
-                                                    <div className="text-lg font-black text-gray-900">₦{req.budget}</div>
-                                                </div>
-                                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(req.status)}`}>
-                                                    {req.status}
-                                                </span>
-                                                <span className="material-icons-outlined text-gray-300 group-hover:text-green-600 transition-colors">chevron_right</span>
-                                            </div>
-
-                                        </div>
-                                    </div>
-                                )})
-                            ) : (
-                                <div className="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-gray-200">
-                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-4">
-                                        <span className="material-icons-outlined text-gray-400 text-3xl">assignment_late</span>
-                                    </div>
-                                    <h3 className="text-lg font-bold text-gray-900">No requests found</h3>
-                                    <p className="text-gray-500 mt-1">You don't have any {activeTab.toLowerCase()} requests at the moment.</p>
-                                    <Link to="/customer/post-request" className="inline-block mt-6 px-6 py-2 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-colors">
-                                        Post a Request
-                                    </Link>
-                                </div>
-                            )}
+                        {/* Request Count */}
+                        <div className="flex items-center justify-between mb-4">
+                            <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wider">
+                                {filteredRequests.length} {filteredRequests.length === 1 ? 'request' : 'requests'}
+                            </p>
                         </div>
 
+                        {/* Request List */}
+                        {filteredRequests.length > 0 ? (
+                            <div className="flex flex-col">
+                                {filteredRequests.map((req, index) => {
+                                    const date = req.createdAt && req.createdAt.toDate ? format(req.createdAt.toDate(), 'MMM dd') : 'Just now';
+                                    const providerName = req.providerName || null;
+                                    
+                                    return (
+                                        <div 
+                                            key={req.id}
+                                            onClick={() => navigate(req.status === 'Completed' ? `/customer/service-review/${req.id}` : `/customer/request-status/${req.id}`)}
+                                            className={`flex items-center gap-3 sm:gap-4 py-3.5 sm:py-4 px-2 -mx-2 rounded-xl cursor-pointer group hover:bg-gray-50 transition-colors ${
+                                                index !== filteredRequests.length - 1 ? 'border-b border-gray-100' : ''
+                                            }`}
+                                        >
+                                            {/* Status Icon */}
+                                            <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                                req.status === 'Completed' ? 'bg-green-50' :
+                                                req.status === 'In Progress' ? 'bg-blue-50' :
+                                                req.status === 'Open' ? 'bg-orange-50' :
+                                                req.status === 'Cancelled' || req.status === 'Declined' || req.status === 'Rejected' ? 'bg-red-50' :
+                                                'bg-gray-50'
+                                            }`}>
+                                                <span className={`material-icons-outlined text-[18px] sm:text-[20px] ${
+                                                    req.status === 'Completed' ? 'text-green-600' :
+                                                    req.status === 'In Progress' ? 'text-blue-600' :
+                                                    req.status === 'Open' ? 'text-orange-600' :
+                                                    req.status === 'Cancelled' || req.status === 'Declined' || req.status === 'Rejected' ? 'text-red-500' :
+                                                    'text-gray-400'
+                                                }`}>{getStatusIcon(req.status)}</span>
+                                            </div>
+
+                                            {/* Request Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-2 mb-0.5">
+                                                    <h3 className="text-[14px] sm:text-[15px] font-bold text-gray-900 truncate group-hover:text-[#10B981] transition-colors">
+                                                        {req.title || req.category}
+                                                    </h3>
+                                                    <span className="text-[14px] sm:text-[15px] font-extrabold text-gray-900 shrink-0">
+                                                        ₦{Number(req.budget).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium text-gray-500">
+                                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusColor(req.status)}`}>
+                                                        {req.status}
+                                                    </span>
+                                                    <span className="text-gray-300">•</span>
+                                                    <span>{date}</span>
+                                                    {providerName && (
+                                                        <>
+                                                            <span className="text-gray-300 hidden sm:inline">•</span>
+                                                            <span className="hidden sm:inline truncate">{providerName}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Chevron */}
+                                            <span className="material-icons text-[18px] text-gray-300 group-hover:text-gray-500 shrink-0 transition-colors">chevron_right</span>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        ) : (
+                            <div className="text-center py-20">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-4">
+                                    <span className="material-icons-outlined text-gray-400 text-3xl">assignment_late</span>
+                                </div>
+                                <h3 className="text-lg font-extrabold text-gray-900">No requests found</h3>
+                                <p className="text-[14px] font-medium text-gray-500 mt-1.5">You don't have any {activeTab.toLowerCase()} requests yet.</p>
+                                <Link to="/customer/post-request" className="inline-block mt-6 px-6 py-2.5 bg-[#10B981] text-white rounded-xl text-[13px] font-bold hover:bg-[#059669] transition-colors shadow-sm">
+                                    Post a New Request
+                                </Link>
+                            </div>
+                        )}
+
                     </div>
-                </div>
+                </main>
                 <MobileNavBar />
-            </main>
+            </div>
         </div>
     );
 };
