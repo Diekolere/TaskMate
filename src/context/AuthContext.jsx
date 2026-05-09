@@ -99,12 +99,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (email, password, role) => {
     if (IS_SIMULATED) {
-      let user = MOCK_USER_CUSTOMER;
-      if (email.includes('provider')) {
-        user = MOCK_USER_PROVIDER;
-      }
+      const user = role === 'provider' ? MOCK_USER_PROVIDER : MOCK_USER_CUSTOMER;
       setCurrentUser(user);
       localStorage.setItem('taskmate_mock_user', JSON.stringify(user));
       return;

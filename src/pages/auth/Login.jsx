@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
@@ -14,14 +14,6 @@ const Login = () => {
   const { login, currentUser } = useAuth();
   const navigate = useNavigate();
 
-  React.useEffect(() => {
-    if (currentUser) {
-      if (currentUser.role === 'admin') navigate('/admin/dashboard', { replace: true });
-      else if (currentUser.role === 'provider') navigate('/provider/dashboard', { replace: true });
-      else if (currentUser.role === 'customer') navigate('/dashboard', { replace: true });
-    }
-  }, [currentUser, navigate]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -32,12 +24,10 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      const user = await login(formData.email, formData.password);
+      await login(formData.email, formData.password, selectedRole);
       toast.success('Welcome back!');
-      // Use backend role first, fall back to selected role
-      const role = user?.role || selectedRole;
-      if (role === 'admin') navigate('/admin/dashboard', { replace: true });
-      else if (role === 'provider') navigate('/provider/dashboard', { replace: true });
+      // Navigate based on the role the user selected in the toggle
+      if (selectedRole === 'provider') navigate('/provider/dashboard', { replace: true });
       else navigate('/dashboard', { replace: true });
     } catch (err) {
       setError('Failed to sign in. Please check your credentials.');
@@ -46,6 +36,13 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  // Redirect already-authenticated users away from the login page
+  if (currentUser) {
+    if (currentUser.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
+    if (currentUser.role === 'provider') return <Navigate to="/provider/dashboard" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const isProvider = selectedRole === 'provider';
 
