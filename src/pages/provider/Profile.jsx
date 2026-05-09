@@ -142,7 +142,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex font-sans text-gray-800">
+    <div className="min-h-screen bg-white flex font-sans text-gray-800">
       <ProviderSidebar />
       <ProviderMobileNavBar />
       <Toaster position="top-right" richColors />

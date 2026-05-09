@@ -91,7 +91,7 @@ const Earnings = () => {
     }, [jobs, currentUser]);
 
     return (
-        <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
+        <div className="min-h-screen bg-white flex font-sans text-text-light">
             <ProviderSidebar />
             <ProviderMobileNavBar />
             <Tutorial steps={tutorialSteps} tutorialKey="providerEarnings" />

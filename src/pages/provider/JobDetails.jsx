@@ -136,7 +136,7 @@ const JobDetails = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-white flex items-center justify-center">
                 <span className="material-icons-outlined animate-spin text-4xl text-green-700">progress_activity</span>
             </div>
         );
@@ -144,7 +144,7 @@ const JobDetails = () => {
     
     if (!job) {
          return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center flex-col gap-4">
+            <div className="min-h-screen bg-white flex items-center justify-center flex-col gap-4">
                 <p className="text-gray-500">Job not found</p>
                 <Link to="/provider/jobs" className="text-green-700 font-bold hover:underline">Back to Jobs</Link>
             </div>
@@ -152,7 +152,7 @@ const JobDetails = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
+        <div className="min-h-screen bg-white flex font-sans text-text-light">
             <ProviderSidebar />
             <ProviderMobileNavBar />
             

@@ -34,7 +34,7 @@ const MyJobs = () => {
     const displayJobs = activeTab === 'active' ? activeJobs : completedJobs;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex font-sans text-text-light">
+        <div className="min-h-screen bg-white flex font-sans text-text-light">
             <Tutorial steps={tutorialSteps} tutorialKey="providerJobs" />
             <ProviderSidebar />
             <ProviderMobileNavBar />
