@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
+import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -198,42 +199,39 @@ const PostRequest = () => {
     };
     
     return (
-        <div className="font-body bg-gray-50 text-gray-900 min-h-screen">
-            <div className="flex h-screen overflow-hidden">
-                <Sidebar />
-                <main className="flex-1 overflow-y-auto relative p-6 lg:p-10 pb-24">
-                    {/* Branding - Top Right */}
-                    <div className="absolute top-6 right-6 lg:top-10 lg:right-10 flex items-center gap-2 pointer-events-none select-none opacity-80">
-                        <img src="/icon.png" alt="TaskMate" className="h-6 w-6 object-contain" />
-                        <span className="font-display font-bold text-lg text-green-700">TaskMate</span>
-                    </div>
+        <div className="flex h-screen bg-white font-sans text-gray-900">
+            <Sidebar />
 
-                    <div className="max-w-3xl mx-auto mt-8">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                <TopNavbar breadcrumbs={['Customer', 'Post Request']} />
+
+                <main className="flex-1 overflow-y-auto relative p-4 sm:p-6 lg:p-10 pb-24 md:pb-10">
+                    <div className="max-w-3xl mx-auto mt-4">
                         <div className="mb-8">
-                            <Link className="inline-flex items-center text-sm text-gray-500 hover:text-green-600 mb-4 transition-colors" to="/customer/dashboard">
+                            <Link className="inline-flex items-center text-sm text-gray-500 hover:text-[#10B981] mb-4 transition-colors font-bold" to="/customer/dashboard">
                                 <span className="material-icons-outlined text-lg mr-1">arrow_back</span>
                                 Back to Dashboard
                             </Link>
-                            <h1 className="text-3xl font-bold text-gray-900">
+                            <h1 className="text-3xl font-black text-gray-900 tracking-tight">
                                 Post a Request
-                                {providerName && <span className="block text-xl text-green-600 font-medium mt-1">for {providerName}</span>}
+                                {providerName && <span className="block text-xl text-[#10B981] font-bold mt-1">for {providerName}</span>}
                             </h1>
-                            <p className="mt-2 text-gray-600">Describe the task you need help with in Lagos, Abuja, or anywhere in Nigeria.</p>
+                            <p className="mt-2 text-gray-500 font-medium">Describe the task you need help with in Lagos, Abuja, or anywhere in Nigeria.</p>
                         </div>
 
-                        <div className="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
-                            <form className="p-6 space-y-8" onSubmit={handleSubmit}>
+                        <div className="bg-white shadow-sm rounded-3xl overflow-hidden border border-gray-100">
+                            <form className="p-6 md:p-8 space-y-8" onSubmit={handleSubmit}>
                                 {/* Task Details */}
                                 <div className="space-y-6">
-                                    <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
-                                        <span className="material-icons-outlined text-green-600">edit_note</span>
-                                        <h2 className="text-lg font-semibold text-gray-900">Task Details</h2>
+                                    <div className="flex items-center gap-3 pb-2 border-b border-gray-50">
+                                        <span className="material-icons-outlined text-[#10B981]">edit_note</span>
+                                        <h2 className="text-lg font-bold text-gray-900">Task Details</h2>
                                     </div>
                                     <div className="grid grid-cols-1 gap-6">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="title">Task Title</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2" htmlFor="title">Task Title</label>
                                             <input 
-                                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 placeholder-gray-400 focus:outline-none border" 
+                                                className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-[#10B981] focus:ring-4 focus:ring-green-50 sm:text-sm py-3.5 px-4 placeholder-gray-400 focus:outline-none border transition-all" 
                                                 id="title" 
                                                 name="title"
                                                 value={title}
@@ -244,9 +242,9 @@ const PostRequest = () => {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="category">Category</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2" htmlFor="category">Category</label>
                                                 <select
-                                                    className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 border focus:outline-none ${category ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                    className={`block w-full rounded-xl border-gray-200 shadow-sm focus:border-[#10B981] focus:ring-4 focus:ring-green-50 sm:text-sm py-3.5 px-4 border focus:outline-none transition-all ${category ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                                                     id="category"
                                                     name="category"
                                                     value={category}
@@ -269,13 +267,13 @@ const PostRequest = () => {
                                                 {category && <input type="hidden" name="category" value={category} />}
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="budget">Budget (₦)</label>
-                                                <div className="relative rounded-md shadow-sm">
-                                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                                        <span className="text-gray-500 sm:text-sm">₦</span>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2" htmlFor="budget">Budget (₦)</label>
+                                                <div className="relative rounded-xl shadow-sm">
+                                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                                                        <span className="text-gray-500 font-bold sm:text-sm">₦</span>
                                                     </div>
                                                     <input 
-                                                        className="block w-full rounded-md border-gray-300 pl-8 focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 border focus:outline-none" 
+                                                        className="block w-full rounded-xl border-gray-200 pl-8 focus:border-[#10B981] focus:ring-4 focus:ring-green-50 sm:text-sm py-3.5 px-4 border focus:outline-none transition-all" 
                                                         id="budget" 
                                                         name="budget"
                                                         value={budget}
@@ -288,15 +286,15 @@ const PostRequest = () => {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="description">Description</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2" htmlFor="description">Description</label>
                                             <textarea 
-                                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 placeholder-gray-400 border focus:outline-none" 
+                                                className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-[#10B981] focus:ring-4 focus:ring-green-50 sm:text-sm py-3.5 px-4 placeholder-gray-400 border focus:outline-none transition-all resize-none" 
                                                 id="description" 
                                                 name="description"
                                                 value={description}
                                                 onChange={(e) => setDescription(e.target.value)}
                                                 placeholder="Provide more details about the task..." 
-                                                rows="4"
+                                                rows="5"
                                             ></textarea>
                                         </div>
                                     </div>
@@ -304,15 +302,15 @@ const PostRequest = () => {
 
                                 {/* Images */}
                                 <div className="space-y-6">
-                                    <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
-                                        <span className="material-icons-outlined text-green-600">image</span>
-                                        <h2 className="text-lg font-semibold text-gray-900">Images</h2>
+                                    <div className="flex items-center gap-3 pb-2 border-b border-gray-50">
+                                        <span className="material-icons-outlined text-[#10B981]">image</span>
+                                        <h2 className="text-lg font-bold text-gray-900">Images</h2>
                                     </div>
-                                    <div className="mt-1 flex justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-10 hover:bg-gray-50 transition-colors cursor-pointer group relative">
+                                    <div className="mt-1 flex justify-center rounded-2xl border-2 border-dashed border-gray-200 px-6 py-12 hover:bg-gray-50 transition-colors cursor-pointer group relative">
                                         <div className="text-center">
                                             {previewUrl ? (
                                                 <div className="mb-4 relative inline-block">
-                                                    <img src={previewUrl} alt="Preview" className="h-48 object-contain rounded-md shadow-sm" />
+                                                    <img src={previewUrl} alt="Preview" className="h-48 object-contain rounded-xl shadow-sm" />
                                                     <button
                                                         type="button"
                                                         onClick={(e) => {
@@ -320,17 +318,17 @@ const PostRequest = () => {
                                                             setSelectedFile(null);
                                                             setPreviewUrl(null);
                                                         }}
-                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md"
+                                                        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors shadow-lg"
                                                     >
-                                                        <span className="material-icons-outlined text-sm block">close</span>
+                                                        <span className="material-icons-outlined text-[18px] block">close</span>
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <span className="material-icons-outlined text-4xl text-gray-400 group-hover:text-green-600 transition-colors">cloud_upload</span>
+                                                <span className="material-icons-outlined text-[48px] text-gray-300 group-hover:text-[#10B981] transition-colors">cloud_upload</span>
                                             )}
                                             
                                             <div className="mt-4 flex text-sm text-gray-600 justify-center">
-                                                <label className="relative cursor-pointer rounded-md font-medium text-green-600 hover:text-green-500 focus-within:outline-none" htmlFor="file-upload">
+                                                <label className="relative cursor-pointer rounded-md font-bold text-[#10B981] hover:text-[#059669] focus-within:outline-none" htmlFor="file-upload">
                                                     <span>{selectedFile ? 'Change file' : 'Upload a file'}</span>
                                                     <input 
                                                         className="sr-only" 
@@ -341,29 +339,29 @@ const PostRequest = () => {
                                                         onChange={handleFileChange}
                                                     />
                                                 </label>
-                                                {!selectedFile && <p className="pl-1">or drag and drop</p>}
+                                                {!selectedFile && <p className="pl-1 font-medium">or drag and drop</p>}
                                             </div>
-                                            <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                                            <p className="text-xs text-gray-400 font-medium mt-1">PNG, JPG, GIF up to 10MB</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Location & Urgency */}
                                 <div className="space-y-6">
-                                    <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
-                                        <span className="material-icons-outlined text-green-600">location_on</span>
-                                        <h2 className="text-lg font-semibold text-gray-900">Location & Urgency</h2>
+                                    <div className="flex items-center gap-3 pb-2 border-b border-gray-50">
+                                        <span className="material-icons-outlined text-[#10B981]">location_on</span>
+                                        <h2 className="text-lg font-bold text-gray-900">Location & Urgency</h2>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="location">Service Location (Select on Map)</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2" htmlFor="location">Service Location (Select on Map)</label>
                                             <div className="space-y-4">
                                                 <div className="relative">
-                                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                                        <span className="material-icons-outlined text-gray-400 text-sm">place</span>
+                                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                                                        <span className="material-icons-outlined text-gray-400 text-[20px]">place</span>
                                                     </div>
                                                     <input 
-                                                        className="block w-full rounded-md border-gray-300 pl-10 focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 px-3 border focus:outline-none bg-white shadow-sm" 
+                                                        className="block w-full rounded-xl border-gray-200 pl-11 focus:border-[#10B981] focus:ring-4 focus:ring-green-50 sm:text-sm py-3.5 px-4 border focus:outline-none bg-white transition-all shadow-sm" 
                                                         id="location" 
                                                         name="location" 
                                                         value={address}
@@ -372,10 +370,10 @@ const PostRequest = () => {
                                                         type="text" 
                                                         required
                                                     />
-                                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                                    <div className="absolute inset-y-0 right-0 flex items-center pr-4">
                                                        <button 
                                                             type="button"
-                                                            className="text-green-600 hover:text-green-700 font-medium text-xs flex items-center gap-1"
+                                                            className="text-[#10B981] hover:text-[#059669] font-bold text-xs flex items-center gap-1 bg-green-50 px-3 py-1.5 rounded-lg transition-colors"
                                                             onClick={() => {
                                                                 if (navigator.geolocation) {
                                                                     navigator.geolocation.getCurrentPosition((pos) => {
@@ -394,7 +392,7 @@ const PostRequest = () => {
                                                     </div>
                                                 </div>
 
-                                                <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-200 shadow-inner z-0 relative">
+                                                <div className="h-64 w-full rounded-2xl overflow-hidden border border-gray-200 shadow-inner z-0 relative">
                                                     <MapContainer 
                                                         center={mapCenter} 
                                                         zoom={13} 
@@ -407,14 +405,14 @@ const PostRequest = () => {
                                                         <LocationMarker position={markerPos} setPosition={setMarkerPos} setAddress={setAddress} />
                                                     </MapContainer>
                                                 </div>
-                                                <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                    <span className="material-icons-outlined text-sm">info</span>
+                                                <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5">
+                                                    <span className="material-icons-outlined text-[16px] text-[#10B981]">info</span>
                                                     Click on the map to pin the exact service location.
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-3">Urgency Level</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-3">Urgency Level</label>
                                             <div className="grid grid-cols-3 gap-4">
                                                 <label className="cursor-pointer">
                                                     <input 
@@ -425,10 +423,10 @@ const PostRequest = () => {
                                                         checked={urgency === 'low'}
                                                         onChange={() => setUrgency('low')}
                                                     />
-                                                    <div className="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 peer-checked:border-green-500 peer-checked:ring-1 peer-checked:ring-green-500 peer-checked:bg-green-50 transition-all text-center">
-                                                        <span className="material-icons-outlined text-gray-400 peer-checked:text-green-600 mb-1 block">hourglass_empty</span>
-                                                        <span className="block text-sm font-medium text-gray-900">Low</span>
-                                                        <span className="block text-xs text-gray-500">Within a week</span>
+                                                    <div className="rounded-2xl border border-gray-200 p-4 hover:bg-gray-50 peer-checked:border-[#10B981] peer-checked:ring-2 peer-checked:ring-green-100 peer-checked:bg-green-50 transition-all text-center">
+                                                        <span className="material-icons-outlined text-gray-300 peer-checked:text-[#10B981] mb-2 block text-[24px]">hourglass_empty</span>
+                                                        <span className="block text-sm font-bold text-gray-900">Low</span>
+                                                        <span className="block text-[10px] text-gray-400 font-bold uppercase mt-1">Within a week</span>
                                                     </div>
                                                 </label>
                                                 <label className="cursor-pointer">
@@ -440,10 +438,10 @@ const PostRequest = () => {
                                                         checked={urgency === 'medium'}
                                                         onChange={() => setUrgency('medium')}
                                                     />
-                                                    <div className="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 peer-checked:border-green-500 peer-checked:ring-1 peer-checked:ring-green-500 peer-checked:bg-green-50 transition-all text-center">
-                                                        <span className="material-icons-outlined text-gray-400 peer-checked:text-green-600 mb-1 block">schedule</span>
-                                                        <span className="block text-sm font-medium text-gray-900">Medium</span>
-                                                        <span className="block text-xs text-gray-500">Within 48 hours</span>
+                                                    <div className="rounded-2xl border border-gray-200 p-4 hover:bg-gray-50 peer-checked:border-[#10B981] peer-checked:ring-2 peer-checked:ring-green-100 peer-checked:bg-green-50 transition-all text-center">
+                                                        <span className="material-icons-outlined text-gray-300 peer-checked:text-[#10B981] mb-2 block text-[24px]">schedule</span>
+                                                        <span className="block text-sm font-bold text-gray-900">Medium</span>
+                                                        <span className="block text-[10px] text-gray-400 font-bold uppercase mt-1">Within 48 hours</span>
                                                     </div>
                                                 </label>
                                                 <label className="cursor-pointer">
@@ -455,10 +453,10 @@ const PostRequest = () => {
                                                         checked={urgency === 'high'}
                                                         onChange={() => setUrgency('high')}
                                                     />
-                                                    <div className="rounded-lg border border-gray-200 p-4 hover:bg-gray-50 peer-checked:border-red-500 peer-checked:ring-1 peer-checked:ring-red-500 peer-checked:bg-red-50 transition-all text-center">
-                                                        <span className="material-icons-outlined text-gray-400 peer-checked:text-red-500 mb-1 block">priority_high</span>
-                                                        <span className="block text-sm font-medium text-gray-900 peer-checked:text-red-600">Emergency</span>
-                                                        <span className="block text-xs text-gray-500">ASAP</span>
+                                                    <div className="rounded-2xl border border-gray-200 p-4 hover:bg-gray-50 peer-checked:border-red-500 peer-checked:ring-2 peer-checked:ring-red-100 peer-checked:bg-red-50 transition-all text-center">
+                                                        <span className="material-icons-outlined text-gray-300 peer-checked:text-red-500 mb-2 block text-[24px]">priority_high</span>
+                                                        <span className="block text-sm font-bold text-gray-900 peer-checked:text-red-700">Emergency</span>
+                                                        <span className="block text-[10px] text-gray-400 font-bold uppercase mt-1">ASAP</span>
                                                     </div>
                                                 </label>
                                             </div>
@@ -467,13 +465,13 @@ const PostRequest = () => {
                                 </div>
 
                                 {/* Buttons */}
-                                <div className="pt-6 border-t border-gray-100 flex flex-col sm:flex-row justify-end gap-4">
-                                    <button className="w-full sm:w-auto px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors" type="button">
+                                <div className="pt-8 border-t border-gray-50 flex flex-col sm:flex-row justify-end gap-4">
+                                    <button className="w-full sm:w-auto px-8 py-3.5 border border-gray-200 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-all" type="button">
                                         Save Draft
                                     </button>
-                                    <button disabled={loading} className="w-full sm:w-auto px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" type="submit">
+                                    <button disabled={loading} className="w-full sm:w-auto px-10 py-3.5 border border-transparent shadow-xl shadow-green-600/20 text-sm font-bold rounded-xl text-white bg-[#10B981] hover:bg-[#059669] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed" type="submit">
                                         {loading ? (
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
                                         ) : (
                                             <>
                                                 <span className="material-icons-outlined text-sm">send</span>
@@ -484,10 +482,6 @@ const PostRequest = () => {
                                 </div>
                             </form>
                         </div>
-                        
-                        <p className="mt-4 text-center text-xs text-gray-400">
-                            By posting, you agree to TaskMate's <Link className="underline hover:text-green-600" to="#">Terms of Service</Link> and <Link className="underline hover:text-green-600" to="#">Privacy Policy</Link>.
-                        </p>
                     </div>
                 </main>
                 <MobileNavBar />
