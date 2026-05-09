@@ -32,9 +32,10 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
         navigate('/');
     };
 
-    // Helper to get path from label
+    // Helper to get path from label (supports both customer and provider roles)
     const getPath = (label) => {
         const map = {
+            // Customer paths
             'Customer': '/customer/dashboard',
             'Feed': '/customer/dashboard',
             'Explore Providers': '/customer/browse',
@@ -42,9 +43,17 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
             'My Requests': '/customer/requests',
             'Saved': '/customer/saved',
             'Saved Providers': '/customer/saved',
-            'Settings': '/customer/settings',
             'Post Request': '/customer/post-request',
-            'Dashboard': '/customer/dashboard',
+            // Provider paths
+            'Overview': '/provider/dashboard',
+            'Dashboard': currentUser?.role === 'provider' ? '/provider/dashboard' : '/customer/dashboard',
+            'Job Requests': '/provider/requests',
+            'My Jobs': '/provider/jobs',
+            'Earnings': '/provider/earnings',
+            'Schedule': '/provider/schedule',
+            'Profile': currentUser?.role === 'provider' ? '/provider/profile' : '/customer/profile',
+            'Settings': currentUser?.role === 'provider' ? '/provider/settings' : '/customer/settings',
+            'Job Details': '#',
             'Request Details': '#',
         };
         return map[label] || '#';
@@ -152,8 +161,8 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                                 <p className="text-[13px] font-bold text-gray-900 truncate">{currentUser?.displayName || 'User'}</p>
                                 <p className="text-[11px] font-medium text-gray-500 truncate">{currentUser?.email || 'user@taskmate.com'}</p>
                             </div>
-                            <Link 
-                                to="/customer/settings" 
+                            <Link
+                                to={currentUser?.role === 'provider' ? '/provider/settings' : '/customer/settings'}
                                 onClick={() => setIsProfileOpen(false)}
                                 className="flex items-center gap-3 px-4 py-3 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                             >
