@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import CategoryIcon from '../../components/ui/CategoryIcon';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
@@ -89,16 +90,16 @@ const MyRequests = () => {
                             </Link>
                         </div>
 
-                        {/* Tabs */}
-                        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-6 sm:mb-8 w-full sm:w-auto sm:inline-flex">
+                        {/* Tabs — underline style */}
+                        <div className="flex gap-6 border-b border-gray-100 mb-6 sm:mb-8">
                             {['All', 'Active', 'History'].map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
-                                    className={`flex-1 sm:flex-none px-5 sm:px-7 py-2 sm:py-2.5 rounded-lg text-[13px] font-bold transition-all duration-200 ${
+                                    className={`pb-3 text-[13px] font-semibold transition-all border-b-2 -mb-px ${
                                         activeTab === tab
-                                            ? 'bg-white text-gray-900 shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-700'
+                                            ? 'border-[#10B981] text-[#10B981]'
+                                            : 'border-transparent text-gray-400 hover:text-gray-700'
                                     }`}
                                 >
                                     {tab}
@@ -121,67 +122,38 @@ const MyRequests = () => {
                                     const providerName = req.providerName || null;
                                     
                                     return (
-                                        <div 
+                                        <div
                                             key={req.id}
                                             onClick={() => {
-                                                if (req.status === 'negotiating') {
-                                                    navigate(`/customer/negotiation/${req.id}`);
-                                                } else if (req.status === 'awaiting_payment') {
-                                                    navigate(`/customer/payment/${req.id}`);
-                                                } else if (req.status === 'Completed') {
-                                                    navigate(`/customer/service-review/${req.id}`);
-                                                } else {
-                                                    navigate(`/customer/request-status/${req.id}`);
-                                                }
+                                                if (req.status === 'awaiting_payment') navigate(`/customer/payment/${req.id}`);
+                                                else if (req.status === 'Completed') navigate(`/customer/service-review/${req.id}`);
+                                                else navigate(`/customer/request-status/${req.id}`);
                                             }}
-                                            className={`flex items-center gap-3 sm:gap-4 py-3.5 sm:py-4 px-2 -mx-2 rounded-xl cursor-pointer group hover:bg-gray-50 transition-colors ${
+                                            className={`flex items-center gap-3 py-4 cursor-pointer group hover:bg-gray-50/60 transition-colors rounded-xl px-1 -mx-1 ${
                                                 index !== filteredRequests.length - 1 ? 'border-b border-gray-100' : ''
                                             }`}
                                         >
-                                            {/* Status Icon */}
-                                            <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                                                req.status === 'Completed' ? 'bg-green-50' :
-                                                req.status === 'In Progress' ? 'bg-blue-50' :
-                                                req.status === 'Open' ? 'bg-orange-50' :
-                                                req.status === 'Cancelled' || req.status === 'Declined' || req.status === 'Rejected' ? 'bg-red-50' :
-                                                'bg-gray-50'
-                                            }`}>
-                                                <span className={`material-icons-outlined text-[18px] sm:text-[20px] ${
-                                                    req.status === 'Completed' ? 'text-green-600' :
-                                                    req.status === 'In Progress' ? 'text-blue-600' :
-                                                    req.status === 'Open' ? 'text-orange-600' :
-                                                    req.status === 'Cancelled' || req.status === 'Declined' || req.status === 'Rejected' ? 'text-red-500' :
-                                                    'text-gray-400'
-                                                }`}>{getStatusIcon(req.status)}</span>
-                                            </div>
+                                            {/* Category icon */}
+                                            <CategoryIcon category={req.category || req.serviceType} size="md" />
 
-                                            {/* Request Info */}
+                                            {/* Info — takes all available space */}
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2 mb-0.5">
-                                                    <h3 className="text-[14px] sm:text-[15px] font-bold text-gray-900 truncate group-hover:text-[#10B981] transition-colors">
-                                                        {req.title || req.category}
-                                                    </h3>
-                                                    <span className="text-[14px] sm:text-[15px] font-extrabold text-gray-900 shrink-0">
-                                                        ₦{Number(req.budget).toLocaleString()}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium text-gray-500">
-                                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusColor(req.status)}`}>
-                                                        {formatStatus(req.status)}
-                                                    </span>
-                                                    <span className="text-gray-300">•</span>
-                                                    <span>{date}</span>
-                                                    {providerName && (
-                                                        <>
-                                                            <span className="text-gray-300 hidden sm:inline">•</span>
-                                                            <span className="hidden sm:inline truncate">{providerName}</span>
-                                                        </>
-                                                    )}
+                                                <h3 className="text-[14px] font-bold text-gray-900 truncate group-hover:text-[#10B981] transition-colors mb-0.5">
+                                                    {req.title || req.category}
+                                                </h3>
+                                                <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                                                    <span className="truncate max-w-[100px] sm:max-w-none">{req.category || 'Service'}</span>
+                                                    <span>·</span>
+                                                    <span className="shrink-0">{date}</span>
                                                 </div>
                                             </div>
 
-                                            {/* Chevron */}
-                                            <span className="material-icons text-[18px] text-gray-300 group-hover:text-gray-500 shrink-0 transition-colors">chevron_right</span>
+                                            {/* Status pill */}
+                                            <span className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold border whitespace-nowrap ${getStatusColor(req.status)}`}>
+                                                {formatStatus(req.status)}
+                                            </span>
+
+                                            <span className="material-icons text-[18px] text-gray-300 group-hover:text-gray-400 shrink-0 transition-colors">chevron_right</span>
                                         </div>
                                     )
                                 })}
