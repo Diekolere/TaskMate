@@ -37,10 +37,10 @@ const Sidebar = () => {
 
     return (
         <aside 
-            className={`hidden md:flex flex-col bg-white border-r border-gray-200 h-screen sticky top-0 shrink-0 py-8 transition-all duration-300 ease-in-out z-50 ${isCollapsed ? 'w-[80px] px-2 items-center' : 'w-[260px] px-6'}`}
+            className={`hidden md:flex flex-col bg-white border-r border-gray-100 h-screen sticky top-0 shrink-0 pb-8 transition-all duration-300 ease-in-out z-50 ${isCollapsed ? 'w-[80px]' : 'w-[260px]'}`}
         >
             {/* Logo */}
-            <div className={`flex items-center mb-6 relative ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+            <div className={`flex items-center h-20 border-b border-gray-100 mb-6 w-full relative ${isCollapsed ? 'justify-center px-2' : 'justify-between px-6'}`}>
                 <Link to={currentUser?.role === 'provider' ? '/provider/dashboard' : '/customer/dashboard'} className="flex items-center gap-2.5">
                     <img 
                         alt="TaskMate Icon" 
@@ -67,7 +67,7 @@ const Sidebar = () => {
             )}
 
             {/* Nav Items */}
-            <nav className={`flex-1 w-full flex flex-col gap-1.5 ${isCollapsed ? 'items-center' : ''}`}>
+            <nav className={`flex-1 w-full flex flex-col gap-1.5 ${isCollapsed ? 'items-center px-2' : 'px-6'}`}>
                 {navItems.map((item, idx) => {
                     const isActive = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
                     return (
@@ -75,25 +75,25 @@ const Sidebar = () => {
                             key={idx}
                             to={item.href} 
                             className={`flex items-center rounded-xl transition-all duration-200 group w-full ${
-                                isCollapsed ? 'justify-center p-3' : 'px-4 py-3.5 gap-3.5'
+                                isCollapsed ? 'justify-center p-2.5' : 'px-3.5 py-2.5 gap-3'
                             } ${
                                 isActive 
-                                    ? 'bg-[#0F172A] text-[#4ADE80] shadow-sm' 
-                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                                    ? 'bg-[#0F172A] text-white shadow-sm' 
+                                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 border border-transparent'
                             }`}
                             title={isCollapsed ? item.label : ""}
                         >
-                            <span className={`material-icons-outlined text-[22px] transition-colors shrink-0 ${isActive ? 'text-[#4ADE80]' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                            <span className={`material-icons-outlined text-[20px] transition-colors shrink-0 ${isActive ? 'text-[#10B981]' : 'text-gray-400 group-hover:text-gray-600'}`}>
                                 {item.icon}
                             </span>
-                            {!isCollapsed && <span className={`font-bold text-[14px] tracking-wide ${isActive ? 'text-[#4ADE80]' : ''}`}>{item.label}</span>}
+                            {!isCollapsed && <span className={`font-bold text-[13px] tracking-wide ${isActive ? 'text-white' : ''}`}>{item.label}</span>}
                         </Link>
                     );
                 })}
             </nav>
 
             {/* Bottom Actions - Merged Profile and Logout */}
-            <div className={`w-full flex flex-col mt-auto pt-6 border-t border-gray-100 ${isCollapsed ? 'items-center' : ''}`}>
+            <div className={`w-full flex flex-col mt-auto pt-6 border-t border-gray-100 ${isCollapsed ? 'items-center px-2' : 'px-6'}`}>
                 <button 
                     onClick={handleLogout}
                     className={`flex items-center rounded-xl transition-all duration-200 group hover:bg-red-50 w-full ${
