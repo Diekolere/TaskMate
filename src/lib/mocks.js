@@ -26,6 +26,7 @@ export const MOCK_USER_PROVIDER = {
     phone_number: '+234-801-234-5678',
     trust_score: 92,
     is_active: true,
+    kycCompleted: false,
     provider_profiles: {
         trade_category: ['electrician', 'plumber'],
         bio: 'Certified electrician with 10 years experience in residential wiring.',

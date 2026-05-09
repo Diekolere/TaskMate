@@ -59,6 +59,10 @@ import AdminUserDetails from './pages/admin/UserDetails';
 import AdminRequestDetails from './pages/admin/RequestDetails';
 import AdminVerificationDetails from './pages/admin/VerificationDetails';
 
+import PaymentCheckout from './pages/customer/PaymentCheckout';
+import JobOTP from './pages/customer/JobOTP';
+import ConfirmCompletion from './pages/customer/ConfirmCompletion';
+import JobStart from './pages/provider/JobStart';
 import ProtectedRoute from './components/ProtectedRoute';
 import AIChat from './components/customer/AIChat';
 
@@ -92,6 +96,9 @@ function AnimatedRoutes() {
         <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer']}><Settings /></ProtectedRoute>} /> {/* Reusing settings for profile demo */}
         <Route path="/customer/saved" element={<ProtectedRoute allowedRoles={['customer']}><SavedProviders /></ProtectedRoute>} />
         <Route path="/customer/invite" element={<ProtectedRoute allowedRoles={['customer']}><InviteFriends /></ProtectedRoute>} />
+        <Route path="/customer/payment/:requestId" element={<ProtectedRoute allowedRoles={['customer']}><PaymentCheckout /></ProtectedRoute>} />
+        <Route path="/customer/job-otp/:jobId" element={<ProtectedRoute allowedRoles={['customer']}><JobOTP /></ProtectedRoute>} />
+        <Route path="/customer/confirm/:jobId" element={<ProtectedRoute allowedRoles={['customer']}><ConfirmCompletion /></ProtectedRoute>} />
 
         {/* Provider Onboarding Routes */}
         <Route path="/provider/onboarding" element={<ProtectedRoute allowedRoles={['provider']}><Navigate to="/provider/onboarding/step-1" replace /></ProtectedRoute>} />
@@ -116,6 +123,7 @@ function AnimatedRoutes() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/provider/schedule" element={<Schedule />} />
         <Route path="/provider/invite" element={<ProtectedRoute allowedRoles={['provider']}><ProviderInviteFriends /></ProtectedRoute>} />
+        <Route path="/provider/job-start/:jobId" element={<ProtectedRoute allowedRoles={['provider']}><JobStart /></ProtectedRoute>} />
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
