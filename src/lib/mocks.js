@@ -23,6 +23,7 @@ export const MOCK_USER_PROVIDER = {
     avatar_url: 'https://i.pravatar.cc/150?u=provider',
     photoURL: 'https://i.pravatar.cc/150?u=provider',
     location_name: 'Surulere, Lagos',
+    phone_number: '+234-801-234-5678',
     trust_score: 92,
     is_active: true,
     kycCompleted: false,
@@ -85,7 +86,9 @@ export const MOCK_PROVIDERS = [
     {
         id: 'mock-provider-1',
         full_name: 'Ibrahim Musa',
+        displayName: 'Ibrahim Musa',
         avatar_url: 'https://i.pravatar.cc/150?u=p1',
+        phone_number: '+234-801-234-5678',
         role: 'provider',
         trust_score: 92,
         is_active: true,
@@ -100,7 +103,9 @@ export const MOCK_PROVIDERS = [
     {
         id: 'mock-provider-2',
         full_name: 'Sarah Chen',
+        displayName: 'Sarah Chen',
         avatar_url: 'https://i.pravatar.cc/150?u=p2',
+        phone_number: '+234-802-345-6789',
         role: 'provider',
         trust_score: 88,
         is_active: true,
@@ -115,7 +120,9 @@ export const MOCK_PROVIDERS = [
     {
         id: 'mock-provider-3',
         full_name: 'Babatunde Raji',
+        displayName: 'Babatunde Raji',
         avatar_url: 'https://i.pravatar.cc/150?u=p3',
+        phone_number: '+234-803-456-7890',
         role: 'provider',
         trust_score: 95,
         is_active: true,

@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { useData } from '../../context/DataContext';
+import { MOCK_PROVIDERS } from '../../lib/mocks';
 
 const RequestStatus = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { requests, getProviders, isSimulated } = useData();
+    const { requests, getProviders, isSimulated, releasePayment } = useData();
     const [request, setRequest] = useState(null);
-    const [providerData, setProviderData] = useState(null);
+    const [interestedProviders, setInterestedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -25,13 +28,32 @@ const RequestStatus = () => {
         if (req) {
             setRequest(req);
             
-            // Fetch real provider data if assigned
-            if (req.providerId || req.provider_id) {
-                const pId = req.providerId || req.provider_id;
+            // Load interested providers from mock data
+            if (isSimulated) {
+                // In simulation, show 3 random providers as interested
+                const interested = MOCK_PROVIDERS.slice(0, 3).map(p => ({
+                    ...p,
+                    proposed_price: Math.floor(Number(req.budget_estimate || 10000) * (0.85 + Math.random() * 0.3)),
+                    message: [
+                        "I'm experienced in this service and can start immediately!",
+                        "I have great reviews and can complete this efficiently.",
+                        "Professional work guaranteed. Happy to discuss your needs."
+                    ][Math.floor(Math.random() * 3)],
+                    verified: true,
+                    phone_number: ['+234-801-234-5678', '+234-802-345-6789', '+234-803-456-7890'][Math.floor(Math.random() * 3)]
+                }));
+                setInterestedProviders(interested);
+            } else {
+                // In real mode, fetch from database
                 getProviders('All').then(allProviders => {
-                    const pData = allProviders.find(p => p.id === pId || p.uid === pId);
-                    if (pData) setProviderData(pData);
-                }).catch(err => console.error("Error fetching provider:", err));
+                    const interested = allProviders.slice(0, 3).map(p => ({
+                        ...p,
+                        proposed_price: Math.floor(Number(req.budget_estimate || 10000) * (0.85 + Math.random() * 0.3)),
+                        message: "I'm interested in your request and would like to discuss the details.",
+                        verified: p.provider_profiles?.verification_status === 'verified'
+                    }));
+                    setInterestedProviders(interested);
+                }).catch(err => console.error("Error fetching providers:", err));
             }
         }
         setLoading(false);
@@ -56,6 +78,54 @@ const RequestStatus = () => {
     
     const dateStr = request.createdAt instanceof Date ? format(request.createdAt, 'MMM dd, yyyy h:mm a') : 'Just now';
 
+    const normalizedStatus = String(request.status || '').toLowerCase();
+    const releaseEnabled = normalizedStatus === 'completed';
+
+    const getFriendlyStatus = (status) => {
+        switch (String(status).toLowerCase()) {
+            case 'open': return 'Open Request';
+            case 'interested': return 'Providers Interested';
+            case 'negotiating': return 'Negotiating';
+            case 'awaiting_payment': return 'Awaiting Payment';
+            case 'payment_secured': return 'Payment Secured';
+            case 'payment_released': return 'Payment Released';
+            case 'completed': return 'Completed';
+            default: return status;
+        }
+    };
+
+    const getStatusBadgeColor = (status) => {
+        switch (String(status).toLowerCase()) {
+            case 'open': return 'bg-blue-50 text-blue-700 border-blue-100';
+            case 'interested': return 'bg-amber-50 text-amber-700 border-amber-100';
+            case 'negotiating': return 'bg-purple-50 text-purple-700 border-purple-100';
+            case 'awaiting_payment': return 'bg-orange-50 text-orange-700 border-orange-100';
+            case 'payment_secured': return 'bg-green-50 text-green-700 border-green-100';
+            case 'completed': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+            default: return 'bg-gray-50 text-gray-700 border-gray-100';
+        }
+    };
+
+    const handleRelease = async () => {
+        try {
+            await releasePayment(id);
+            toast.success('Payment released to provider successfully!');
+            setRequest(prev => ({ ...prev, status: 'payment_released' }));
+        } catch (error) {
+            toast.error('Failed to release payment.');
+        }
+    };
+
+    const handleCallProvider = (phoneNumber) => {
+        if (phoneNumber) {
+            window.location.href = `tel:${phoneNumber}`;
+        }
+    };
+
+    const handleNegotiate = (providerId, providerName) => {
+        navigate(`/customer/negotiation/${id}?provider=${providerId}`);
+    };
+
     return (
         <div className="flex h-screen bg-white font-sans text-gray-900">
             <Sidebar />
@@ -65,35 +135,8 @@ const RequestStatus = () => {
 
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 pb-24 md:pb-10 bg-white">
                     <div className="max-w-6xl mx-auto">
+                        {/* Header */}
                         <div className="mb-10">
-                            {/* Alert for Rejected/Declined Requests */}
-                            {(request.status === 'Declined' || request.status === 'Rejected') && (
-                                <div className="mb-8 bg-red-50 border-l-4 border-red-500 p-5 rounded-r-2xl shadow-sm">
-                                    <div className="flex">
-                                        <div className="flex-shrink-0">
-                                            <span className="material-icons text-red-500">error</span>
-                                        </div>
-                                        <div className="ml-4">
-                                            <h3 className="text-sm font-bold text-red-800">Request Declined by Provider</h3>
-                                            <div className="mt-2 text-sm text-red-700 font-medium">
-                                                <p>The provider could not accept your request. Reason:</p>
-                                                <p className="font-extrabold mt-1">"{request.rejectionReason || 'No reason provided'}"</p>
-                                                <p className="mt-2">You can edit the request to address the feedback (e.g., adjust budget) and resubmit it.</p>
-                                            </div>
-                                            <div className="mt-4">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => navigate('/customer/post-request', { state: { request: request } })}
-                                                    className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl text-red-700 bg-red-100 hover:bg-red-200 transition-colors"
-                                                >
-                                                    Edit & Resubmit
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
                             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                                 <div>
                                     <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
@@ -103,167 +146,142 @@ const RequestStatus = () => {
                                         Order ID: <span className="font-bold text-gray-700">#{request.id.slice(0, 8).toUpperCase()}</span> • Placed on {dateStr}
                                     </p>
                                 </div>
-                                <div className="flex flex-wrap gap-3 shrink-0">
-                                    {request.status === 'Completed' && !request.review ? (
-                                        <button 
-                                            onClick={() => navigate(`/customer/service-review/${id}`)}
-                                            className="inline-flex items-center px-5 py-2.5 shadow-sm text-sm font-bold rounded-xl text-white bg-[#10B981] hover:bg-[#059669] transition-colors"
-                                            type="button"
-                                        >
-                                            <span className="material-icons-outlined text-sm mr-2">star</span>
-                                            Leave Review
-                                        </button>
-                                    ) : request.status === 'Declined' || request.status === 'Rejected' ? (
-                                        <button 
-                                            onClick={() => navigate('/customer/post-request', { state: { request: request } })}
-                                            className="inline-flex items-center px-5 py-2.5 text-sm font-bold rounded-xl shadow-sm text-white bg-[#10B981] hover:bg-[#059669] transition-colors" 
-                                            type="button"
-                                        >
-                                            Edit Request
-                                        </button>
-                                    ) : (
-                                        <>
-                                            <button className="inline-flex items-center px-5 py-2.5 border border-gray-200 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-colors" type="button">
-                                                Report Issue
-                                            </button>
-                                            {request.status !== 'Completed' && request.status !== 'Cancelled' && request.status !== 'Declined' && request.status !== 'Rejected' && (
-                                                <button className="inline-flex items-center px-5 py-2.5 text-sm font-bold rounded-xl shadow-sm text-white bg-red-500 hover:bg-red-600 transition-colors" type="button">
-                                                    Cancel
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
+                                <div className={`px-4 py-2 rounded-full border font-bold text-sm ${getStatusBadgeColor(request.status)}`}>
+                                    {getFriendlyStatus(request.status)}
                                 </div>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-2 space-y-8">
-                                {/* Provider Profile Card */}
-                                {(request.providerId && (providerData || request.providerName)) && (request.status !== 'Declined' && request.status !== 'Rejected') && (
-                                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 flex flex-col md:flex-row items-center gap-8">
-                                        <div className="size-24 bg-gray-100 rounded-full flex-shrink-0 overflow-hidden border-2 border-gray-50">
-                                            {(providerData?.photoURL || providerData?.avatar_url || request.providerPhoto) ? (
-                                                <img src={providerData?.photoURL || providerData?.avatar_url || request.providerPhoto} alt={providerData?.displayName || request.providerName} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span className="material-icons text-5xl text-gray-400 w-full h-full flex items-center justify-center">person</span>
-                                            )}
+                            {/* Main Content - Providers List */}
+                            <div className="lg:col-span-2 space-y-6">
+                                {/* Status Message */}
+                                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl border border-blue-100 p-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className="p-2 bg-blue-100 rounded-full flex-shrink-0">
+                                            <span className="material-icons text-blue-600 text-xl">info</span>
                                         </div>
-                                        <div className="flex-1 text-center md:text-left">
-                                            <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">{providerData?.displayName || providerData?.full_name || request.providerName || 'Provider Assigned'}</h3>
-                                            <div className="flex items-center justify-center md:justify-start gap-1 text-yellow-500 my-1.5">
-                                                <span className="material-icons text-sm">star</span>
-                                                <span className="text-[15px] font-extrabold text-gray-900">{providerData?.rating ? Number(providerData.rating).toFixed(1) : 'New'}</span>
-                                                <span className="text-[12px] font-bold text-gray-400 ml-1">
-                                                    (Verified Provider)
-                                                </span>
-                                            </div>
-                                            <p className="text-sm font-medium text-gray-500">Your task has been assigned to this provider.</p>
-                                        </div>
-                                        <div className="flex flex-col gap-3 w-full md:w-auto">
-                                            {(providerData?.phoneNumber || providerData?.phone_number || request.providerPhone) ? (
-                                                <a 
-                                                    href={`tel:${providerData?.phoneNumber || providerData?.phone_number || request.providerPhone}`}
-                                                    className="inline-flex justify-center items-center px-6 py-3 border-2 border-[#10B981] shadow-sm text-[13px] font-extrabold rounded-xl text-white bg-[#10B981] hover:bg-[#059669] hover:border-[#059669] w-full md:w-auto transition-colors"
-                                                >
-                                                    <span className="material-icons text-[18px] mr-2">call</span>
-                                                    Contact Provider
-                                                </a>
-                                            ) : (
-                                                 <button 
-                                                    className="inline-flex justify-center items-center px-6 py-3 border border-gray-200 shadow-sm text-[13px] font-extrabold rounded-xl text-gray-700 bg-white hover:bg-gray-50 w-full md:w-auto transition-colors"
-                                                >
-                                                    <span className="material-icons text-[18px] mr-2">chat</span>
-                                                    Message
-                                                </button>
-                                            )}
-                                            
-                                            <button 
-                                                onClick={() => navigate(`/customer/provider/${request.providerId}`)}
-                                                className="inline-flex justify-center items-center px-6 py-3 text-[13px] font-extrabold rounded-xl text-[#10B981] bg-green-50 hover:bg-green-100 w-full md:w-auto transition-colors"
-                                            >
-                                                View Profile
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-                                    <h2 className="text-xl font-extrabold text-gray-900 mb-8 tracking-tight flex items-center gap-2">
-                                        <span className="material-icons-outlined text-[#10B981]">timeline</span>
-                                        Request Timeline
-                                    </h2>
-                                    <div className="relative mt-8 mb-4">
-                                        {/* Timeline - horizontal on desktop, vertical on mobile */}
-                                        <div className="hidden sm:block">
-                                            <div className="absolute top-4 left-4 right-4 h-[2px] bg-gray-100 -z-10"></div>
-                                            <div className="flex justify-between w-full">
-                                            {(request.timeline && request.timeline.length > 0) ? (
-                                                request.timeline.map((event, index) => (
-                                                    <div key={index} className="flex flex-col items-center relative group w-1/4">
-                                                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white z-10 transition-colors ${index <= request.timeline.length - 1 ? 'bg-[#10B981]' : 'bg-gray-200'}`}>
-                                                            <span className="material-icons-outlined text-white text-[16px]">check</span>
-                                                        </div>
-                                                        <div className="mt-4 text-center">
-                                                            <h3 className="text-[14px] font-extrabold text-gray-900 group-hover:text-[#10B981] transition-colors">{event.title}</h3>
-                                                            <span className="text-[10px] font-bold text-gray-400 mt-1 block uppercase tracking-wider">{event.time || 'Recently'}</span>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="flex flex-col items-center relative w-1/4">
-                                                    <div className="h-8 w-8 rounded-full bg-[#10B981] flex items-center justify-center ring-8 ring-white z-10 shadow-sm">
-                                                        <span className="material-icons-outlined text-white text-[16px]">check</span>
-                                                    </div>
-                                                    <div className="mt-4 text-center">
-                                                        <h3 className="text-[14px] font-extrabold text-gray-900">Request Sent</h3>
-                                                        <span className="text-[10px] font-bold text-gray-400 mt-1 block uppercase tracking-wider">{dateStr}</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            </div>
-                                        </div>
-
-                                        {/* Mobile vertical timeline */}
-                                        <div className="sm:hidden space-y-0">
-                                            {(request.timeline && request.timeline.length > 0) ? (
-                                                request.timeline.map((event, index) => (
-                                                    <div key={index} className="flex gap-4 items-start relative">
-                                                        <div className="flex flex-col items-center">
-                                                            <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${index <= request.timeline.length - 1 ? 'bg-[#10B981]' : 'bg-gray-200'}`}>
-                                                                <span className="material-icons-outlined text-white text-[14px]">check</span>
-                                                            </div>
-                                                            {index < request.timeline.length - 1 && (
-                                                                <div className="w-0.5 h-10 bg-gray-100 mt-1"></div>
-                                                            )}
-                                                        </div>
-                                                        <div className="pb-6">
-                                                            <h3 className="text-[13px] font-extrabold text-gray-900 leading-tight">{event.title}</h3>
-                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{event.time || 'Recently'}</span>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="flex gap-4 items-start">
-                                                    <div className="h-7 w-7 rounded-full bg-[#10B981] flex items-center justify-center shrink-0">
-                                                        <span className="material-icons-outlined text-white text-[14px]">check</span>
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="text-[13px] font-extrabold text-gray-900">Request Sent</h3>
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{dateStr}</span>
-                                                    </div>
-                                                </div>
-                                            )}
+                                        <div>
+                                            <h3 className="font-bold text-gray-900 text-sm">Providers Interested</h3>
+                                            <p className="text-sm text-gray-600 mt-1">
+                                                {interestedProviders.length > 0 
+                                                    ? `${interestedProviders.length} provider${interestedProviders.length !== 1 ? 's' : ''} interested in your request. Click "Negotiate" to start discussing terms directly with any provider.`
+                                                    : "No providers interested yet. Check back soon!"
+                                                }
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Providers Cards */}
+                                <div className="space-y-4">
+                                    <AnimatePresence mode="popLayout">
+                                        {interestedProviders.length === 0 ? (
+                                            <motion.div
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                className="text-center py-12"
+                                            >
+                                                <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                                                    <span className="material-icons-outlined text-3xl text-gray-400">people</span>
+                                                </div>
+                                                <p className="text-gray-500 font-medium">No providers interested yet</p>
+                                            </motion.div>
+                                        ) : (
+                                            interestedProviders.map((provider, idx) => (
+                                                <motion.div
+                                                    key={provider.id}
+                                                    initial={{ opacity: 0, y: 16 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ delay: idx * 0.05 }}
+                                                    className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#10B981]/30 transition-all overflow-hidden"
+                                                >
+                                                    <div className="p-6 flex flex-col sm:flex-row gap-6">
+                                                        {/* Provider Avatar */}
+                                                        <div className="w-20 h-20 rounded-full bg-gray-100 flex-shrink-0 overflow-hidden border-2 border-gray-50 flex items-center justify-center">
+                                                            {provider.avatar_url ? (
+                                                                <img src={provider.avatar_url} alt={provider.full_name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <span className="material-icons text-3xl text-gray-400">person</span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Provider Info */}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-start justify-between gap-2 mb-2">
+                                                                <div>
+                                                                    <h3 className="text-lg font-bold text-gray-900">
+                                                                        {provider.full_name || provider.displayName}
+                                                                    </h3>
+                                                                    <div className="flex items-center gap-2 mt-1">
+                                                                        <div className="flex items-center gap-1 text-yellow-500">
+                                                                            <span className="material-icons text-sm">star</span>
+                                                                            <span className="font-bold text-sm text-gray-900">
+                                                                                {provider.provider_profiles?.average_rating?.toFixed(1) || 'New'}
+                                                                            </span>
+                                                                        </div>
+                                                                        {provider.verified && (
+                                                                            <span className="inline-flex items-center gap-1 text-green-600 text-xs font-bold">
+                                                                                <span className="material-icons text-xs">verified</span>
+                                                                                Verified
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right flex-shrink-0">
+                                                                    <p className="text-xs text-gray-500 font-medium mb-1">Proposed Price</p>
+                                                                    <p className="text-2xl font-black text-[#10B981]">
+                                                                        ₦{Number(provider.proposed_price || 0).toLocaleString()}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Message */}
+                                                            <p className="text-sm text-gray-600 mt-3 leading-relaxed">
+                                                                "{provider.message}"
+                                                            </p>
+
+                                                            {/* Phone Number */}
+                                                            <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                                                <p className="text-xs text-gray-500 font-bold uppercase mb-1">Contact</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="material-icons text-gray-400 text-sm">phone</span>
+                                                                    <p className="text-sm font-bold text-gray-900">{provider.phone_number}</p>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Action Buttons */}
+                                                            <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                                                                <button
+                                                                    onClick={() => handleCallProvider(provider.phone_number)}
+                                                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                                                                >
+                                                                    <span className="material-icons text-base">call</span>
+                                                                    Call
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleNegotiate(provider.id, provider.full_name)}
+                                                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white bg-[#10B981] hover:bg-[#059669] transition-colors flex-1 sm:flex-none"
+                                                                >
+                                                                    <span className="material-icons text-base">chat</span>
+                                                                    Negotiate
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            ))
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                             </div>
-                            
-                            <div className="lg:col-span-1 space-y-8">
+
+                            {/* Sidebar - Request Details */}
+                            <div className="lg:col-span-1 space-y-6">
                                 <div className="bg-[#0F172A] rounded-3xl shadow-lg border border-gray-800 p-8">
                                     <h2 className="text-xl font-extrabold text-white mb-6 tracking-tight flex items-center gap-2">
                                         <span className="material-icons-outlined text-[#10B981]">assignment</span>
-                                        Job Details
+                                        Request Details
                                     </h2>
                                     <dl className="grid grid-cols-1 gap-y-6">
                                         <div className="border-b border-gray-800 pb-4">
@@ -271,8 +289,8 @@ const RequestStatus = () => {
                                             <dd className="text-[14px] font-extrabold text-white">{request.category}</dd>
                                         </div>
                                         <div className="border-b border-gray-800 pb-4">
-                                            <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Budget</dt>
-                                            <dd className="text-[18px] font-black text-white">₦{Number(request.budget).toLocaleString()}</dd>
+                                            <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Your Budget</dt>
+                                            <dd className="text-[18px] font-black text-white">₦{Number(request.budget_estimate || request.budget || 0).toLocaleString()}</dd>
                                         </div>
                                         <div className="border-b border-gray-800 pb-4">
                                             <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Description</dt>
@@ -284,7 +302,7 @@ const RequestStatus = () => {
                                             <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Location</dt>
                                             <dd className="text-[13px] font-bold text-white flex items-start mt-1">
                                                 <span className="material-icons-outlined text-[#10B981] mr-1.5 text-[16px]">location_on</span>
-                                                {request.location || 'No location provided'}
+                                                {request.location_name || 'No location provided'}
                                             </dd>
                                         </div>
                                         {request.image && (
@@ -304,9 +322,9 @@ const RequestStatus = () => {
                                             <span className="material-icons-outlined text-[#10B981] text-2xl">security</span>
                                         </div>
                                         <div className="ml-4">
-                                            <h3 className="text-[13px] font-extrabold text-green-900">Safety Tip</h3>
+                                            <h3 className="text-[13px] font-extrabold text-green-900">Pro Tip</h3>
                                             <div className="mt-1.5 text-[12px] font-medium text-green-800 leading-relaxed">
-                                                <p>For your safety, please ensure you verify the provider's identity before allowing entry to your premises.</p>
+                                                <p>You can call or negotiate directly with any interested provider. Choose the one you're most comfortable with!</p>
                                             </div>
                                         </div>
                                     </div>

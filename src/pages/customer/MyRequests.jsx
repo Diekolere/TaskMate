@@ -17,9 +17,14 @@ const MyRequests = () => {
             case 'In Progress': return 'bg-blue-50 text-blue-700 border-blue-200';
             case 'Scheduled': return 'bg-purple-50 text-purple-700 border-purple-200';
             case 'Cancelled': return 'bg-red-50 text-red-700 border-red-200';
-            case 'Open': return 'bg-orange-50 text-orange-700 border-orange-200';
+            case 'Open': return 'bg-blue-50 text-blue-700 border-blue-200';
+            case 'Interested': return 'bg-amber-50 text-amber-700 border-amber-200';
             case 'Declined': return 'bg-red-50 text-red-700 border-red-200';
             case 'Rejected': return 'bg-red-50 text-red-700 border-red-200';
+            case 'negotiating': return 'bg-purple-50 text-purple-700 border-purple-200';
+            case 'awaiting_payment': return 'bg-orange-50 text-orange-700 border-orange-200';
+            case 'payment_secured': return 'bg-green-50 text-green-700 border-green-200';
+            case 'payment_released': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
             default: return 'bg-gray-50 text-gray-700 border-gray-200';
         }
     };
@@ -31,17 +36,33 @@ const MyRequests = () => {
             case 'Scheduled': return 'event';
             case 'Cancelled': return 'cancel';
             case 'Open': return 'radio_button_unchecked';
+            case 'Interested': return 'people';
             case 'Declined': return 'block';
             case 'Rejected': return 'block';
+            case 'negotiating': return 'chat';
+            case 'awaiting_payment': return 'payment';
+            case 'payment_secured': return 'lock';
+            case 'payment_released': return 'check_circle';
             default: return 'pending';
+        }
+    };
+
+    const formatStatus = (status) => {
+        switch (status) {
+            case 'interested': return 'Providers Interested';
+            case 'negotiating': return 'Negotiating';
+            case 'awaiting_payment': return 'Awaiting Payment';
+            case 'payment_secured': return 'Payment Secured';
+            case 'payment_released': return 'Payment Released';
+            default: return status;
         }
     };
 
     const filteredRequests = activeTab === 'All' 
         ? allRequests 
         : activeTab === 'History' 
-            ? allRequests.filter(r => ['Completed', 'Cancelled', 'Declined', 'Rejected'].includes(r.status))
-            : allRequests.filter(r => ['Open', 'In Progress', 'Scheduled', 'Pending'].includes(r.status));
+            ? allRequests.filter(r => ['Completed', 'Cancelled', 'Declined', 'Rejected', 'payment_released'].includes(r.status))
+            : allRequests.filter(r => ['Open', 'Interested', 'Pending', 'negotiating', 'awaiting_payment', 'payment_secured', 'in_progress'].includes(r.status));
 
     return (
         <div className="flex h-screen bg-white font-sans text-gray-900">
@@ -102,7 +123,17 @@ const MyRequests = () => {
                                     return (
                                         <div 
                                             key={req.id}
-                                            onClick={() => navigate(req.status === 'Completed' ? `/customer/service-review/${req.id}` : `/customer/request-status/${req.id}`)}
+                                            onClick={() => {
+                                                if (req.status === 'negotiating') {
+                                                    navigate(`/customer/negotiation/${req.id}`);
+                                                } else if (req.status === 'awaiting_payment') {
+                                                    navigate(`/customer/payment/${req.id}`);
+                                                } else if (req.status === 'Completed') {
+                                                    navigate(`/customer/service-review/${req.id}`);
+                                                } else {
+                                                    navigate(`/customer/request-status/${req.id}`);
+                                                }
+                                            }}
                                             className={`flex items-center gap-3 sm:gap-4 py-3.5 sm:py-4 px-2 -mx-2 rounded-xl cursor-pointer group hover:bg-gray-50 transition-colors ${
                                                 index !== filteredRequests.length - 1 ? 'border-b border-gray-100' : ''
                                             }`}
@@ -136,7 +167,7 @@ const MyRequests = () => {
                                                 </div>
                                                 <div className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium text-gray-500">
                                                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusColor(req.status)}`}>
-                                                        {req.status}
+                                                        {formatStatus(req.status)}
                                                     </span>
                                                     <span className="text-gray-300">•</span>
                                                     <span>{date}</span>
