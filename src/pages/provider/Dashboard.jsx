@@ -44,25 +44,6 @@ const ProviderDashboard = () => {
         (j.providerId === currentUser?.id || j.provider_id === currentUser?.id)
     );
 
-    const activities = jobs
-        .filter(j => j.providerId === currentUser?.id || j.provider_id === currentUser?.id)
-        .sort((a, b) => {
-            const da = a.updatedAt instanceof Date ? a.updatedAt.getTime() : 0;
-            const db = b.updatedAt instanceof Date ? b.updatedAt.getTime() : 0;
-            return db - da;
-        })
-        .slice(0, 4)
-        .map(j => ({
-            id: j.id,
-            type: j.status === 'Completed' ? 'payment' : 'update',
-            title: j.status === 'Completed' ? 'Payment Received' : 'Job Update',
-            message: j.status === 'Completed'
-                ? `₦${Number(j.budget).toLocaleString()} added to balance`
-                : `${j.status} — ${j.title}`,
-            time: j.updatedAt instanceof Date
-                ? j.updatedAt.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })
-                : 'Recently',
-        }));
 
     const hour = now.getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -111,10 +92,10 @@ const ProviderDashboard = () => {
                                 </p>
                             </div>
 
-                            {/* Availability toggle */}
-                            <label className={`flex items-center gap-2.5 bg-white border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 shadow-sm cursor-pointer select-none shrink-0 ${!isVerified ? 'opacity-40 pointer-events-none' : ''}`}>
+                            {/* Availability toggle — desktop only (sm+) */}
+                            <label className={`hidden sm:flex items-center gap-2.5 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm cursor-pointer select-none shrink-0 ${!isVerified ? 'opacity-40 pointer-events-none' : ''}`}>
                                 <div className={`w-2 h-2 rounded-full shrink-0 ${isVerified ? 'bg-[#10B981] animate-pulse' : 'bg-gray-300'}`} />
-                                <span className="text-sm font-semibold text-gray-700 hidden sm:inline">Available</span>
+                                <span className="text-sm font-semibold text-gray-700">Available</span>
                                 <div className="relative">
                                     <input type="checkbox" className="sr-only peer" defaultChecked={isVerified} />
                                     <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-[17px] after:w-[17px] after:transition-all peer-checked:bg-[#10B981]" />
@@ -154,6 +135,18 @@ const ProviderDashboard = () => {
                                 </p>
                             </div>
                         </div>
+
+                        {/* Availability toggle — mobile only, below cards */}
+                        <label className={`sm:hidden flex items-center justify-between bg-white border border-gray-200 rounded-2xl px-5 py-3.5 shadow-sm cursor-pointer select-none w-full ${!isVerified ? 'opacity-40 pointer-events-none' : ''}`}>
+                            <div className="flex items-center gap-2.5">
+                                <div className={`w-2 h-2 rounded-full shrink-0 ${isVerified ? 'bg-[#10B981] animate-pulse' : 'bg-gray-300'}`} />
+                                <span className="text-sm font-semibold text-gray-700">Available for jobs</span>
+                            </div>
+                            <div className="relative">
+                                <input type="checkbox" className="sr-only peer" defaultChecked={isVerified} />
+                                <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-[17px] after:w-[17px] after:transition-all peer-checked:bg-[#10B981]" />
+                            </div>
+                        </label>
 
                         {/* ── Main grid ── */}
                         <div className={`grid grid-cols-1 lg:grid-cols-3 gap-5 ${!isVerified ? 'opacity-40 grayscale pointer-events-none select-none' : ''}`}>
@@ -251,47 +244,6 @@ const ProviderDashboard = () => {
                                     )}
                                 </div>
 
-                                {/* Recent Activity */}
-                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                                    <div className="px-5 py-3.5 border-b border-gray-50">
-                                        <h3 className="font-bold text-gray-900 text-sm">Recent Activity</h3>
-                                    </div>
-                                    {activities.length > 0 ? (
-                                        <ul className="divide-y divide-gray-50">
-                                            {activities.map((a, i) => (
-                                                <li key={i} className="flex items-center gap-3 px-5 py-3">
-                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${a.type === 'payment' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-blue-50 text-blue-500'}`}>
-                                                        <span className="material-icons-outlined text-sm">{a.type === 'payment' ? 'check_circle' : 'update'}</span>
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">{a.title}</p>
-                                                        <p className="text-xs text-gray-400 truncate">{a.message}</p>
-                                                    </div>
-                                                    <p className="text-[10px] text-gray-400 shrink-0">{a.time}</p>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <div className="px-5 py-8 text-center">
-                                            <p className="text-xs text-gray-400">No recent activity</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Support link */}
-                                <Link
-                                    to="/provider/support"
-                                    className="flex items-center gap-3 px-5 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:bg-blue-50/40 hover:border-blue-100 transition-all group"
-                                >
-                                    <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
-                                        <span className="material-icons-outlined text-blue-500 text-base">headset_mic</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-gray-900">Need Help?</p>
-                                        <p className="text-xs text-gray-400">Contact support</p>
-                                    </div>
-                                    <span className="material-icons-outlined text-gray-300 text-base group-hover:translate-x-0.5 transition-transform">chevron_right</span>
-                                </Link>
 
                             </div>
                         </div>
