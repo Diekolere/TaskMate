@@ -16,10 +16,9 @@ const Sidebar = () => {
     // Customer Navigation Items
     const customerNav = [
         { icon: 'home', label: 'Feed', href: '/customer/dashboard' },
-        { icon: 'explore', label: 'Providers', href: '/customer/browse' },
+        { icon: 'explore', label: 'Explore Providers', href: '/customer/browse' },
         { icon: 'assignment', label: 'Requests', href: '/customer/requests' }, 
         { icon: 'favorite_border', label: 'Saved', href: '/customer/saved' },
-        { icon: 'notifications_none', label: 'Notifications', href: '/customer/notifications' },
         { icon: 'settings', label: 'Settings', href: '/customer/settings' },
     ];
 
