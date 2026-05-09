@@ -88,15 +88,14 @@ function AnimatedRoutes() {
         <Route path="/customer/requests" element={<ProtectedRoute allowedRoles={['customer']}><MyRequests /></ProtectedRoute>} />
         <Route path="/customer/request-status/:id" element={<ProtectedRoute allowedRoles={['customer']}><RequestStatus /></ProtectedRoute>} />
         <Route path="/customer/negotiation/:id" element={<ProtectedRoute allowedRoles={['customer']}><Negotiation /></ProtectedRoute>} />
-        <Route path="/customer/payment/:id" element={<ProtectedRoute allowedRoles={['customer']}><Payment /></ProtectedRoute>} />
+        <Route path="/customer/payment/:requestId" element={<ProtectedRoute allowedRoles={['customer']}><PaymentCheckout /></ProtectedRoute>} />
         <Route path="/customer/provider/:id" element={<ProtectedRoute allowedRoles={['customer']}><ProviderProfile /></ProtectedRoute>} />
         <Route path="/customer/service-review" element={<ProtectedRoute allowedRoles={['customer']}><Navigate to="/customer/dashboard" replace /></ProtectedRoute>} />
         <Route path="/customer/service-review/:id" element={<ProtectedRoute allowedRoles={['customer']}><ServiceReview /></ProtectedRoute>} />
         <Route path="/customer/settings" element={<ProtectedRoute allowedRoles={['customer']}><Settings /></ProtectedRoute>} />
-        <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer']}><Settings /></ProtectedRoute>} /> {/* Reusing settings for profile demo */}
+        <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer']}><Settings /></ProtectedRoute>} />
         <Route path="/customer/saved" element={<ProtectedRoute allowedRoles={['customer']}><SavedProviders /></ProtectedRoute>} />
         <Route path="/customer/invite" element={<ProtectedRoute allowedRoles={['customer']}><InviteFriends /></ProtectedRoute>} />
-        <Route path="/customer/payment/:requestId" element={<ProtectedRoute allowedRoles={['customer']}><PaymentCheckout /></ProtectedRoute>} />
         <Route path="/customer/job-otp/:jobId" element={<ProtectedRoute allowedRoles={['customer']}><JobOTP /></ProtectedRoute>} />
         <Route path="/customer/confirm/:jobId" element={<ProtectedRoute allowedRoles={['customer']}><ConfirmCompletion /></ProtectedRoute>} />
 
