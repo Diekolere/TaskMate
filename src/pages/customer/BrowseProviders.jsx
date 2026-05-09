@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
+import TopNavbar from '../../components/layout/TopNavbar';
+import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 
@@ -15,8 +17,10 @@ const BrowseProviders = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
     const [isSortOpen, setIsSortOpen] = useState(false);
+    const [isRatingOpen, setIsRatingOpen] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [sortFilter, setSortFilter] = useState('Relevance');
+    const [ratingFilter, setRatingFilter] = useState('Any Rating');
 
     const categories = [
         "Electrical", "Plumbing", "Carpentry", "Painting & Decorating", 
@@ -44,31 +48,39 @@ const BrowseProviders = () => {
             }));
             
             // Apply category filter if any selected
-            const filteredData = selectedCategories.length > 0 
+            let filteredData = selectedCategories.length > 0 
                 ? enrichedData.filter(p => selectedCategories.includes(p.category))
                 : enrichedData;
+
+            // Apply rating filter
+            if (ratingFilter !== 'Any Rating') {
+                const minRating = parseFloat(ratingFilter.split('+')[0]);
+                filteredData = filteredData.filter(p => (p.rating || 4.5) >= minRating);
+            }
 
             setProviders(filteredData);
             setLoading(false);
         };
         fetchProviders();
-    }, [selectedCategories, getProviders]);
+    }, [selectedCategories, ratingFilter, getProviders]);
 
     return (
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
             <Sidebar />
 
             <div className="flex-1 flex flex-col min-w-0">
+                <TopNavbar breadcrumbs={['Customer', 'Explore Providers']} />
+
                 {/* Main Content Area */}
                 <main className="flex-1 overflow-y-auto bg-white">
-                    <div className="max-w-[1000px] mx-auto w-full px-4 sm:px-8 py-10">
+                    <div className="max-w-[1000px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-10 pb-24 md:pb-10">
                         
                         {/* Header Section */}
-                        <div className="mb-10">
-                            <h1 className="text-[36px] font-extrabold tracking-tight text-gray-900 mb-6">Browse Providers</h1>
+                        <div className="mb-6 sm:mb-10">
+                            <h1 className="text-[24px] sm:text-[36px] font-extrabold tracking-tight text-gray-900 mb-4 sm:mb-6">Explore Providers</h1>
 
                             {/* Simple Search Bar */}
-                            <div className="flex items-center bg-gray-50 rounded-xl px-4 py-3.5 border border-gray-200 group focus-within:border-gray-400 focus-within:bg-white transition-colors cursor-text mb-4 w-full">
+                            <div className="flex items-center bg-white rounded-xl px-4 py-3.5 border border-gray-200 group focus-within:border-gray-400 focus-within:shadow-sm transition-all cursor-text mb-4 w-full">
                                 <span className="material-icons-outlined text-[18px] text-gray-400 group-focus-within:text-gray-600">search</span>
                                 <input 
                                     type="text"
@@ -77,7 +89,7 @@ const BrowseProviders = () => {
                                     className="bg-transparent border-none outline-none text-[15px] text-gray-800 ml-3 w-full placeholder:text-gray-400 font-medium"
                                     placeholder="Search by name, skill, or keyword..."
                                 />
-                                <span className="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 ml-2 font-mono font-bold text-gray-500 shrink-0">⌘K</span>
+                                <span className="text-[10px] bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 ml-2 font-mono font-bold text-gray-500 shrink-0">⌘K</span>
                             </div>
 
                             {/* Filter Pills */}
@@ -85,14 +97,14 @@ const BrowseProviders = () => {
                                 {/* Category Dropdown (Multiple Selection) */}
                                 <div className="relative">
                                     <button 
-                                        onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsSortOpen(false); }}
+                                        onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsSortOpen(false); setIsRatingOpen(false); }}
                                         className="flex items-center gap-2 bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 rounded-xl px-4 py-2.5 hover:border-gray-300 transition-colors shadow-sm"
                                     >
                                         {selectedCategories.length === 0 ? 'Category' : `Category (${selectedCategories.length})`}
                                         <span className="material-icons-outlined text-[16px] text-gray-500">expand_more</span>
                                     </button>
                                     {isCategoryOpen && (
-                                        <div className="absolute top-full mt-2 w-[280px] bg-white border border-gray-100 rounded-xl shadow-lg py-2 z-50 max-h-[350px] overflow-y-auto">
+                                        <div className="absolute top-full mt-2 w-[calc(100vw-2rem)] sm:w-[280px] left-0 bg-white border border-gray-100 rounded-xl shadow-lg py-2 z-50 max-h-[350px] overflow-y-auto">
                                             {categories.map(cat => (
                                                 <div 
                                                     key={cat}
@@ -114,10 +126,29 @@ const BrowseProviders = () => {
                                     )}
                                 </div>
 
+                                {/* Rating Filter Dropdown */}
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => { setIsRatingOpen(!isRatingOpen); setIsCategoryOpen(false); setIsSortOpen(false); }}
+                                        className="flex items-center gap-2 bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 rounded-xl px-4 py-2.5 hover:border-gray-300 transition-colors shadow-sm"
+                                    >
+                                        <span className="material-icons text-[16px] text-yellow-500">star</span>
+                                        {ratingFilter}
+                                        <span className="material-icons-outlined text-[16px] text-gray-500">expand_more</span>
+                                    </button>
+                                    {isRatingOpen && (
+                                        <div className="absolute top-full mt-2 w-[160px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50">
+                                            {['Any Rating', '4.5+', '4.0+', '3.5+'].map(opt => (
+                                                <button key={opt} onClick={() => { setRatingFilter(opt); setIsRatingOpen(false); }} className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">{opt}</button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Active Green Filter / Sort */}
                                 <div className="relative">
                                     <button 
-                                        onClick={() => { setIsSortOpen(!isSortOpen); setIsCategoryOpen(false); }}
+                                        onClick={() => { setIsSortOpen(!isSortOpen); setIsCategoryOpen(false); setIsRatingOpen(false); }}
                                         className="flex items-center gap-2 bg-[#10B981] border border-[#10B981] text-[13px] font-semibold text-white rounded-xl px-4 py-2.5 hover:bg-[#059669] transition-colors shadow-sm"
                                     >
                                         {sortFilter}
@@ -133,9 +164,9 @@ const BrowseProviders = () => {
                                 </div>
 
                                 {/* Clear All */}
-                                {(selectedCategories.length > 0 || sortFilter !== 'Relevance' || searchQuery !== '') && (
+                                {(selectedCategories.length > 0 || sortFilter !== 'Relevance' || ratingFilter !== 'Any Rating' || searchQuery !== '') && (
                                     <button 
-                                        onClick={() => { setSelectedCategories([]); setSortFilter('Relevance'); setSearchQuery(''); }}
+                                        onClick={() => { setSelectedCategories([]); setSortFilter('Relevance'); setRatingFilter('Any Rating'); setSearchQuery(''); }}
                                         className="text-[13px] font-semibold text-gray-500 underline ml-2 hover:text-gray-900 transition-colors"
                                     >
                                         Clear all
@@ -161,71 +192,69 @@ const BrowseProviders = () => {
                             ) : (
                                 <div className="flex flex-col relative z-0">
                                     {providers.map((provider, index) => (
-                                        <div key={provider.id} className={`py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 transition-colors hover:bg-gray-50/50 px-2 rounded-xl -mx-2 ${index !== providers.length - 1 ? 'border-b border-gray-200' : ''}`}>
+                                        <div 
+                                            key={provider.id} 
+                                            onClick={() => navigate(`/customer/provider/${provider.id}`)}
+                                            className={`py-3 sm:py-4 flex items-center gap-3 sm:gap-5 transition-colors hover:bg-gray-50/50 px-2 rounded-xl -mx-2 cursor-pointer group ${index !== providers.length - 1 ? 'border-b border-gray-100' : ''}`}
+                                        >
+                                            {/* Avatar */}
+                                            <img 
+                                                src={provider.photoURL || provider.avatar_url || `https://ui-avatars.com/api/?name=${provider.displayName || 'Artisan'}&background=random`} 
+                                                alt={provider.displayName} 
+                                                className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border border-gray-200 object-cover shrink-0" 
+                                            />
                                             
-                                            {/* Provider Info (Left) */}
-                                            <div className="flex gap-5 items-center flex-1">
-                                                <img src={provider.photoURL || provider.avatar_url || `https://ui-avatars.com/api/?name=${provider.displayName || 'Artisan'}&background=random`} alt={provider.displayName} className="w-16 h-16 rounded-full border border-gray-200 object-cover shrink-0" />
-                                                <div>
-                                                    <h3 className="font-extrabold text-[17px] text-gray-900 flex items-center gap-1.5 mb-1 tracking-wide">
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <h3 className="font-extrabold text-[14px] sm:text-[16px] text-gray-900 flex items-center gap-1 truncate group-hover:text-[#10B981] transition-colors">
                                                         {provider.displayName || provider.full_name || 'Artisan'}
-                                                        <span className="material-icons text-[#10B981] text-[18px]" title="Verified">verified</span>
+                                                        <span className="material-icons text-[#10B981] text-[16px] shrink-0" title="Verified">verified</span>
                                                     </h3>
-                                                    <p className="text-[13px] font-medium text-gray-500 flex items-center gap-1.5">
-                                                        <span className="text-gray-700 font-bold">{provider.category || 'General Service'}</span> 
-                                                        <span className="text-gray-300">•</span> 
-                                                        <span className="material-icons-outlined text-[14px]">location_on</span> {provider.location || 'Lagos, Nigeria'}
-                                                    </p>
-                                                    
-                                                    {/* Skills Tags */}
-                                                    <div className="flex flex-wrap gap-2 mt-3">
-                                                        {provider.skills.slice(0, 3).map((skill, idx) => (
-                                                            <span key={idx} className="text-[10px] font-bold text-gray-600 bg-gray-100 border border-gray-200/60 px-2.5 py-1 rounded-md tracking-wide">
-                                                                {skill}
-                                                            </span>
-                                                        ))}
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        <span className="material-icons text-yellow-500 text-[16px]">star</span>
+                                                        <span className="font-extrabold text-[13px] sm:text-[14px] text-gray-900">{provider.rating || '4.8'}</span>
+                                                        <span className="text-[10px] font-bold text-gray-400 hidden sm:inline">({provider.reviews?.length || Math.floor(Math.random() * 50) + 10})</span>
                                                     </div>
                                                 </div>
-                                            </div>
-
-                                            {/* Stats (Middle) */}
-                                            <div className="flex sm:flex-col gap-6 sm:gap-2 sm:items-end justify-center shrink-0">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="material-icons text-yellow-500 text-[18px]">star</span>
-                                                    <span className="font-extrabold text-[15px] text-gray-900">{provider.rating || '4.8'}</span>
-                                                    <span className="text-[11px] font-bold text-gray-400">({provider.reviews?.length || Math.floor(Math.random() * 50) + 10})</span>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 text-[12px] font-extrabold text-gray-500">
-                                                    <span className="material-icons-outlined text-gray-400 text-[16px]">task_alt</span>
-                                                    {provider.completedJobs} completed
-                                                </div>
-                                                <div className="text-[12px] font-medium text-gray-500 mt-1">
-                                                    Starting from <span className="font-extrabold text-[#10B981] text-[14px]">₦{Number(provider.baseRate || 5000).toLocaleString()}</span>
-                                                </div>
-                                            </div>
-
-                                            {/* Actions (Right) */}
-                                            <div className="flex items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0 shrink-0 border-t sm:border-t-0 border-gray-100 pt-4 sm:pt-0">
-                                                <button 
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        toggleSavedProvider(provider.id);
-                                                    }}
-                                                    className={`h-11 w-11 rounded-xl flex items-center justify-center border-2 transition-colors ${
-                                                        savedProviderIds.includes(provider.id) 
-                                                            ? 'border-red-100 bg-red-50 text-red-500' 
-                                                            : 'border-gray-200 bg-white text-gray-400 hover:border-gray-300 hover:text-gray-900'
-                                                    }`}
-                                                >
-                                                    <span className="material-icons-outlined text-[20px]">
-                                                        {savedProviderIds.includes(provider.id) ? 'favorite' : 'favorite_border'}
+                                                <p className="text-[11px] sm:text-[12px] font-medium text-gray-500 flex items-center gap-1 mt-0.5 truncate">
+                                                    <span className="text-gray-700 font-bold">{provider.category || 'General Service'}</span> 
+                                                    <span className="text-gray-300">•</span> 
+                                                    <span className="material-icons-outlined text-[13px]">location_on</span>
+                                                    <span className="truncate">{provider.location || 'Lagos, Nigeria'}</span>
+                                                    <span className="text-gray-300 hidden sm:inline">•</span>
+                                                    <span className="hidden sm:inline-flex items-center gap-0.5">
+                                                        <span className="material-icons-outlined text-gray-400 text-[13px]">task_alt</span>
+                                                        {provider.completedJobs} done
                                                     </span>
-                                                </button>
-                                                <button onClick={() => navigate(`/customer/provider/${provider.id}`)} className="h-11 flex-1 sm:flex-none px-6 text-[13px] font-extrabold bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all shadow-sm">
-                                                    View Profile
-                                                </button>
+                                                </p>
+                                                
+                                                {/* Skills Tags — desktop only */}
+                                                <div className="hidden sm:flex flex-wrap gap-1.5 mt-2">
+                                                    {provider.skills.slice(0, 3).map((skill, idx) => (
+                                                        <span key={idx} className="text-[9px] font-bold text-gray-600 bg-gray-100 border border-gray-200/60 px-2 py-0.5 rounded-md tracking-wide">
+                                                            {skill}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </div>
 
+                                            {/* Save button */}
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleSavedProvider(provider.id);
+                                                }}
+                                                className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center border transition-colors shrink-0 ${
+                                                    savedProviderIds.includes(provider.id) 
+                                                        ? 'border-red-100 bg-red-50 text-red-500' 
+                                                        : 'border-gray-200 bg-white text-gray-400 hover:border-gray-300 hover:text-gray-900'
+                                                }`}
+                                            >
+                                                <span className="material-icons-outlined text-[18px] sm:text-[20px]">
+                                                    {savedProviderIds.includes(provider.id) ? 'favorite' : 'favorite_border'}
+                                                </span>
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
@@ -234,6 +263,7 @@ const BrowseProviders = () => {
 
                     </div>
                 </main>
+                <MobileNavBar />
             </div>
         </div>
     );
