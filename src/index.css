@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide scrollbars globally while keeping scroll functionality */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+*::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
+
 .hero-pattern {
   background-color: #66BC29;
   background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuB9KTRtP-ZAZxuU1Xwi7Jro2FjS31z3RTlAzYruosS15yaTQx52tzBW9rTftjsyOhxNU9DEx9M_PC9LCxBHw_cBhzuePMO6cSuwSL3OHAE3MyRd1Lb3ALck7Bo12z_A56s-HyIbIEqufNfHo8v1d_Y891DghfAgok8hM6FcH9DJj3tuL__EXHC3qR9CFDjwtNbwbc7NBVIfNYLQH3MHdjvl0539mf6OcQZdQaWZVLD6ByZiJ32CuljcwaKGF8tqAU5HZeRKyMIDL4U)
