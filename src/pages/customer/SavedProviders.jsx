@@ -69,17 +69,17 @@ const SavedProviders = () => {
                 <TopNavbar breadcrumbs={['Customer', 'Saved Providers']} />
                 
                 <main className="flex-1 overflow-y-auto bg-white">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 pb-24 md:pb-10">
+                    <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 pb-24 md:pb-10 space-y-6">
                         
                         {/* Header */}
-                        <div className="flex items-end justify-between mb-6 sm:mb-8">
+                        <div className="flex items-end justify-between">
                             <div>
-                                <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Saved Providers</h1>
-                                <p className="mt-1 text-[13px] sm:text-sm text-gray-500">Service professionals you've bookmarked for later.</p>
+                                <h1 className="text-[22px] sm:text-[28px] font-extrabold text-gray-900 tracking-tight">Saved Providers</h1>
+                                <p className="mt-1 text-[13px] font-medium text-gray-400">Service professionals you've bookmarked for later.</p>
                             </div>
-                            <Link to="/customer/browse" id="tour-browse-more" className="hidden sm:inline-flex items-center text-sm font-bold text-[#10B981] hover:text-[#059669]">
+                            <Link to="/customer/browse" id="tour-browse-more" className="hidden sm:inline-flex items-center gap-1 text-[13px] font-bold text-[#10B981] hover:text-[#059669] transition-colors">
                                 Browse more
-                                <span className="material-icons-outlined text-lg ml-1">arrow_forward</span>
+                                <span className="material-icons-outlined text-[16px]">arrow_forward</span>
                             </Link>
                         </div>
 
@@ -92,37 +92,39 @@ const SavedProviders = () => {
                         ) : savedProviders.length > 0 ? (
                             <div className="flex flex-col relative z-0" id="tour-saved-providers-grid">
                                 {savedProviders.map((provider, index) => (
-                                    <div key={provider.id} className={`py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-colors hover:bg-gray-50/50 px-2 rounded-xl -mx-2 ${index !== savedProviders.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                                    <div key={provider.id} className={`py-5 flex items-center gap-4 transition-colors hover:bg-gray-50/60 px-1 rounded-xl -mx-1 ${index !== savedProviders.length - 1 ? 'border-b border-gray-100' : ''}`}>
                                         
                                         {/* Provider Info (Left) */}
-                                        <div className="flex gap-5 items-center flex-1">
-                                            <img src={provider.image} alt={provider.name} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border border-gray-200 object-cover shrink-0" />
-                                            <div>
-                                                <h3 className="font-extrabold text-[17px] text-gray-900 flex items-center gap-1.5 mb-1 tracking-wide group-hover:text-[#10B981] transition-colors">
-                                                    {provider.name}
-                                                    {provider.verified && <span className="material-icons text-[#10B981] text-[18px]" title="Verified">verified</span>}
-                                                </h3>
-                                                <p className="text-[13px] font-medium text-gray-500 flex items-center gap-1.5">
-                                                    <span className="text-gray-700 font-bold">{provider.service}</span> 
-                                                    <span className="text-gray-300">•</span> 
-                                                    <span className="material-icons-outlined text-[14px]">location_on</span> {provider.location}
+                                        <div className="flex gap-4 items-center flex-1 min-w-0">
+                                            <img src={provider.image} alt={provider.name} className="w-11 h-11 rounded-full border border-gray-200 object-cover shrink-0" />
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-1.5 mb-0.5">
+                                                    <h3 className="text-[15px] font-bold text-gray-900 truncate">
+                                                        {provider.name}
+                                                    </h3>
+                                                    {provider.verified && <span className="material-icons text-[#10B981] text-[15px] shrink-0" title="Verified">verified</span>}
+                                                </div>
+                                                <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5 truncate">
+                                                    <span className="text-gray-700 font-semibold">{provider.service}</span> 
+                                                    <span className="text-gray-200">·</span> 
+                                                    <span className="truncate">{provider.location}</span>
                                                 </p>
                                             </div>
                                         </div>
 
-                                        {/* Stats (Middle) */}
+                                        {/* Rating */}
                                         {provider.rating && (
-                                            <div className="flex items-center gap-1.5 shrink-0">
-                                                <span className="material-icons text-yellow-500 text-[18px]">star</span>
-                                                <span className="font-extrabold text-[15px] text-gray-900">{provider.rating}</span>
+                                            <div className="flex items-center gap-1 bg-yellow-50 px-2.5 py-1 rounded-lg border border-yellow-100 shrink-0">
+                                                <span className="material-icons text-yellow-500 text-[16px]">star</span>
+                                                <span className="font-bold text-[13px] text-gray-900">{provider.rating}</span>
                                             </div>
                                         )}
 
-                                        {/* Actions (Right) */}
-                                        <div className="flex items-center gap-3 shrink-0 mt-4 sm:mt-0">
+                                        {/* Actions */}
+                                        <div className="flex items-center shrink-0">
                                             <Link 
                                                 to={`/customer/provider/${provider.id}`} 
-                                                className="h-10 flex items-center justify-center px-5 text-[13px] font-extrabold bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all shadow-sm"
+                                                className="h-9 flex items-center justify-center px-4 text-[12px] font-bold bg-[#0F172A] text-white rounded-xl hover:bg-slate-700 transition-all shadow-sm"
                                             >
                                                 View Profile
                                             </Link>
@@ -136,8 +138,8 @@ const SavedProviders = () => {
                                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-50 mb-6">
                                     <span className="material-icons-outlined text-gray-400 text-4xl">bookmark_border</span>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">No saved providers yet</h3>
-                                <p className="text-gray-500 max-w-md mx-auto mb-8">Found someone you like? Tap the heart icon on their profile to save them here for quick access later.</p>
+                                <h3 className="text-lg font-extrabold text-gray-900 mb-2">No saved providers yet</h3>
+                                <p className="text-[14px] font-medium text-gray-500 max-w-md mx-auto mb-8">Found someone you like? Tap the bookmark icon on their profile to save them here for quick access later.</p>
                                 <Link to="/customer/browse" className="inline-flex items-center bg-[#10B981] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#059669] transition-all shadow-lg shadow-[#10B981]/20 hover:scale-[1.02]">
                                     Explore Providers
                                 </Link>
