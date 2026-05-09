@@ -25,6 +25,7 @@ export const MOCK_USER_PROVIDER = {
     location_name: 'Surulere, Lagos',
     trust_score: 92,
     is_active: true,
+    kycCompleted: false,
     provider_profiles: {
         trade_category: ['electrician', 'plumber'],
         bio: 'Certified electrician with 10 years experience in residential wiring.',

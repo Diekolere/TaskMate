@@ -66,7 +66,7 @@ function BankSelect({ value, onChange }) {
                         exit={{ opacity: 0, y: -6, scaleY: 0.96 }}
                         transition={{ duration: 0.15 }}
                         style={{ transformOrigin: 'top' }}
-                        className="absolute top-[calc(100%+6px)] left-0 right-0 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden"
+                        className="absolute top-[calc(100%+6px)] left-0 right-0 bg-white border border-gray-100 rounded-2xl shadow-2xl z-[200] overflow-hidden"
                     >
                         {/* Search */}
                         <div className="px-3 pt-3 pb-2 border-b border-gray-50">
@@ -114,14 +114,8 @@ function BankSelect({ value, onChange }) {
 function SquadBadge() {
     return (
         <div className="flex items-center gap-1.5">
-            <svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="32" height="32" rx="8" fill="#6C47FF"/>
-                <path d="M16 7C11.029 7 7 11.029 7 16s4.029 9 9 9 9-4.029 9-9-4.029-9-9-9zm0 15.3A6.307 6.307 0 0 1 9.7 16 6.307 6.307 0 0 1 16 9.7 6.307 6.307 0 0 1 22.3 16 6.307 6.307 0 0 1 16 22.3z" fill="white"/>
-                <circle cx="16" cy="16" r="3" fill="white"/>
-            </svg>
-            <span className="text-[11px] text-gray-400">
-                Powered by <span className="font-bold text-[#6C47FF]">Squad</span>
-            </span>
+            <span className="text-[11px] text-gray-400">Powered by</span>
+            <img src="/squad.png" alt="Squad" className="h-[14px] w-auto object-contain" />
         </div>
     );
 }
@@ -199,34 +193,31 @@ export default function KYCModal({ open, onClose, onComplete }) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 px-4">
             {/* Backdrop */}
             <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm"
                 onClick={onClose}
             />
 
-            {/* Modal */}
+            {/* Modal — sits inside the scrollable wrapper, auto-margins center it */}
             <motion.div
                 initial={{ opacity: 0, scale: 0.96, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: 12 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="relative bg-white rounded-3xl shadow-2xl w-full max-w-[520px] overflow-visible"
+                className="relative bg-white rounded-3xl shadow-2xl w-full max-w-[520px] overflow-visible my-auto"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
                 <div className="px-8 pt-8 pb-6 border-b border-gray-100">
                     <div className="flex items-start justify-between mb-6">
                         <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <div className="w-7 h-7 bg-[#10B981]/10 rounded-lg flex items-center justify-center">
-                                    <span className="material-icons text-[#10B981] text-base">verified_user</span>
-                                </div>
-                                <h2 className="text-sm font-bold text-gray-900 tracking-wide">Identity Verification</h2>
+                            <div className="mb-1">
+                                <h2 className="text-sm font-bold text-gray-900 tracking-wide leading-tight mb-1">Identity Verification</h2>
+                                <SquadBadge />
                             </div>
-                            <SquadBadge />
                         </div>
                         <button
                             onClick={onClose}
@@ -259,7 +250,7 @@ export default function KYCModal({ open, onClose, onComplete }) {
                 </div>
 
                 {/* Content */}
-                <div className="px-8 py-8 min-h-[340px] overflow-hidden">
+                <div className="px-8 py-8 min-h-[340px] overflow-visible">
                     <AnimatePresence mode="wait" custom={dir}>
 
                         {step === 1 && (
@@ -326,7 +317,7 @@ export default function KYCModal({ open, onClose, onComplete }) {
                             <motion.div key="s2" custom={dir} variants={variants}
                                 initial="enter" animate="center" exit="exit"
                                 transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                className="space-y-6"
+                                className="space-y-6 overflow-visible"
                             >
                                 <div>
                                     <h3 className="text-xl font-bold text-gray-900">Where should we send payments?</h3>
