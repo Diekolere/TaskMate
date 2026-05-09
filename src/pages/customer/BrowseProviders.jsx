@@ -19,7 +19,7 @@ const BrowseProviders = () => {
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [isRatingOpen, setIsRatingOpen] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState([]);
-    const [sortFilter, setSortFilter] = useState('Relevance');
+    const [sortFilter, setSortFilter] = useState('Highest Rated');
     const [ratingFilter, setRatingFilter] = useState('Any Rating');
 
     const categories = [
@@ -56,6 +56,13 @@ const BrowseProviders = () => {
             if (ratingFilter !== 'Any Rating') {
                 const minRating = parseFloat(ratingFilter.split('+')[0]);
                 filteredData = filteredData.filter(p => (p.rating || 4.5) >= minRating);
+            }
+
+            // Apply sorting
+            if (sortFilter === 'Highest Rated') {
+                filteredData.sort((a, b) => (b.rating || 4.5) - (a.rating || 4.5));
+            } else if (sortFilter === 'Most Jobs Done') {
+                filteredData.sort((a, b) => (b.completedJobs || 0) - (a.completedJobs || 0));
             }
 
             setProviders(filteredData);
@@ -156,17 +163,17 @@ const BrowseProviders = () => {
                                     </button>
                                     {isSortOpen && (
                                         <div className="absolute top-full mt-2 w-[180px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50">
-                                            {['Relevance', 'Highest Rated', 'Most Jobs Done'].map(opt => (
-                                                <button key={opt} onClick={() => { setSortFilter(opt); setIsSortOpen(false); }} className="w-full text-left px-4 py-2 text-[13px] hover:bg-gray-50">{opt}</button>
+                                            {['Highest Rated', 'Most Jobs Done'].map(opt => (
+                                                <button key={opt} onClick={() => { setSortFilter(opt); setIsSortOpen(false); }} className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">{opt}</button>
                                             ))}
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Clear All */}
-                                {(selectedCategories.length > 0 || sortFilter !== 'Relevance' || ratingFilter !== 'Any Rating' || searchQuery !== '') && (
+                                {(selectedCategories.length > 0 || sortFilter !== 'Highest Rated' || ratingFilter !== 'Any Rating' || searchQuery !== '') && (
                                     <button 
-                                        onClick={() => { setSelectedCategories([]); setSortFilter('Relevance'); setRatingFilter('Any Rating'); setSearchQuery(''); }}
+                                        onClick={() => { setSelectedCategories([]); setSortFilter('Highest Rated'); setRatingFilter('Any Rating'); setSearchQuery(''); }}
                                         className="text-[13px] font-semibold text-gray-500 underline ml-2 hover:text-gray-900 transition-colors"
                                     >
                                         Clear all
@@ -206,55 +213,33 @@ const BrowseProviders = () => {
                                             
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <h3 className="font-extrabold text-[14px] sm:text-[16px] text-gray-900 flex items-center gap-1 truncate group-hover:text-[#10B981] transition-colors">
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <h3 className="font-extrabold text-[15px] sm:text-[17px] text-gray-900 truncate group-hover:text-[#10B981] transition-colors">
                                                         {provider.displayName || provider.full_name || 'Artisan'}
-                                                        <span className="material-icons text-[#10B981] text-[16px] shrink-0" title="Verified">verified</span>
                                                     </h3>
-                                                    <div className="flex items-center gap-1 shrink-0">
-                                                        <span className="material-icons text-yellow-500 text-[16px]">star</span>
-                                                        <span className="font-extrabold text-[13px] sm:text-[14px] text-gray-900">{provider.rating || '4.8'}</span>
-                                                        <span className="text-[10px] font-bold text-gray-400 hidden sm:inline">({provider.reviews?.length || Math.floor(Math.random() * 50) + 10})</span>
-                                                    </div>
+                                                    <span className="material-icons text-[#10B981] text-[16px] shrink-0" title="Verified">verified</span>
                                                 </div>
-                                                <p className="text-[11px] sm:text-[12px] font-medium text-gray-500 flex items-center gap-1 mt-0.5 truncate">
+                                                <p className="text-[12px] sm:text-[13px] font-medium text-gray-500 flex items-center gap-1.5 truncate">
                                                     <span className="text-gray-700 font-bold">{provider.category || 'General Service'}</span> 
                                                     <span className="text-gray-300">•</span> 
-                                                    <span className="material-icons-outlined text-[13px]">location_on</span>
                                                     <span className="truncate">{provider.location || 'Lagos, Nigeria'}</span>
-                                                    <span className="text-gray-300 hidden sm:inline">•</span>
-                                                    <span className="hidden sm:inline-flex items-center gap-0.5">
-                                                        <span className="material-icons-outlined text-gray-400 text-[13px]">task_alt</span>
-                                                        {provider.completedJobs} done
-                                                    </span>
                                                 </p>
-                                                
-                                                {/* Skills Tags — desktop only */}
-                                                <div className="hidden sm:flex flex-wrap gap-1.5 mt-2">
-                                                    {provider.skills.slice(0, 3).map((skill, idx) => (
-                                                        <span key={idx} className="text-[9px] font-bold text-gray-600 bg-gray-100 border border-gray-200/60 px-2 py-0.5 rounded-md tracking-wide">
-                                                            {skill}
-                                                        </span>
-                                                    ))}
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <div className="flex items-center gap-1 text-[11px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
+                                                        <span className="material-icons-outlined text-[13px] text-gray-400">task_alt</span>
+                                                        {provider.completedJobs} jobs
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            {/* Save button */}
-                                            <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    toggleSavedProvider(provider.id);
-                                                }}
-                                                className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center border transition-colors shrink-0 ${
-                                                    savedProviderIds.includes(provider.id) 
-                                                        ? 'border-red-100 bg-red-50 text-red-500' 
-                                                        : 'border-gray-200 bg-white text-gray-400 hover:border-gray-300 hover:text-gray-900'
-                                                }`}
-                                            >
-                                                <span className="material-icons-outlined text-[18px] sm:text-[20px]">
-                                                    {savedProviderIds.includes(provider.id) ? 'favorite' : 'favorite_border'}
-                                                </span>
-                                            </button>
+                                            {/* Rating and Chevron */}
+                                            <div className="flex items-center gap-4 shrink-0">
+                                                <div className="flex items-center gap-1 bg-yellow-50 px-2.5 py-1 rounded-lg border border-yellow-100">
+                                                    <span className="material-icons text-yellow-500 text-[18px]">star</span>
+                                                    <span className="font-black text-[15px] text-gray-900">{provider.rating || '4.8'}</span>
+                                                </div>
+                                                <span className="material-icons text-gray-300 group-hover:text-gray-600 group-hover:translate-x-1 transition-all">chevron_right</span>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

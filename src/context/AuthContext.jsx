@@ -22,11 +22,23 @@ export function AuthProvider({ children }) {
       console.log('🚀 TaskMate running in Simulation Mode');
       // Retrieve from localStorage if available
       const savedUser = localStorage.getItem('taskmate_mock_user');
-      if (savedUser) {
-        setCurrentUser(JSON.parse(savedUser));
+      const currentUserData = savedUser ? JSON.parse(savedUser) : null;
+      
+      // Route-aware auto-login/switch for development
+      if (window.location.pathname.startsWith('/provider') && currentUserData?.role !== 'provider') {
+        setCurrentUser(MOCK_USER_PROVIDER);
+        localStorage.setItem('taskmate_mock_user', JSON.stringify(MOCK_USER_PROVIDER));
+      } else if (window.location.pathname.startsWith('/admin') && currentUserData?.role !== 'admin') {
+        const adminUser = { ...MOCK_USER_CUSTOMER, role: 'admin', email: 'admin@taskmate.com', full_name: 'Admin User' };
+        setCurrentUser(adminUser);
+        localStorage.setItem('taskmate_mock_user', JSON.stringify(adminUser));
+      } else if (savedUser) {
+        setCurrentUser(currentUserData);
       } else {
         setCurrentUser(MOCK_USER_CUSTOMER);
+        localStorage.setItem('taskmate_mock_user', JSON.stringify(MOCK_USER_CUSTOMER));
       }
+      
       setLoading(false);
       return;
     }
