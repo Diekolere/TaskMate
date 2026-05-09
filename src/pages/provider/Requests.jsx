@@ -14,10 +14,10 @@ const InboundRequests = () => {
     const [search, setSearch] = useState('');
     const [tab, setTab] = useState('all'); // 'all' | 'upcoming'
 
-    const requests = jobs.filter(j =>
-        j.status === 'Open' ||
-        (j.status === 'Pending' && j.providerId === currentUser?.uid)
-    );
+    const requests = jobs.filter(j => {
+        const s = String(j.status || '').toLowerCase();
+        return s === 'open' || (s === 'pending' && j.providerId === currentUser?.uid);
+    });
 
     const upcomingCount = requests.filter(r => !!r.scheduledDate).length;
 
