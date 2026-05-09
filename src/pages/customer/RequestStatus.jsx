@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../../components/layout/Sidebar';
@@ -7,334 +7,472 @@ import MobileNavBar from '../../components/layout/MobileNavBar';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 import { MOCK_PROVIDERS } from '../../lib/mocks';
 
+/* ─── Negotiate slide-over panel ───────────────────────── */
+function NegotiatePanel({ provider, requestId, onClose }) {
+    const { currentUser } = useAuth();
+    const messagesEndRef = useRef(null);
+    const inputRef = useRef(null);
+    const [messages, setMessages] = useState([
+        {
+            id: 1, from: 'provider',
+            text: `Hi! I've reviewed your request and I'm ready to help.`,
+            time: new Date(Date.now() - 900000),
+        },
+        {
+            id: 2, from: 'provider',
+            text: `I can complete this job for ₦${Number(provider.proposed_price || 12000).toLocaleString()}.`,
+            time: new Date(Date.now() - 840000),
+            isPriceProposal: true,
+            price: provider.proposed_price || 12000,
+        },
+    ]);
+    const [input, setInput] = useState('');
+    const [showPriceInput, setShowPriceInput] = useState(false);
+    const [priceOffer, setPriceOffer] = useState('');
+    const [agreed, setAgreed] = useState(false);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    useEffect(() => {
+        inputRef.current?.focus();
+    }, []);
+
+    const send = (text, extra = {}) => {
+        if (!text.trim()) return;
+        setMessages(prev => [...prev, {
+            id: Date.now(), from: 'customer',
+            text, time: new Date(), ...extra,
+        }]);
+        setInput('');
+
+        // Mock provider reply
+        setTimeout(() => {
+            setMessages(prev => [...prev, {
+                id: Date.now() + 1, from: 'provider',
+                text: extra.isPriceProposal
+                    ? `That works for me! Let's go ahead.`
+                    : `Got it — I'll be there right on time.`,
+                time: new Date(),
+            }]);
+        }, 1200);
+    };
+
+    const sendPrice = () => {
+        if (!priceOffer) return;
+        send(`I'd like to propose ₦${Number(priceOffer).toLocaleString()} for this job.`, {
+            isPriceProposal: true, price: Number(priceOffer),
+        });
+        setShowPriceInput(false);
+        setPriceOffer('');
+    };
+
+    const handleAccept = (price) => {
+        setAgreed(true);
+        toast.success(`Deal agreed at ₦${Number(price).toLocaleString()} — proceed to payment.`);
+        setMessages(prev => [...prev, {
+            id: Date.now(), from: 'system',
+            text: `✓ Price agreed at ₦${Number(price).toLocaleString()}. Proceed to payment.`,
+            time: new Date(),
+        }]);
+    };
+
+    const fmt = (d) => format(new Date(d), 'h:mm a');
+
+    return (
+        <>
+            {/* Backdrop */}
+            <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/30 z-40 sm:hidden"
+                onClick={onClose}
+            />
+
+            {/* Panel */}
+            <motion.div
+                initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-50 flex flex-col"
+            >
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+                        <span className="material-icons text-gray-500 text-xl">arrow_back</span>
+                    </button>
+                    <div className="w-9 h-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center shrink-0">
+                        {provider.avatar_url
+                            ? <img src={provider.avatar_url} alt={provider.full_name} className="w-full h-full object-cover" />
+                            : <span className="material-icons text-gray-400 text-xl">person</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900 text-sm leading-tight truncate">
+                            {provider.full_name || provider.displayName}
+                        </p>
+                        <p className="text-xs text-[#10B981] font-semibold">Online · Negotiating</p>
+                    </div>
+                    <a href={`tel:${provider.phone_number}`}
+                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+                        <span className="material-icons text-gray-500 text-xl">call</span>
+                    </a>
+                </div>
+
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
+                    {messages.map(msg => (
+                        <div key={msg.id}
+                            className={`flex ${msg.from === 'customer' ? 'justify-end' : msg.from === 'system' ? 'justify-center' : 'justify-start'}`}>
+                            {msg.from === 'system' ? (
+                                <span className="bg-gray-100 text-gray-500 text-xs font-semibold px-4 py-2 rounded-full max-w-[85%] text-center">
+                                    {msg.text}
+                                </span>
+                            ) : (
+                                <div className={`max-w-[78%] ${msg.from === 'customer' ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+                                    {msg.isPriceProposal ? (
+                                        <div className={`rounded-2xl px-4 py-3.5 ${msg.from === 'customer'
+                                            ? 'bg-[#0F172A] text-white rounded-br-sm'
+                                            : 'bg-gray-100 text-gray-900 rounded-bl-sm'}`}>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-1">
+                                                Price Proposal
+                                            </p>
+                                            <p className="text-xl font-black">₦{Number(msg.price).toLocaleString()}</p>
+                                            <p className="text-xs opacity-70 mt-0.5">{msg.text}</p>
+                                            {msg.from === 'provider' && !agreed && (
+                                                <div className="flex gap-2 mt-3">
+                                                    <button
+                                                        onClick={() => handleAccept(msg.price)}
+                                                        className="flex-1 bg-[#10B981] text-white text-xs font-bold py-2 rounded-xl hover:bg-[#059669] transition-colors">
+                                                        Accept
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setShowPriceInput(true)}
+                                                        className="flex-1 bg-white text-gray-700 border border-gray-200 text-xs font-bold py-2 rounded-xl hover:bg-gray-50 transition-colors">
+                                                        Counter
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.from === 'customer'
+                                            ? 'bg-[#0F172A] text-white rounded-br-sm'
+                                            : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
+                                            {msg.text}
+                                        </div>
+                                    )}
+                                    <span className="text-[10px] text-gray-400 px-1">{fmt(msg.time)}</span>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                </div>
+
+                {/* Counter-price input */}
+                <AnimatePresence>
+                    {showPriceInput && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                            className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center gap-2">
+                            <div className="flex-1 relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">₦</span>
+                                <input
+                                    type="number"
+                                    value={priceOffer}
+                                    onChange={e => setPriceOffer(e.target.value)}
+                                    placeholder="Your counter offer"
+                                    className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] bg-white"
+                                />
+                            </div>
+                            <button onClick={sendPrice}
+                                className="h-10 px-4 bg-[#0F172A] text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition-colors">
+                                Send
+                            </button>
+                            <button onClick={() => setShowPriceInput(false)}
+                                className="h-10 w-10 flex items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:bg-gray-100 transition-colors">
+                                <span className="material-icons text-lg">close</span>
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Input bar */}
+                <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2 bg-white">
+                    <button
+                        onClick={() => setShowPriceInput(v => !v)}
+                        title="Propose a price"
+                        className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-[#10B981]">
+                        <span className="material-icons text-xl">attach_money</span>
+                    </button>
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send(input)}
+                        placeholder="Message…"
+                        className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm outline-none text-gray-800 placeholder-gray-400"
+                    />
+                    <button
+                        onClick={() => send(input)}
+                        disabled={!input.trim()}
+                        className="w-9 h-9 flex items-center justify-center rounded-full bg-[#0F172A] disabled:opacity-30 text-white hover:bg-slate-700 transition-colors">
+                        <span className="material-icons text-[18px]">send</span>
+                    </button>
+                </div>
+            </motion.div>
+        </>
+    );
+}
+
+/* ─── Main page ────────────────────────────────────────── */
 const RequestStatus = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
     const { requests, getProviders, isSimulated, releasePayment } = useData();
     const [request, setRequest] = useState(null);
     const [interestedProviders, setInterestedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [negotiatingWith, setNegotiatingWith] = useState(null);
 
     useEffect(() => {
         if (!id || requests.length === 0) {
-             if (requests.length === 0 && !isSimulated) setLoading(true);
-             else setLoading(false);
-             return;
+            if (requests.length === 0 && !isSimulated) setLoading(true);
+            else setLoading(false);
+            return;
         }
-        
         const req = requests.find(r => r.id === id);
         if (req) {
             setRequest(req);
-            
-            // Load interested providers from mock data
             if (isSimulated) {
-                // In simulation, show 3 random providers as interested
                 const interested = MOCK_PROVIDERS.slice(0, 3).map(p => ({
                     ...p,
                     proposed_price: Math.floor(Number(req.budget_estimate || 10000) * (0.85 + Math.random() * 0.3)),
                     message: [
-                        "I'm experienced in this service and can start immediately!",
-                        "I have great reviews and can complete this efficiently.",
-                        "Professional work guaranteed. Happy to discuss your needs."
+                        "I'm experienced in this and can start immediately!",
+                        "Great reviews — can complete this efficiently.",
+                        "Professional work guaranteed. Happy to discuss."
                     ][Math.floor(Math.random() * 3)],
                     verified: true,
-                    phone_number: ['+234-801-234-5678', '+234-802-345-6789', '+234-803-456-7890'][Math.floor(Math.random() * 3)]
+                    phone_number: ['+234-801-234-5678', '+234-802-345-6789', '+234-803-456-7890'][Math.floor(Math.random() * 3)],
                 }));
                 setInterestedProviders(interested);
             } else {
-                // In real mode, fetch from database
                 getProviders('All').then(allProviders => {
                     const interested = allProviders.slice(0, 3).map(p => ({
                         ...p,
                         proposed_price: Math.floor(Number(req.budget_estimate || 10000) * (0.85 + Math.random() * 0.3)),
-                        message: "I'm interested in your request and would like to discuss the details.",
-                        verified: p.provider_profiles?.verification_status === 'verified'
+                        message: "I'm interested and would like to discuss the details.",
+                        verified: p.provider_profiles?.verification_status === 'verified',
                     }));
                     setInterestedProviders(interested);
-                }).catch(err => console.error("Error fetching providers:", err));
+                }).catch(console.error);
             }
         }
         setLoading(false);
     }, [id, requests, getProviders, isSimulated]);
 
-    if (loading) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-white">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#10B981]"></div>
-            </div>
-        );
-    }
+    if (loading) return (
+        <div className="flex h-screen items-center justify-center bg-white">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#10B981]" />
+        </div>
+    );
 
-    if (!request) {
-        return (
-             <div className="flex h-screen items-center justify-center bg-white flex-col gap-4">
-                <p className="text-gray-500 font-bold">Request not found.</p>
-                <button onClick={() => navigate('/customer/dashboard')} className="text-[#10B981] font-bold hover:underline">Back to Dashboard</button>
-            </div>
-        );
-    }
-    
-    const dateStr = request.createdAt instanceof Date ? format(request.createdAt, 'MMM dd, yyyy h:mm a') : 'Just now';
+    if (!request) return (
+        <div className="flex h-screen items-center justify-center bg-white flex-col gap-4">
+            <p className="text-gray-500 font-bold">Request not found.</p>
+            <button onClick={() => navigate('/customer/dashboard')} className="text-[#10B981] font-bold hover:underline">
+                Back to Dashboard
+            </button>
+        </div>
+    );
+
+    const dateStr = request.createdAt instanceof Date
+        ? format(request.createdAt, 'MMM dd, yyyy')
+        : 'Just now';
 
     const normalizedStatus = String(request.status || '').toLowerCase();
     const releaseEnabled = normalizedStatus === 'completed';
+    const canPay = ['accepted', 'confirmed', 'negotiating', 'awaiting_payment'].includes(normalizedStatus);
 
-    const getFriendlyStatus = (status) => {
-        switch (String(status).toLowerCase()) {
-            case 'open': return 'Open Request';
-            case 'interested': return 'Providers Interested';
-            case 'negotiating': return 'Negotiating';
-            case 'awaiting_payment': return 'Awaiting Payment';
-            case 'payment_secured': return 'Payment Secured';
-            case 'payment_released': return 'Payment Released';
-            case 'completed': return 'Completed';
-            default: return status;
-        }
-    };
-
-    const getStatusBadgeColor = (status) => {
-        switch (String(status).toLowerCase()) {
-            case 'open': return 'bg-blue-50 text-blue-700 border-blue-100';
-            case 'interested': return 'bg-amber-50 text-amber-700 border-amber-100';
-            case 'negotiating': return 'bg-purple-50 text-purple-700 border-purple-100';
-            case 'awaiting_payment': return 'bg-orange-50 text-orange-700 border-orange-100';
-            case 'payment_secured': return 'bg-green-50 text-green-700 border-green-100';
-            case 'completed': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-            default: return 'bg-gray-50 text-gray-700 border-gray-100';
-        }
-    };
+    const STATUS_LABEL = { open: 'Open', interested: 'Providers Interested', negotiating: 'Negotiating', awaiting_payment: 'Awaiting Payment', payment_secured: 'Payment Secured', payment_released: 'Payment Released', completed: 'Completed' };
+    const STATUS_COLOR = { open: 'bg-blue-50 text-blue-700 border-blue-100', interested: 'bg-amber-50 text-amber-700 border-amber-100', negotiating: 'bg-purple-50 text-purple-700 border-purple-100', awaiting_payment: 'bg-orange-50 text-orange-700 border-orange-100', payment_secured: 'bg-green-50 text-green-700 border-green-100', completed: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
 
     const handleRelease = async () => {
         try {
             await releasePayment(id);
             toast.success('Payment released to provider successfully!');
             setRequest(prev => ({ ...prev, status: 'payment_released' }));
-        } catch (error) {
-            toast.error('Failed to release payment.');
-        }
-    };
-
-    const handleCallProvider = (phoneNumber) => {
-        if (phoneNumber) {
-            window.location.href = `tel:${phoneNumber}`;
-        }
-    };
-
-    const handleNegotiate = (providerId, providerName) => {
-        navigate(`/customer/negotiation/${id}?provider=${providerId}`);
+        } catch { toast.error('Failed to release payment.'); }
     };
 
     return (
         <div className="flex h-screen bg-white font-sans text-gray-900">
             <Sidebar />
-            
-            <main className="flex-1 overflow-hidden flex flex-col min-w-0">
-                <TopNavbar breadcrumbs={['Customer', 'My Requests', 'Request Details']} />
 
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 pb-24 md:pb-10 bg-white">
-                    <div className="max-w-6xl mx-auto">
-                        {/* Header */}
-                        <div className="mb-10">
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                                <div>
-                                    <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-                                        {request.title}
-                                    </h1>
-                                    <p className="mt-1.5 text-[12px] sm:text-sm font-medium text-gray-500">
-                                        Order ID: <span className="font-bold text-gray-700">#{request.id.slice(0, 8).toUpperCase()}</span> • Placed on {dateStr}
-                                    </p>
-                                </div>
-                                <div className={`px-4 py-2 rounded-full border font-bold text-sm ${getStatusBadgeColor(request.status)}`}>
-                                    {getFriendlyStatus(request.status)}
-                                </div>
+            <main className="flex-1 overflow-hidden flex flex-col min-w-0">
+                <TopNavbar breadcrumbs={['Customer', 'My Requests', 'Details']} />
+
+                <div className="flex-1 overflow-y-auto bg-white">
+                    <div className="max-w-[860px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-10 pb-24 md:pb-10">
+
+                        {/* Page title */}
+                        <div className="mb-8">
+                            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 mb-2">
+                                {request.title}
+                            </h1>
+                            <div className="flex flex-wrap items-center gap-2.5">
+                                <span className={`px-2.5 py-0.5 rounded-full border font-bold text-xs ${STATUS_COLOR[normalizedStatus] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                    {STATUS_LABEL[normalizedStatus] || request.status}
+                                </span>
+                                {request.category && (
+                                    <span className="text-xs text-gray-400 font-medium">{request.category}</span>
+                                )}
+                                {request.location && (
+                                    <span className="flex items-center gap-0.5 text-xs text-gray-400">
+                                        <span className="material-icons-outlined text-sm">location_on</span>
+                                        {request.location}
+                                    </span>
+                                )}
+                                <span className="text-xs text-gray-300">·</span>
+                                <span className="text-xs text-gray-400">{dateStr}</span>
+                            </div>
+                            {request.description && (
+                                <p className="mt-3 text-sm text-gray-500 leading-relaxed max-w-xl">{request.description}</p>
+                            )}
+
+                            {/* CTAs */}
+                            <div className="flex flex-wrap gap-3 mt-5">
+                                {canPay && (
+                                    <button
+                                        onClick={() => navigate(`/customer/payment/${request.id}`)}
+                                        className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all shadow-md shadow-green-500/20">
+                                        <span className="material-icons text-base">lock</span>
+                                        Proceed to Payment
+                                    </button>
+                                )}
+                                {releaseEnabled && (
+                                    <button onClick={handleRelease}
+                                        className="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all">
+                                        <span className="material-icons text-base">payments</span>
+                                        Release Payment
+                                    </button>
+                                )}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Main Content - Providers List */}
-                            <div className="lg:col-span-2 space-y-6">
-                                {/* Status Message */}
-                                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl border border-blue-100 p-6">
-                                    <div className="flex items-start gap-4">
-                                        <div className="p-2 bg-blue-100 rounded-full flex-shrink-0">
-                                            <span className="material-icons text-blue-600 text-xl">info</span>
+                        {/* Section label */}
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-[15px] font-bold text-gray-900">
+                                {interestedProviders.length > 0
+                                    ? `${interestedProviders.length} provider${interestedProviders.length !== 1 ? 's' : ''} interested`
+                                    : 'Interested Providers'}
+                            </h2>
+                            {interestedProviders.length > 0 && (
+                                <p className="text-xs text-gray-400">Tap Negotiate to chat & agree on price</p>
+                            )}
+                        </div>
+
+                        {/* Provider list — no card, just dividers */}
+                        {interestedProviders.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <div className="w-12 h-12 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
+                                    <span className="material-icons-outlined text-2xl text-gray-300">people</span>
+                                </div>
+                                <p className="text-sm font-semibold text-gray-500">No providers yet</p>
+                                <p className="text-xs text-gray-400 mt-1">Providers nearby will be notified of your request</p>
+                            </div>
+                        ) : (
+                            <div>
+                                {interestedProviders.map((provider, idx) => (
+                                    <motion.div
+                                        key={provider.id}
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: idx * 0.04 }}
+                                        className={`flex items-center gap-4 py-4 ${idx !== 0 ? 'border-t border-gray-100' : ''}`}
+                                    >
+                                        {/* Avatar */}
+                                        <div className="w-11 h-11 rounded-full bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
+                                            {provider.avatar_url
+                                                ? <img src={provider.avatar_url} alt={provider.full_name} className="w-full h-full object-cover" />
+                                                : <span className="material-icons text-gray-400 text-xl">person</span>}
                                         </div>
-                                        <div>
-                                            <h3 className="font-bold text-gray-900 text-sm">Providers Interested</h3>
-                                            <p className="text-sm text-gray-600 mt-1">
-                                                {interestedProviders.length > 0 
-                                                    ? `${interestedProviders.length} provider${interestedProviders.length !== 1 ? 's' : ''} interested in your request. Click "Negotiate" to start discussing terms directly with any provider.`
-                                                    : "No providers interested yet. Check back soon!"
-                                                }
+
+                                        {/* Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5 mb-0.5">
+                                                <span className="font-bold text-gray-900 text-[15px] truncate">
+                                                    {provider.full_name || provider.displayName}
+                                                </span>
+                                                {provider.verified && (
+                                                    <span className="material-icons text-[#10B981] text-base shrink-0">verified</span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                                                <span>{provider.category || 'General Service'}</span>
+                                                <span>·</span>
+                                                <span>{provider.location || 'Lagos, Nigeria'}</span>
+                                            </div>
+                                            {provider.jobsCompleted && (
+                                                <span className="inline-flex items-center gap-1 mt-1 text-[11px] text-gray-400 font-medium">
+                                                    <span className="material-icons-outlined text-[13px]">check_circle</span>
+                                                    {provider.jobsCompleted} jobs
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Rating + price */}
+                                        <div className="shrink-0 text-right hidden sm:block">
+                                            {provider.provider_profiles?.average_rating || provider.rating ? (
+                                                <div className="flex items-center gap-1 justify-end mb-1">
+                                                    <span className="material-icons text-yellow-400 text-base">star</span>
+                                                    <span className="text-sm font-bold text-gray-900">
+                                                        {(provider.provider_profiles?.average_rating || provider.rating)?.toFixed(1)}
+                                                    </span>
+                                                </div>
+                                            ) : null}
+                                            <p className="text-xs text-gray-400">proposes</p>
+                                            <p className="text-base font-black text-[#10B981]">
+                                                ₦{Number(provider.proposed_price || 0).toLocaleString()}
                                             </p>
                                         </div>
-                                    </div>
-                                </div>
 
-                                {/* Providers Cards */}
-                                <div className="space-y-4">
-                                    <AnimatePresence mode="popLayout">
-                                        {interestedProviders.length === 0 ? (
-                                            <motion.div
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                className="text-center py-12"
-                                            >
-                                                <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                                                    <span className="material-icons-outlined text-3xl text-gray-400">people</span>
-                                                </div>
-                                                <p className="text-gray-500 font-medium">No providers interested yet</p>
-                                            </motion.div>
-                                        ) : (
-                                            interestedProviders.map((provider, idx) => (
-                                                <motion.div
-                                                    key={provider.id}
-                                                    initial={{ opacity: 0, y: 16 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: idx * 0.05 }}
-                                                    className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#10B981]/30 transition-all overflow-hidden"
-                                                >
-                                                    <div className="p-6 flex flex-col sm:flex-row gap-6">
-                                                        {/* Provider Avatar */}
-                                                        <div className="w-20 h-20 rounded-full bg-gray-100 flex-shrink-0 overflow-hidden border-2 border-gray-50 flex items-center justify-center">
-                                                            {provider.avatar_url ? (
-                                                                <img src={provider.avatar_url} alt={provider.full_name} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <span className="material-icons text-3xl text-gray-400">person</span>
-                                                            )}
-                                                        </div>
-
-                                                        {/* Provider Info */}
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-start justify-between gap-2 mb-2">
-                                                                <div>
-                                                                    <h3 className="text-lg font-bold text-gray-900">
-                                                                        {provider.full_name || provider.displayName}
-                                                                    </h3>
-                                                                    <div className="flex items-center gap-2 mt-1">
-                                                                        <div className="flex items-center gap-1 text-yellow-500">
-                                                                            <span className="material-icons text-sm">star</span>
-                                                                            <span className="font-bold text-sm text-gray-900">
-                                                                                {provider.provider_profiles?.average_rating?.toFixed(1) || 'New'}
-                                                                            </span>
-                                                                        </div>
-                                                                        {provider.verified && (
-                                                                            <span className="inline-flex items-center gap-1 text-green-600 text-xs font-bold">
-                                                                                <span className="material-icons text-xs">verified</span>
-                                                                                Verified
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="text-right flex-shrink-0">
-                                                                    <p className="text-xs text-gray-500 font-medium mb-1">Proposed Price</p>
-                                                                    <p className="text-2xl font-black text-[#10B981]">
-                                                                        ₦{Number(provider.proposed_price || 0).toLocaleString()}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Message */}
-                                                            <p className="text-sm text-gray-600 mt-3 leading-relaxed">
-                                                                "{provider.message}"
-                                                            </p>
-
-                                                            {/* Phone Number */}
-                                                            <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                                                <p className="text-xs text-gray-500 font-bold uppercase mb-1">Contact</p>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="material-icons text-gray-400 text-sm">phone</span>
-                                                                    <p className="text-sm font-bold text-gray-900">{provider.phone_number}</p>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Action Buttons */}
-                                                            <div className="flex flex-col sm:flex-row gap-3 mt-4">
-                                                                <button
-                                                                    onClick={() => handleCallProvider(provider.phone_number)}
-                                                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                                                                >
-                                                                    <span className="material-icons text-base">call</span>
-                                                                    Call
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleNegotiate(provider.id, provider.full_name)}
-                                                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white bg-[#10B981] hover:bg-[#059669] transition-colors flex-1 sm:flex-none"
-                                                                >
-                                                                    <span className="material-icons text-base">chat</span>
-                                                                    Negotiate
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </motion.div>
-                                            ))
-                                        )}
-                                    </AnimatePresence>
-                                </div>
+                                        {/* Actions */}
+                                        <div className="shrink-0 flex items-center gap-2">
+                                            <button
+                                                onClick={() => setNegotiatingWith(provider)}
+                                                className="h-9 px-4 rounded-xl bg-[#0F172A] hover:bg-slate-700 text-white text-sm font-bold transition-colors flex items-center gap-1.5">
+                                                <span className="material-icons text-base">chat</span>
+                                                <span className="hidden sm:inline">Negotiate</span>
+                                            </button>
+                                            <a href={`tel:${provider.phone_number}`}
+                                                className="h-9 w-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                                                <span className="material-icons text-base">call</span>
+                                            </a>
+                                        </div>
+                                    </motion.div>
+                                ))}
                             </div>
-
-                            {/* Sidebar - Request Details */}
-                            <div className="lg:col-span-1 space-y-6">
-                                <div className="bg-[#0F172A] rounded-3xl shadow-lg border border-gray-800 p-8">
-                                    <h2 className="text-xl font-extrabold text-white mb-6 tracking-tight flex items-center gap-2">
-                                        <span className="material-icons-outlined text-[#10B981]">assignment</span>
-                                        Request Details
-                                    </h2>
-                                    <dl className="grid grid-cols-1 gap-y-6">
-                                        <div className="border-b border-gray-800 pb-4">
-                                            <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Service Type</dt>
-                                            <dd className="text-[14px] font-extrabold text-white">{request.category}</dd>
-                                        </div>
-                                        <div className="border-b border-gray-800 pb-4">
-                                            <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Your Budget</dt>
-                                            <dd className="text-[18px] font-black text-white">₦{Number(request.budget_estimate || request.budget || 0).toLocaleString()}</dd>
-                                        </div>
-                                        <div className="border-b border-gray-800 pb-4">
-                                            <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Description</dt>
-                                            <dd className="text-[13px] font-medium text-gray-300 mt-1 leading-relaxed">
-                                                {request.description}
-                                            </dd>
-                                        </div>
-                                        <div className="border-b border-gray-800 pb-4">
-                                            <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Location</dt>
-                                            <dd className="text-[13px] font-bold text-white flex items-start mt-1">
-                                                <span className="material-icons-outlined text-[#10B981] mr-1.5 text-[16px]">location_on</span>
-                                                {request.location_name || 'No location provided'}
-                                            </dd>
-                                        </div>
-                                        {request.image && (
-                                            <div>
-                                                <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">Attachment</dt>
-                                                <dd>
-                                                    <img src={request.image} alt="Request attachment" className="w-full object-cover rounded-xl border border-gray-700 shadow-sm opacity-90" />
-                                                </dd>
-                                            </div>
-                                        )}
-                                    </dl>
-                                </div>
-
-                                <div className="bg-green-50 rounded-2xl p-6 border border-green-100">
-                                    <div className="flex">
-                                        <div className="flex-shrink-0">
-                                            <span className="material-icons-outlined text-[#10B981] text-2xl">security</span>
-                                        </div>
-                                        <div className="ml-4">
-                                            <h3 className="text-[13px] font-extrabold text-green-900">Pro Tip</h3>
-                                            <div className="mt-1.5 text-[12px] font-medium text-green-800 leading-relaxed">
-                                                <p>You can call or negotiate directly with any interested provider. Choose the one you're most comfortable with!</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
                 <MobileNavBar />
             </main>
+
+            {/* Negotiate slide-over */}
+            <AnimatePresence>
+                {negotiatingWith && (
+                    <NegotiatePanel
+                        provider={negotiatingWith}
+                        requestId={id}
+                        onClose={() => setNegotiatingWith(null)}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 };

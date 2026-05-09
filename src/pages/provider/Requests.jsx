@@ -11,14 +11,18 @@ const InboundRequests = () => {
     const { currentUser } = useAuth();
     const { jobs } = useData();
     const [search, setSearch] = useState('');
-    const [sortBy, setSortBy] = useState('date');
+    const [tab, setTab] = useState('all'); // 'all' | 'upcoming'
 
     const requests = jobs.filter(j =>
         j.status === 'Open' ||
         (j.status === 'Pending' && j.providerId === currentUser?.uid)
     );
 
+    const upcomingCount = requests.filter(r => !!r.scheduledDate).length;
+
     const filtered = requests.filter(r => {
+        const matchesTab = tab === 'upcoming' ? !!r.scheduledDate : true;
+        if (!matchesTab) return false;
         if (!search) return true;
         const q = search.toLowerCase();
         return (
@@ -29,7 +33,10 @@ const InboundRequests = () => {
     });
 
     const sorted = [...filtered].sort((a, b) => {
-        if (sortBy === 'price') return (Number(b.budget) || 0) - (Number(a.budget) || 0);
+        if (tab === 'upcoming') {
+            // Sort by scheduled date ascending
+            return (a.scheduledDate || '').localeCompare(b.scheduledDate || '');
+        }
         const da = a.createdAt?.seconds ? a.createdAt.seconds : 0;
         const db = b.createdAt?.seconds ? b.createdAt.seconds : 0;
         return db - da;
@@ -54,32 +61,38 @@ const InboundRequests = () => {
                 <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
                     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto space-y-6">
 
-                        {/* Search & Sort */}
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            <div className="relative flex-1">
-                                <span className="material-icons-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                    placeholder="Search by service, location or customer…"
-                                    className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] transition-all"
-                                />
-                            </div>
-                            <div className="flex gap-2 shrink-0">
-                                <button
-                                    onClick={() => setSortBy('date')}
-                                    className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-colors whitespace-nowrap ${sortBy === 'date' ? 'bg-[#0F172A] text-white border-[#0F172A]' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
-                                >
-                                    By Date
-                                </button>
-                                <button
-                                    onClick={() => setSortBy('price')}
-                                    className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-colors whitespace-nowrap ${sortBy === 'price' ? 'bg-[#0F172A] text-white border-[#0F172A]' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
-                                >
-                                    By Price
-                                </button>
-                            </div>
+                        {/* Tabs */}
+                        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
+                            <button
+                                onClick={() => setTab('all')}
+                                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${tab === 'all' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                All Requests
+                            </button>
+                            <button
+                                onClick={() => setTab('upcoming')}
+                                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${tab === 'upcoming' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <span className="material-icons-outlined text-base text-[#10B981]">event</span>
+                                Upcoming
+                                {upcomingCount > 0 && (
+                                    <span className="bg-[#10B981] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                        {upcomingCount}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* Search */}
+                        <div className="relative">
+                            <span className="material-icons-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder="Search by service, location or customer…"
+                                className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] transition-all"
+                            />
                         </div>
 
                         {/* Count */}
@@ -129,11 +142,19 @@ const InboundRequests = () => {
                                                         <h3 className="font-bold text-gray-900 group-hover:text-[#10B981] transition-colors text-[15px]">
                                                             {req.serviceType || req.title}
                                                         </h3>
-                                                        {req.urgency === 'High' && (
-                                                            <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-md border border-red-100 uppercase tracking-wide">
-                                                                Urgent
-                                                            </span>
-                                                        )}
+                                                        <div className="flex items-center gap-2">
+                                                            {req.scheduledDate && (
+                                                                <span className="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-100 flex items-center gap-1">
+                                                                    <span className="material-icons-outlined text-[11px]">event</span>
+                                                                    {new Date(req.scheduledDate + 'T00:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                                                                </span>
+                                                            )}
+                                                            {(req.urgency === 'High' || req.urgency === 'high') && !req.scheduledDate && (
+                                                                <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-md border border-red-100 uppercase tracking-wide">
+                                                                    Urgent
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <p className="text-xs text-gray-400 mb-2">
                                                         ID #{req.id.substring(0, 6)} · Posted {req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleDateString() : 'Recently'}
@@ -147,20 +168,20 @@ const InboundRequests = () => {
                                                             <span className="material-icons-outlined text-base text-gray-400">location_on</span>
                                                             {req.location || 'Location TBD'}
                                                         </span>
+                                                        {req.scheduledDate && (
+                                                            <span className="flex items-center gap-1.5 text-blue-600 font-semibold">
+                                                                <span className="material-icons-outlined text-base">calendar_today</span>
+                                                                {new Date(req.scheduledDate + 'T00:00:00').toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'long' })}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     {req.description && (
                                                         <p className="text-sm text-gray-500 mt-2 line-clamp-1">{req.description}</p>
                                                     )}
                                                 </div>
 
-                                                {/* Price + Action */}
-                                                <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-3 sm:pl-4 sm:border-l border-gray-100">
-                                                    <div className="text-right">
-                                                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Budget</p>
-                                                        <p className="text-xl font-bold text-[#10B981]">
-                                                            {req.budget ? `₦${Number(req.budget).toLocaleString()}` : 'Negotiable'}
-                                                        </p>
-                                                    </div>
+                                                {/* Action */}
+                                                <div className="flex sm:flex-col items-center sm:items-end justify-end w-full sm:w-auto gap-3 sm:pl-4 sm:border-l border-gray-100">
                                                     <Link
                                                         to={`/provider/requests/${req.id}`}
                                                         className="bg-[#0F172A] text-white hover:bg-slate-700 font-semibold text-sm px-5 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap"
