@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
@@ -96,22 +96,22 @@ function NegotiatePanel({ provider, requestId, onClose }) {
             <motion.div
                 initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
                 transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-                className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-50 flex flex-col"
+                className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-50 flex flex-col safe-top"
             >
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
                     <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
                         <span className="material-icons text-gray-500 text-xl">arrow_back</span>
                     </button>
-                    <div className="w-9 h-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center shrink-0">
+                    <Link to={`/customer/provider/${provider.id}`} className="w-9 h-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center shrink-0 hover:ring-2 hover:ring-[#10B981]/40 transition-all">
                         {provider.avatar_url
                             ? <img src={provider.avatar_url} alt={provider.full_name} className="w-full h-full object-cover" />
                             : <span className="material-icons text-gray-400 text-xl">person</span>}
-                    </div>
+                    </Link>
                     <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-900 text-sm leading-tight truncate">
+                        <Link to={`/customer/provider/${provider.id}`} className="font-bold text-gray-900 text-sm leading-tight truncate hover:text-[#10B981] transition-colors block">
                             {provider.full_name || provider.displayName}
-                        </p>
+                        </Link>
                         <p className="text-xs text-[#10B981] font-semibold">Online · Negotiating</p>
                     </div>
                     <a href={`tel:${provider.phone_number}`}
@@ -319,60 +319,69 @@ const RequestStatus = () => {
                 <div className="flex-1 overflow-y-auto bg-white">
                     <div className="max-w-[860px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-10 pb-24 md:pb-10">
 
-                        {/* Page title */}
-                        <div className="mb-8">
-                            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 mb-2">
+                        {/* Page header */}
+                        <div className="mb-10 pb-8 border-b border-gray-100">
+                            {/* Category + date row */}
+                            <div className="flex items-center gap-2 mb-3">
+                                {request.category && (
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{request.category}</span>
+                                )}
+                                <span className="text-gray-200">·</span>
+                                <span className="text-xs text-gray-400">{dateStr}</span>
+                                {request.location && (
+                                    <>
+                                        <span className="text-gray-200">·</span>
+                                        <span className="flex items-center gap-0.5 text-xs text-gray-400">
+                                            <span className="material-icons-outlined text-sm leading-none">location_on</span>
+                                            {request.location}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Title */}
+                            <h1 className="text-2xl sm:text-[32px] font-black tracking-tight text-gray-900 leading-tight mb-4">
                                 {request.title}
                             </h1>
-                            <div className="flex flex-wrap items-center gap-2.5">
-                                <span className={`px-2.5 py-0.5 rounded-full border font-bold text-xs ${STATUS_COLOR[normalizedStatus] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+
+                            {/* Status + CTA row */}
+                            <div className="flex flex-wrap items-center gap-3">
+                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg border font-bold text-xs ${STATUS_COLOR[normalizedStatus] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70 shrink-0" />
                                     {STATUS_LABEL[normalizedStatus] || request.status}
                                 </span>
-                                {request.category && (
-                                    <span className="text-xs text-gray-400 font-medium">{request.category}</span>
-                                )}
-                                {request.location && (
-                                    <span className="flex items-center gap-0.5 text-xs text-gray-400">
-                                        <span className="material-icons-outlined text-sm">location_on</span>
-                                        {request.location}
-                                    </span>
-                                )}
-                                <span className="text-xs text-gray-300">·</span>
-                                <span className="text-xs text-gray-400">{dateStr}</span>
-                            </div>
-                            {request.description && (
-                                <p className="mt-3 text-sm text-gray-500 leading-relaxed max-w-xl">{request.description}</p>
-                            )}
 
-                            {/* CTAs */}
-                            <div className="flex flex-wrap gap-3 mt-5">
                                 {canPay && (
                                     <button
                                         onClick={() => navigate(`/customer/payment/${request.id}`)}
-                                        className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all shadow-md shadow-green-500/20">
+                                        className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-5 py-2 rounded-xl transition-all shadow-sm shadow-green-500/20">
                                         <span className="material-icons text-base">lock</span>
                                         Proceed to Payment
                                     </button>
                                 )}
                                 {releaseEnabled && (
                                     <button onClick={handleRelease}
-                                        className="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all">
+                                        className="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-700 text-white font-bold text-sm px-5 py-2 rounded-xl transition-all">
                                         <span className="material-icons text-base">payments</span>
                                         Release Payment
                                     </button>
                                 )}
                             </div>
+
+                            {request.description && (
+                                <p className="mt-4 text-sm text-gray-500 leading-relaxed max-w-xl">{request.description}</p>
+                            )}
                         </div>
 
                         {/* Section label */}
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="mb-4">
                             <h2 className="text-[15px] font-bold text-gray-900">
                                 {interestedProviders.length > 0
                                     ? `${interestedProviders.length} provider${interestedProviders.length !== 1 ? 's' : ''} interested`
                                     : 'Interested Providers'}
                             </h2>
                             {interestedProviders.length > 0 && (
-                                <p className="text-xs text-gray-400">Tap Negotiate to chat & agree on price</p>
+                                <p className="text-xs text-gray-400 mt-0.5">Tap Negotiate to chat and agree on a price</p>
                             )}
                         </div>
 
@@ -393,67 +402,55 @@ const RequestStatus = () => {
                                         initial={{ opacity: 0, y: 8 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: idx * 0.04 }}
-                                        className={`flex items-center gap-4 py-4 ${idx !== 0 ? 'border-t border-gray-100' : ''}`}
+                                        className={`flex items-center gap-3 py-4 ${idx !== 0 ? 'border-t border-gray-100' : ''}`}
                                     >
                                         {/* Avatar */}
-                                        <div className="w-11 h-11 rounded-full bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
+                                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
                                             {provider.avatar_url
                                                 ? <img src={provider.avatar_url} alt={provider.full_name} className="w-full h-full object-cover" />
                                                 : <span className="material-icons text-gray-400 text-xl">person</span>}
                                         </div>
 
-                                        {/* Info */}
+                                        {/* Info — grows, truncates cleanly */}
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-1.5 mb-0.5">
-                                                <span className="font-bold text-gray-900 text-[15px] truncate">
+                                            <div className="flex items-center gap-1 mb-0.5">
+                                                <span className="font-bold text-gray-900 text-[14px] sm:text-[15px] truncate">
                                                     {provider.full_name || provider.displayName}
                                                 </span>
                                                 {provider.verified && (
-                                                    <span className="material-icons text-[#10B981] text-base shrink-0">verified</span>
+                                                    <span className="material-icons text-[#10B981] text-sm shrink-0">verified</span>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-400">
-                                                <span>{provider.category || 'General Service'}</span>
-                                                <span>·</span>
-                                                <span>{provider.location || 'Lagos, Nigeria'}</span>
+                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] sm:text-xs text-gray-400">
+                                                <span className="truncate">{provider.category || 'General Service'}</span>
+                                                <span className="hidden sm:inline">·</span>
+                                                <span className="hidden sm:inline">{provider.location || 'Lagos, Nigeria'}</span>
+                                                {(provider.provider_profiles?.average_rating || provider.rating) && (
+                                                    <span className="flex items-center gap-0.5">
+                                                        <span className="material-icons text-yellow-400 text-[11px]">star</span>
+                                                        <span className="font-semibold text-gray-500">
+                                                            {(provider.provider_profiles?.average_rating || provider.rating)?.toFixed(1)}
+                                                        </span>
+                                                    </span>
+                                                )}
                                             </div>
-                                            {provider.jobsCompleted && (
-                                                <span className="inline-flex items-center gap-1 mt-1 text-[11px] text-gray-400 font-medium">
-                                                    <span className="material-icons-outlined text-[13px]">check_circle</span>
-                                                    {provider.jobsCompleted} jobs
-                                                </span>
-                                            )}
                                         </div>
 
-                                        {/* Rating + price */}
-                                        <div className="shrink-0 text-right hidden sm:block">
-                                            {provider.provider_profiles?.average_rating || provider.rating ? (
-                                                <div className="flex items-center gap-1 justify-end mb-1">
-                                                    <span className="material-icons text-yellow-400 text-base">star</span>
-                                                    <span className="text-sm font-bold text-gray-900">
-                                                        {(provider.provider_profiles?.average_rating || provider.rating)?.toFixed(1)}
-                                                    </span>
-                                                </div>
-                                            ) : null}
-                                            <p className="text-xs text-gray-400">proposes</p>
-                                            <p className="text-base font-black text-[#10B981]">
+                                        {/* Proposed price — visible on all screens */}
+                                        <div className="shrink-0 text-right">
+                                            <p className="text-[9px] sm:text-[10px] text-gray-400 font-semibold uppercase tracking-wider leading-none mb-0.5">Proposed</p>
+                                            <p className="text-sm sm:text-base font-black text-[#10B981]">
                                                 ₦{Number(provider.proposed_price || 0).toLocaleString()}
                                             </p>
                                         </div>
 
-                                        {/* Actions */}
-                                        <div className="shrink-0 flex items-center gap-2">
-                                            <button
-                                                onClick={() => setNegotiatingWith(provider)}
-                                                className="h-9 px-4 rounded-xl bg-[#0F172A] hover:bg-slate-700 text-white text-sm font-bold transition-colors flex items-center gap-1.5">
-                                                <span className="material-icons text-base">chat</span>
-                                                <span className="hidden sm:inline">Negotiate</span>
-                                            </button>
-                                            <a href={`tel:${provider.phone_number}`}
-                                                className="h-9 w-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
-                                                <span className="material-icons text-base">call</span>
-                                            </a>
-                                        </div>
+                                        {/* Action */}
+                                        <button
+                                            onClick={() => setNegotiatingWith(provider)}
+                                            className="shrink-0 h-9 px-3 sm:px-4 rounded-xl bg-[#0F172A] hover:bg-slate-700 text-white text-sm font-bold transition-colors flex items-center gap-1.5">
+                                            <span className="material-icons text-base">chat</span>
+                                            <span className="hidden sm:inline">Negotiate</span>
+                                        </button>
                                     </motion.div>
                                 ))}
                             </div>

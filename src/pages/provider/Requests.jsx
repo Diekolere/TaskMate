@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import CategoryIcon from '../../components/ui/CategoryIcon';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
@@ -42,15 +43,6 @@ const InboundRequests = () => {
         return db - da;
     });
 
-    const categoryIcon = (req) => {
-        const type = (req.serviceType || req.category || '').toLowerCase();
-        if (type.includes('clean')) return 'cleaning_services';
-        if (type.includes('repair') || type.includes('fix')) return 'home_repair_service';
-        if (type.includes('plumb')) return 'plumbing';
-        if (type.includes('elec')) return 'electrical_services';
-        return 'handyman';
-    };
-
     return (
         <div className="min-h-screen bg-white flex font-sans">
             <ProviderSidebar />
@@ -61,22 +53,21 @@ const InboundRequests = () => {
                 <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
                     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto space-y-6">
 
-                        {/* Tabs */}
-                        <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
+                        {/* Tabs — underline style */}
+                        <div className="flex gap-6 border-b border-gray-100">
                             <button
                                 onClick={() => setTab('all')}
-                                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${tab === 'all' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px ${tab === 'all' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
                             >
                                 All Requests
                             </button>
                             <button
                                 onClick={() => setTab('upcoming')}
-                                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${tab === 'upcoming' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'upcoming' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
                             >
-                                <span className="material-icons-outlined text-base text-[#10B981]">event</span>
                                 Upcoming
                                 {upcomingCount > 0 && (
-                                    <span className="bg-[#10B981] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'upcoming' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
                                         {upcomingCount}
                                     </span>
                                 )}
@@ -97,105 +88,75 @@ const InboundRequests = () => {
 
                         {/* Count */}
                         {sorted.length > 0 && (
-                            <p className="text-sm text-gray-500">
-                                <span className="font-bold text-gray-900">{sorted.length}</span> {sorted.length === 1 ? 'request' : 'requests'} available
+                            <p className="text-xs text-gray-400 font-medium">
+                                <span className="font-bold text-gray-700">{sorted.length}</span> {sorted.length === 1 ? 'request' : 'requests'} available
                             </p>
                         )}
 
                         {/* Request List */}
-                        <div className="space-y-4">
-                            <AnimatePresence mode="popLayout">
-                                {sorted.length === 0 ? (
-                                    <motion.div
-                                        key="empty"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        className="flex flex-col items-center justify-center py-16 text-center"
-                                    >
-                                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                                            <span className="material-icons-outlined text-3xl text-gray-300">inbox</span>
-                                        </div>
-                                        <h3 className="font-bold text-gray-900">No requests found</h3>
-                                        <p className="text-sm text-gray-400 mt-1">
-                                            {search ? 'Try a different search term.' : 'Check back later for new opportunities.'}
-                                        </p>
-                                    </motion.div>
-                                ) : (
-                                    sorted.map((req, idx) => (
-                                        <motion.article
+                        <AnimatePresence mode="popLayout">
+                            {sorted.length === 0 ? (
+                                <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                    className="flex flex-col items-center justify-center py-20 text-center">
+                                    <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                        <span className="material-icons-outlined text-2xl text-gray-300">inbox</span>
+                                    </div>
+                                    <h3 className="font-bold text-gray-900 text-sm">No requests found</h3>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        {search ? 'Try a different search term.' : 'Check back later for new opportunities.'}
+                                    </p>
+                                </motion.div>
+                            ) : (
+                                <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                    {sorted.map((req, idx) => (
+                                        <Link
                                             key={req.id}
-                                            initial={{ opacity: 0, y: 16 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -8 }}
-                                            transition={{ delay: idx * 0.05, duration: 0.2 }}
-                                            className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#10B981]/30 transition-all"
+                                            to={`/provider/requests/${req.id}`}
+                                            className={`flex items-center gap-3 py-4 group hover:bg-gray-50/60 transition-colors rounded-xl px-1 -mx-1 ${idx !== 0 ? 'border-t border-gray-100' : ''}`}
                                         >
-                                            <div className="p-5 flex flex-col sm:flex-row gap-4 items-start">
-                                                {/* Icon */}
-                                                <div className="size-12 rounded-xl bg-orange-50 text-orange-500 shrink-0 flex items-center justify-center">
-                                                    <span className="material-icons-outlined text-2xl">{categoryIcon(req)}</span>
-                                                </div>
+                                            <CategoryIcon category={req.serviceType || req.category} size="md" />
 
-                                                {/* Content */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex flex-wrap justify-between items-start gap-2 mb-1">
-                                                        <h3 className="font-bold text-gray-900 group-hover:text-[#10B981] transition-colors text-[15px]">
-                                                            {req.serviceType || req.title}
-                                                        </h3>
-                                                        <div className="flex items-center gap-2">
-                                                            {req.scheduledDate && (
-                                                                <span className="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-100 flex items-center gap-1">
-                                                                    <span className="material-icons-outlined text-[11px]">event</span>
-                                                                    {new Date(req.scheduledDate + 'T00:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
-                                                                </span>
-                                                            )}
-                                                            {(req.urgency === 'High' || req.urgency === 'high') && !req.scheduledDate && (
-                                                                <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-md border border-red-100 uppercase tracking-wide">
-                                                                    Urgent
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <p className="text-xs text-gray-400 mb-2">
-                                                        ID #{req.id.substring(0, 6)} · Posted {req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleDateString() : 'Recently'}
-                                                    </p>
-                                                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-gray-600">
-                                                        <span className="flex items-center gap-1.5">
-                                                            <span className="material-icons-outlined text-base text-gray-400">person</span>
-                                                            {req.customerName || 'Customer'}
-                                                        </span>
-                                                        <span className="flex items-center gap-1.5">
-                                                            <span className="material-icons-outlined text-base text-gray-400">location_on</span>
-                                                            {req.location || 'Location TBD'}
-                                                        </span>
-                                                        {req.scheduledDate && (
-                                                            <span className="flex items-center gap-1.5 text-blue-600 font-semibold">
-                                                                <span className="material-icons-outlined text-base">calendar_today</span>
-                                                                {new Date(req.scheduledDate + 'T00:00:00').toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'long' })}
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="text-[14px] font-bold text-gray-900 truncate group-hover:text-[#10B981] transition-colors mb-0.5">
+                                                    {req.serviceType || req.title}
+                                                </h3>
+                                                <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                                                    <span className="truncate max-w-[100px] sm:max-w-[180px]">{req.customerName || 'Customer'}</span>
+                                                    {req.scheduledDate ? (
+                                                        <>
+                                                            <span>·</span>
+                                                            <span className="text-blue-500 font-semibold flex items-center gap-0.5 shrink-0">
+                                                                <span className="material-icons-outlined text-[11px]">event</span>
+                                                                {new Date(req.scheduledDate + 'T00:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
                                                             </span>
-                                                        )}
-                                                    </div>
-                                                    {req.description && (
-                                                        <p className="text-sm text-gray-500 mt-2 line-clamp-1">{req.description}</p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>·</span>
+                                                            <span className="truncate max-w-[100px] shrink-0">{req.location || 'Location TBD'}</span>
+                                                        </>
                                                     )}
                                                 </div>
-
-                                                {/* Action */}
-                                                <div className="flex sm:flex-col items-center sm:items-end justify-end w-full sm:w-auto gap-3 sm:pl-4 sm:border-l border-gray-100">
-                                                    <Link
-                                                        to={`/provider/requests/${req.id}`}
-                                                        className="bg-[#0F172A] text-white hover:bg-slate-700 font-semibold text-sm px-5 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap"
-                                                    >
-                                                        View Details
-                                                        <span className="material-icons-outlined text-base">arrow_forward</span>
-                                                    </Link>
-                                                </div>
                                             </div>
-                                        </motion.article>
-                                    ))
-                                )}
-                            </AnimatePresence>
-                        </div>
+
+                                            {/* Badges */}
+                                            <div className="shrink-0 flex items-center gap-1.5">
+                                                {(req.urgency === 'High' || req.urgency === 'high') && !req.scheduledDate && (
+                                                    <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-red-100 hidden sm:inline">
+                                                        Urgent
+                                                    </span>
+                                                )}
+                                                <span className="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-blue-100 whitespace-nowrap">
+                                                    {req.status || 'Open'}
+                                                </span>
+                                            </div>
+
+                                            <span className="material-icons text-gray-300 group-hover:text-gray-400 text-lg shrink-0 transition-colors">chevron_right</span>
+                                        </Link>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                     </div>
                 </main>
