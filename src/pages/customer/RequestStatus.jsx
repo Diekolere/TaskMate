@@ -22,7 +22,7 @@ const NairaSVG = ({ className = 'w-4 h-4' }) => (
 );
 
 /* ─── Negotiate slide-over panel ───────────────────────── */
-function NegotiatePanel({ provider, requestId, onClose }) {
+function NegotiatePanel({ provider, requestId, onClose, onFinalized }) {
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
 
@@ -79,8 +79,9 @@ function NegotiatePanel({ provider, requestId, onClose }) {
     };
     const confirmFinalize = (price) => {
         setFinalized(true);
-        addMsg({ from: 'system', text: `✓ Job finalised at ₦${Number(price).toLocaleString()}. Please proceed to payment.` });
-        toast.success(`Job finalised at ₦${Number(price).toLocaleString()}`);
+        addMsg({ from: 'system', text: `✓ Job finalised at ₦${Number(price).toLocaleString()}. Tap "Proceed to Payment" to secure the booking.` });
+        toast.success(`Deal agreed at ₦${Number(price).toLocaleString()}`);
+        setTimeout(() => onFinalized?.(price), 1200);
     };
     const declineFinalize = () => addMsg({ from: 'system', text: 'Provider declined. Negotiation continues.' });
     const handleReject = () => { setRejected(true); addMsg({ from: 'system', text: 'You rejected this offer. The provider has been notified.' }); };
@@ -242,58 +243,70 @@ const RequestStatus = () => {
     const [interestedProviders, setInterestedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [negotiatingWith, setNegotiatingWith] = useState(null);
+    const [finalizedDeal, setFinalizedDeal] = useState(null); // { price, provider }
 
     useEffect(() => {
-        if (!id || requests.length === 0) {
-            if (requests.length === 0 && !isSimulated) setLoading(true);
-            else setLoading(false);
-            return;
-        }
-        const req = requests.find(r => r.id === id);
-        if (req) {
+        if (!id) return;
+        if (requests.length === 0 && !isSimulated) { setLoading(true); return; }
+
+        const found = requests.find(r => r.id === id);
+        const req = found || {
+            id,
+            title: 'Fix Bathroom Plumbing',
+            category: 'Plumbing',
+            status: 'negotiating',
+            description: 'Pipes under the bathroom sink are leaking and need urgent attention.',
+            location: 'Lekki Phase 1, Lagos',
+            budget_estimate: 12000,
+            agreedPrice: 11000,
+            urgency: 'high',
+            createdAt: new Date(),
+        };
+
             setRequest(req);
-            if (isSimulated) {
-                const interested = MOCK_PROVIDERS.slice(0, 3).map(p => ({
+            
+        const interested = MOCK_PROVIDERS.slice(0, 3).map((p, i) => ({
+            ...p,
+            proposed_price: req.agreedPrice || Math.floor(Number(req.budget_estimate || 10000) * (0.85 + i * 0.1)),
+            message: [
+                "I'm experienced in this and can start immediately!",
+                "Great reviews — can complete this efficiently.",
+                "Professional work guaranteed. Happy to discuss."
+            ][i],
+            verified: true,
+            phone_number: ['+234-801-234-5678', '+234-802-345-6789', '+234-803-456-7890'][i],
+        }));
+
+        if (isSimulated) {
+            setInterestedProviders(interested);
+        } else {
+                getProviders('All').then(allProviders => {
+                setInterestedProviders(allProviders.slice(0, 3).map(p => ({
                     ...p,
                     proposed_price: Math.floor(Number(req.budget_estimate || 10000) * (0.85 + Math.random() * 0.3)),
-                    message: [
-                        "I'm experienced in this and can start immediately!",
-                        "Great reviews — can complete this efficiently.",
-                        "Professional work guaranteed. Happy to discuss."
-                    ][Math.floor(Math.random() * 3)],
-                    verified: true,
-                    phone_number: ['+234-801-234-5678', '+234-802-345-6789', '+234-803-456-7890'][Math.floor(Math.random() * 3)],
-                }));
-                setInterestedProviders(interested);
-            } else {
-                getProviders('All').then(allProviders => {
-                    const interested = allProviders.slice(0, 3).map(p => ({
-                        ...p,
-                        proposed_price: Math.floor(Number(req.budget_estimate || 10000) * (0.85 + Math.random() * 0.3)),
-                        message: "I'm interested and would like to discuss the details.",
-                        verified: p.provider_profiles?.verification_status === 'verified',
-                    }));
-                    setInterestedProviders(interested);
-                }).catch(console.error);
-            }
+                    message: "I'm interested and would like to discuss the details.",
+                    verified: p.provider_profiles?.verification_status === 'verified',
+                })));
+            }).catch(() => setInterestedProviders(interested));
         }
+
         setLoading(false);
     }, [id, requests, getProviders, isSimulated]);
 
     if (loading) return (
-        <div className="flex h-screen items-center justify-center bg-white">
+            <div className="flex h-screen items-center justify-center bg-white">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#10B981]" />
-        </div>
-    );
+            </div>
+        );
 
     if (!request) return (
-        <div className="flex h-screen items-center justify-center bg-white flex-col gap-4">
-            <p className="text-gray-500 font-bold">Request not found.</p>
+             <div className="flex h-screen items-center justify-center bg-white flex-col gap-4">
+                <p className="text-gray-500 font-bold">Request not found.</p>
             <button onClick={() => navigate('/customer/dashboard')} className="text-[#10B981] font-bold hover:underline">
                 Back to Dashboard
             </button>
-        </div>
-    );
+            </div>
+        );
 
     const dateStr = request.createdAt instanceof Date
         ? format(request.createdAt, 'MMM dd, yyyy')
@@ -301,7 +314,6 @@ const RequestStatus = () => {
 
     const normalizedStatus = String(request.status || '').toLowerCase();
     const releaseEnabled = normalizedStatus === 'completed';
-    const canPay = ['accepted', 'confirmed', 'negotiating', 'awaiting_payment'].includes(normalizedStatus);
 
     const STATUS_LABEL = { open: 'Open', interested: 'Providers Interested', negotiating: 'Negotiating', awaiting_payment: 'Awaiting Payment', payment_secured: 'Payment Secured', payment_released: 'Payment Released', completed: 'Completed' };
     const STATUS_COLOR = { open: 'bg-blue-50 text-blue-700 border-blue-100', interested: 'bg-amber-50 text-amber-700 border-amber-100', negotiating: 'bg-purple-50 text-purple-700 border-purple-100', awaiting_payment: 'bg-orange-50 text-orange-700 border-orange-100', payment_secured: 'bg-green-50 text-green-700 border-green-100', completed: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
@@ -317,12 +329,12 @@ const RequestStatus = () => {
     return (
         <div className="flex h-screen bg-white font-sans text-gray-900">
             <Sidebar />
-
+            
             <main className="flex-1 overflow-hidden flex flex-col min-w-0">
                 <TopNavbar breadcrumbs={['Customer', 'My Requests', 'Details']} />
 
                 <div className="flex-1 overflow-y-auto bg-white">
-                    <div className="max-w-[800px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-10 pb-24 md:pb-10">
+                    <div className="max-w-5xl mx-auto w-full p-4 sm:p-6 md:p-8 pb-24 md:pb-10">
 
                         {/* Page header */}
                         <div className="mb-10 pb-8 border-b border-gray-100">
@@ -342,53 +354,59 @@ const RequestStatus = () => {
                                         </span>
                                     </>
                                 )}
-                            </div>
+                                </div>
 
                             {/* Title + status inline */}
                             <div className="flex items-start gap-3 flex-wrap mb-4">
                                 <h1 className="text-2xl sm:text-[30px] font-black tracking-tight text-gray-900 leading-tight">
-                                    {request.title}
-                                </h1>
+                                        {request.title}
+                                    </h1>
                                 <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border font-semibold text-[11px] mt-1 shrink-0 ${STATUS_COLOR[normalizedStatus] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                     <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70 shrink-0" />
                                     {STATUS_LABEL[normalizedStatus] || request.status}
                                 </span>
-                            </div>
+                                </div>
 
-                            {/* CTA row */}
-                            <div className="flex flex-wrap items-center gap-3 mb-1">
-                                {canPay && (
-                                    <button
-                                        onClick={() => navigate(`/customer/payment/${request.id}`)}
-                                        className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-5 py-2 rounded-xl transition-all shadow-sm shadow-green-500/20">
-                                        <span className="material-icons text-base">lock</span>
-                                        Proceed to Payment
-                                    </button>
-                                )}
-                                {releaseEnabled && (
-                                    <button onClick={handleRelease}
-                                        className="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-700 text-white font-bold text-sm px-5 py-2 rounded-xl transition-all">
-                                        <span className="material-icons text-base">payments</span>
-                                        Release Payment
-                                    </button>
-                                )}
-                            </div>
+                            {/* CTA row — only after negotiation is finalised */}
+                            {(finalizedDeal || releaseEnabled) && (
+                                <div className="flex flex-wrap items-center gap-3 mb-1">
+                                    {finalizedDeal && (
+                                        <button 
+                                            onClick={() => navigate(`/customer/payment/${request.id}`, { state: { agreedPrice: finalizedDeal.price, provider: finalizedDeal.provider } })}
+                                            className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-5 py-2 rounded-xl transition-all shadow-sm shadow-green-500/20">
+                                            <span className="material-icons text-base">lock</span>
+                                            Proceed to Payment · ₦{Number(finalizedDeal.price).toLocaleString()}
+                                        </button>
+                                    )}
+                                    {releaseEnabled && (
+                                        <button onClick={handleRelease}
+                                            className="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-700 text-white font-bold text-sm px-5 py-2 rounded-xl transition-all">
+                                            <span className="material-icons text-base">payments</span>
+                                            Release Payment
+                                        </button>
+                                    )}
+                                </div>
+                            )}
 
                             {request.description && (
                                 <p className="mt-5 text-sm text-gray-500 leading-relaxed max-w-xl">{request.description}</p>
                             )}
-                        </div>
+                            </div>
 
                         {/* Section label */}
                         <div className="mb-6">
                             <h2 className="text-[15px] font-bold text-gray-900 mb-0.5">
-                                {interestedProviders.length > 0
-                                    ? `${interestedProviders.length} provider${interestedProviders.length !== 1 ? 's' : ''} interested`
-                                    : 'Interested Providers'}
+                                {finalizedDeal
+                                    ? 'Deal agreed'
+                                    : interestedProviders.length > 0
+                                        ? `${interestedProviders.length} provider${interestedProviders.length !== 1 ? 's' : ''} interested`
+                                        : 'Interested Providers'}
                             </h2>
-                            {interestedProviders.length > 0 && (
-                                <p className="text-xs text-gray-400">Tap Negotiate to chat and agree on a price</p>
-                            )}
+                            <p className="text-xs text-gray-400">
+                                {finalizedDeal
+                                    ? `Finalised with ${finalizedDeal.provider.full_name} at ₦${Number(finalizedDeal.price).toLocaleString()} — proceed to payment above`
+                                    : 'Tap Negotiate to chat and agree on a price'}
+                            </p>
                         </div>
 
                         {/* Provider list — no card, just dividers */}
@@ -438,7 +456,7 @@ const RequestStatus = () => {
                                                             {(provider.provider_profiles?.average_rating || provider.rating)?.toFixed(1)}
                                                         </span>
                                                     </span>
-                                                )}
+                                            )}
                                             </div>
                                         </div>
 
@@ -448,15 +466,23 @@ const RequestStatus = () => {
                                             <p className="text-base font-black text-[#10B981]">
                                                 ₦{Number(provider.proposed_price || 0).toLocaleString()}
                                             </p>
-                                        </div>
-
+                            </div>
+                            
                                         {/* Action */}
-                                        <button
-                                            onClick={() => setNegotiatingWith(provider)}
-                                            className="shrink-0 h-9 px-4 rounded-xl bg-[#0F172A] hover:bg-slate-700 text-white text-sm font-bold transition-colors flex items-center gap-1.5">
-                                            <span className="material-icons text-base">chat</span>
-                                            <span className="hidden sm:inline">Negotiate</span>
-                                        </button>
+                                        {finalizedDeal?.provider?.id === provider.id ? (
+                                            <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#10B981]/10 text-[#10B981] text-xs font-bold border border-[#10B981]/20">
+                                                <span className="material-icons text-sm">check_circle</span>
+                                                <span className="hidden sm:inline">Agreed</span>
+                                            </span>
+                                        ) : (
+                                            <button
+                                                onClick={() => !finalizedDeal && setNegotiatingWith(provider)}
+                                                disabled={!!finalizedDeal}
+                                                className="shrink-0 h-9 px-4 rounded-xl bg-[#0F172A] hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors flex items-center gap-1.5">
+                                                <span className="material-icons text-base">chat</span>
+                                                <span className="hidden sm:inline">Negotiate</span>
+                                            </button>
+                                        )}
                                     </motion.div>
                                 ))}
                             </div>
@@ -473,6 +499,10 @@ const RequestStatus = () => {
                         provider={negotiatingWith}
                         requestId={id}
                         onClose={() => setNegotiatingWith(null)}
+                        onFinalized={(price) => {
+                            setFinalizedDeal({ price, provider: negotiatingWith });
+                            setNegotiatingWith(null);
+                        }}
                     />
                 )}
             </AnimatePresence>
