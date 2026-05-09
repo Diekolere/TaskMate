@@ -171,7 +171,7 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+    <div className="min-h-screen bg-white text-gray-900 font-sans">
       {/* Top Navigation */}
       <header className="fixed w-full top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 px-6 md:px-12 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
