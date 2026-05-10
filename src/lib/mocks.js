@@ -41,6 +41,28 @@ export const MOCK_USER_PROVIDER = {
 
 export const MOCK_JOBS = [
     {
+        id: 'job-paid-01',
+        customer_id: 'mock-customer-123',
+        worker_id: 'mock-provider-1',
+        providerId: 'mock-provider-1',
+        title: 'Fix Kitchen Sink Pipes',
+        description: 'The kitchen sink pipes are badly corroded and leaking. Customer needs full replacement of the P-trap and connecting pipes.',
+        category: 'Plumbing',
+        status: 'payment_secured',
+        agreedPrice: 14500,
+        budget_estimate: 15000,
+        location: 'Ikeja GRA, Lagos',
+        location_name: 'Ikeja GRA',
+        customerName: 'Adaeze Okonkwo',
+        urgency: 'high',
+        images: [
+            'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+            'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80',
+        ],
+        created_at: new Date(Date.now() - 7200000).toISOString(),
+        updated_at: new Date().toISOString(),
+    },
+    {
         id: 'demo-001',
         customer_id: 'mock-customer-123',
         worker_id: 'mock-provider-1',
