@@ -81,7 +81,6 @@ const CreateServicePost = () => {
                 <TopNavbar breadcrumbs={['Profile', 'New post']} />
                 <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
                     <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto">
-                        <p className="text-sm text-gray-500 mb-4">Compose a post in the same layout customers see on the discovery feed</p>
 
                         <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-[20px] overflow-hidden shadow-sm">
                             <div className="p-4 sm:p-6 flex items-start justify-between gap-2">
