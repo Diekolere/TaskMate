@@ -524,7 +524,7 @@ const RequestStatus = () => {
                                             <p className="text-base font-black text-[#10B981]">
                                                 ₦{Number(provider.proposed_price || 0).toLocaleString()}
                                             </p>
-                                        </div>
+                            </div>
                             
                                         {/* Action */}
                                         {finalizedDeal?.provider?.id === provider.id ? (
