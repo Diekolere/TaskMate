@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
@@ -8,14 +8,35 @@ import { useAuth } from '../../context/AuthContext';
 
 const CreateServicePost = () => {
     const navigate = useNavigate();
+    const routerLocation = useLocation();
     const { currentUser, updateUserProfile } = useAuth();
     const fileInputRef = useRef(null);
     const [category, setCategory] = useState('');
-    const [location, setLocation] = useState('');
+    const [locationField, setLocationField] = useState('');
     const [content, setContent] = useState('');
     const [tagsInput, setTagsInput] = useState('');
     const [imagePreview, setImagePreview] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+
+    useEffect(() => {
+        const ep = routerLocation.state?.editPost;
+        if (ep && ep.id != null) {
+            setEditingId(ep.id);
+            setCategory(ep.category || ep.title || '');
+            setLocationField(ep.location || '');
+            setContent(ep.description || '');
+            setTagsInput(Array.isArray(ep.tags) ? ep.tags.join(', ') : '');
+            setImagePreview(ep.image || '');
+        } else {
+            setEditingId(null);
+            setCategory('');
+            setLocationField('');
+            setContent('');
+            setTagsInput('');
+            setImagePreview('');
+        }
+    }, [routerLocation.pathname, routerLocation.state?.editPost]);
 
     const displayName = currentUser?.displayName || currentUser?.full_name || 'Your name';
     const avatarSrc = currentUser?.photoURL || currentUser?.avatar_url ||
@@ -52,23 +73,42 @@ const CreateServicePost = () => {
             const title = category.trim() || 'Service update';
             const description = content.trim();
             const existing = currentUser?.servicePosts || [];
-            const newPost = {
-                id: Date.now(),
-                title,
-                description,
-                image: imagePreview || '',
-                rating: 0,
-                reviews: 0,
-                tags,
-                category: category.trim(),
-                location: location.trim(),
-                createdAt: new Date().toISOString(),
-            };
-            await updateUserProfile({ servicePosts: [newPost, ...existing] });
-            toast.success('Post published');
+
+            if (editingId != null) {
+                const updated = existing.map(p =>
+                    p.id === editingId
+                        ? {
+                            ...p,
+                            title,
+                            description,
+                            image: imagePreview || p.image || '',
+                            tags,
+                            category: category.trim() || p.category || '',
+                            location: locationField.trim() || p.location || '',
+                        }
+                        : p
+                );
+                await updateUserProfile({ servicePosts: updated });
+                toast.success('Post updated');
+            } else {
+                const newPost = {
+                    id: Date.now(),
+                    title,
+                    description,
+                    image: imagePreview || '',
+                    rating: 0,
+                    reviews: 0,
+                    tags,
+                    category: category.trim(),
+                    location: locationField.trim(),
+                    createdAt: new Date().toISOString(),
+                };
+                await updateUserProfile({ servicePosts: [newPost, ...existing] });
+                toast.success('Post published');
+            }
             navigate('/provider/profile?tab=services');
         } catch {
-            toast.error('Could not publish post');
+            toast.error(editingId != null ? 'Could not update post' : 'Could not publish post');
         } finally {
             setSubmitting(false);
         }
@@ -78,7 +118,7 @@ const CreateServicePost = () => {
         <div className="min-h-screen bg-white flex font-sans text-gray-900">
             <ProviderSidebar />
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                <TopNavbar breadcrumbs={['Profile', 'New post']} />
+                <TopNavbar breadcrumbs={['Profile', editingId != null ? 'Edit post' : 'New post']} />
                 <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
                     <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto">
 
@@ -106,8 +146,8 @@ const CreateServicePost = () => {
                                                 <span className="material-icons-outlined text-[14px] shrink-0">location_on</span>
                                                 <input
                                                     type="text"
-                                                    value={location}
-                                                    onChange={e => setLocation(e.target.value)}
+                                                    value={locationField}
+                                                    onChange={e => setLocationField(e.target.value)}
                                                     placeholder="Location"
                                                     className="min-w-0 flex-1 sm:max-w-[220px] rounded-lg border border-gray-200 px-2 py-1.5 text-gray-800 outline-none focus:border-[#10B981] text-[12px]"
                                                 />
@@ -182,7 +222,7 @@ const CreateServicePost = () => {
                                     onClick={handlePublish}
                                     className="text-[12px] sm:text-sm font-extrabold bg-[#10B981] text-white px-5 sm:px-6 py-2.5 rounded-lg sm:rounded-xl hover:bg-[#059669] transition-colors disabled:opacity-50"
                                 >
-                                    {submitting ? 'Publishing…' : 'Publish'}
+                                    {submitting ? (editingId != null ? 'Saving…' : 'Publishing…') : (editingId != null ? 'Save changes' : 'Publish')}
                                 </button>
                             </div>
                         </div>

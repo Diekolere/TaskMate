@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
@@ -9,9 +9,11 @@ import { useAuth } from '../../context/AuthContext';
 
 const Profile = () => {
   const { currentUser, updateUserProfile } = useAuth();
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('details'); 
     const [expandedPost, setExpandedPost] = useState(null);
+  const [postMenuOpenId, setPostMenuOpenId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
     const [newService, setNewService] = useState({ name: '', rate: '', unit: '' });
@@ -52,14 +54,46 @@ const Profile = () => {
                         image: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=400&h=300&fit=crop',
                         rating: 5.0,
                         reviews: 42,
+                        category: 'Electrical',
+                        location: 'Lagos',
+                        tags: ['Smart Home'],
+                        createdAt: new Date().toISOString(),
                     },
                     {
                         id: 2,
                         title: 'Emergency Diagnostic',
                         description: 'Rapid response troubleshooting for power outages, circuit trips, and electrical...',
-                        image: 'https://images.unsplash.com/photo-1621905167918-48416bd8575a?w=600&h=800&fit=crop&q=80',
+                        image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?ixlib=rb-4.1.0&auto=format&fit=crop&w=800&q=85',
                         rating: 4.8,
                         reviews: 89,
+                        category: 'Electrical',
+                        location: 'Ikeja',
+                        tags: ['Diagnostics'],
+                        createdAt: new Date().toISOString(),
+                    },
+                    {
+                        id: 3,
+                        title: 'Outdoor lighting upgrade',
+                        description: 'LED pathway and security lighting with app control — clean install and weather-sealed fixtures.',
+                        image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.1.0&auto=format&fit=crop&w=800&q=85',
+                        rating: 4.9,
+                        reviews: 18,
+                        category: 'Electrical',
+                        location: 'Victoria Island',
+                        tags: ['Lighting', 'Outdoor'],
+                        createdAt: new Date().toISOString(),
+                    },
+                    {
+                        id: 4,
+                        title: 'Panel upgrade & safety audit',
+                        description: 'Replaced outdated breaker panel, grounded circuits, and documented full safety checklist for the homeowner.',
+                        image: 'https://images.unsplash.com/photo-1558089689-024942fdb82b?ixlib=rb-4.1.0&auto=format&fit=crop&w=800&q=85',
+                        rating: 5.0,
+                        reviews: 31,
+                        category: 'Electrical',
+                        location: 'Surulere',
+                        tags: ['Safety', 'Panel'],
+                        createdAt: new Date().toISOString(),
                     },
                 ],
             });
@@ -86,6 +120,17 @@ const Profile = () => {
             document.body.style.overflow = prev;
         };
     }, [expandedPost]);
+
+    useEffect(() => {
+        if (postMenuOpenId == null) return;
+        const handleDown = (e) => {
+            if (!e.target.closest('[data-post-menu]')) {
+                setPostMenuOpenId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleDown);
+        return () => document.removeEventListener('mousedown', handleDown);
+    }, [postMenuOpenId]);
 
   const handleSave = async () => {
     setLoading(true);
@@ -136,6 +181,65 @@ const Profile = () => {
             return 'Recently';
         }
     };
+
+    const postMenuId = (post, idx) => (post?.id != null ? `id:${post.id}` : `idx:${idx}`);
+
+    const postIndexInList = (post) =>
+        profile.servicePosts.findIndex(p =>
+            (post?.id != null && p?.id != null && p.id === post.id) || (post?.id == null && p === post));
+
+    const deleteServicePost = async (post, idxHint) => {
+        const next = profile.servicePosts.filter((p, i) => {
+            if (post?.id != null) return p.id !== post.id;
+            return idxHint >= 0 ? i !== idxHint : p !== post;
+        });
+        try {
+            await updateUserProfile({ servicePosts: next });
+            setProfile(prev => ({ ...prev, servicePosts: next }));
+            setPostMenuOpenId(null);
+            setExpandedPost(prev => {
+                if (!prev) return null;
+                if (post?.id != null && prev.id === post.id) return null;
+                if (post?.id == null && prev === post) return null;
+                return prev;
+            });
+            toast.success('Post deleted');
+        } catch {
+            toast.error('Could not delete post');
+        }
+    };
+
+    const editServicePost = (post) => {
+        setPostMenuOpenId(null);
+        setExpandedPost(null);
+        navigate('/provider/posts/new', { state: { editPost: post } });
+    };
+
+    const renderPostMenuPanel = (post, idxHint) => (
+        <div
+            className="absolute top-full right-0 mt-1 w-44 rounded-xl border border-gray-100 bg-white shadow-xl py-1 z-[120] overflow-hidden"
+            role="menu"
+        >
+            <button
+                type="button"
+                role="menuitem"
+                className="w-full text-left px-3 py-2.5 text-[13px] font-semibold text-gray-800 hover:bg-gray-50 flex items-center gap-2"
+                onClick={() => editServicePost(post)}
+            >
+                <span className="material-icons-outlined text-lg text-gray-500">edit</span>
+                Edit post
+            </button>
+            <button
+                type="button"
+                role="menuitem"
+                className="w-full text-left px-3 py-2.5 text-[13px] font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2"
+                onClick={() => deleteServicePost(post, idxHint)}
+            >
+                <span className="material-icons-outlined text-lg">delete</span>
+                Delete post
+            </button>
+        </div>
+    );
 
   return (
         <div className="min-h-screen bg-white flex font-sans">
@@ -384,29 +488,57 @@ const Profile = () => {
                                         {/* Portrait image grid — 4 columns on md+ (taller than wide); tap opens feed-style detail */}
                                         {profile.servicePosts && profile.servicePosts.length > 0 ? (
                                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                                                {profile.servicePosts.map((post, idx) => (
-                    <button 
+                                                {profile.servicePosts.map((post, idx) => {
+                                                    const menuId = postMenuId(post, idx);
+                                                    const isSameExpanded = expandedPost && (
+                                                        (post.id != null && expandedPost.id === post.id) ||
+                                                        (post.id == null && expandedPost === post)
+                                                    );
+                                                    return (
+                                                    <div
                                                         key={post.id ?? idx}
-                                                        type="button"
-                                                        onClick={() => setExpandedPost(post)}
-                                                        className="group relative w-full aspect-[3/4] rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 shadow-sm hover:shadow-md transition-shadow text-left"
-                                                        aria-label={`Open post: ${post.title || 'Service post'}. Full details in dialog.`}
+                                                        className="relative w-full aspect-[3/4]"
                                                     >
-                                                        {post.image ? (
-                                                            <img
-                                                                src={post.image}
-                                                                alt=""
-                                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                                                        <div className="absolute inset-0 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm hover:shadow-md transition-shadow group">
+                                                            {post.image ? (
+                                                                <img
+                                                                    src={post.image}
+                                                                    alt=""
+                                                                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                                                                />
+                                                            ) : (
+                                                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 bg-gradient-to-b from-slate-100 to-slate-200">
+                                                                    <span className="material-icons-outlined text-3xl text-gray-400" aria-hidden>image</span>
+                                                                    <span className="text-[11px] font-semibold text-gray-500 text-center line-clamp-2">{post.title || 'Post'}</span>
+                                                                </div>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => { setPostMenuOpenId(null); setExpandedPost(post); }}
+                                                                className="absolute inset-0 z-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#10B981]"
+                                                                aria-label={`Open post: ${post.title || 'Service post'}. Full details in dialog.`}
                                                             />
-                                                        ) : (
-                                                            <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 bg-gradient-to-b from-slate-100 to-slate-200">
-                                                                <span className="material-icons-outlined text-3xl text-gray-400" aria-hidden>image</span>
-                                                                <span className="text-[11px] font-semibold text-gray-500 text-center line-clamp-2">{post.title || 'Post'}</span>
-                    </div>
-                 )}
-                                </button>
-                                                ))}
-                        </div>
+                                                        </div>
+                                                        <div className="absolute top-1.5 right-1.5 z-20" data-post-menu>
+                                                            <button
+                                                                type="button"
+                                                                className="p-1.5 rounded-full bg-black/45 text-white hover:bg-black/60 backdrop-blur-[2px] shadow-sm flex items-center justify-center"
+                                                                aria-label="Post options"
+                                                                aria-expanded={postMenuOpenId === menuId}
+                                                                aria-haspopup="menu"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setPostMenuOpenId(v => (v === menuId ? null : menuId));
+                                                                }}
+                                                            >
+                                                                <span className="material-icons-outlined text-lg leading-none">more_vert</span>
+                                                            </button>
+                                                            {postMenuOpenId === menuId && !isSameExpanded ? renderPostMenuPanel(post, idx) : null}
+                                                        </div>
+                                                    </div>
+                                                    );
+                                                })}
+                                            </div>
                                         ) : (
                                             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
                                                 <span className="material-icons-outlined text-3xl text-gray-200">work</span>
@@ -457,21 +589,28 @@ const Profile = () => {
             <ProviderMobileNavBar />
 
             {/* Expanded post — matches customer Discovery Feed card (Dashboard) */}
-            {expandedPost && (
+            {expandedPost ? (() => {
+                const expIdx = postIndexInList(expandedPost);
+                const expMenuId = postMenuId(expandedPost, expIdx);
+                return (
                 <div
-                    className="fixed inset-0 z-[100] flex items-start justify-center sm:items-center p-3 sm:p-6 bg-black/50 overflow-y-auto"
+                    className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-black/50"
                     onClick={() => setExpandedPost(null)}
                     role="presentation"
                 >
                     <div
-                        className="bg-white border border-gray-200 rounded-2xl sm:rounded-[20px] overflow-hidden shadow-xl w-full max-w-lg sm:max-w-xl my-4 sm:my-0"
+                        className="min-h-[100dvh] w-full flex items-center justify-center p-3 sm:p-6"
+                        role="presentation"
+                    >
+                    <div
+                        className="bg-white border border-gray-200 rounded-2xl sm:rounded-[20px] shadow-xl w-full max-w-lg sm:max-w-xl my-4 sm:my-0 flex flex-col overflow-visible"
                         onClick={e => e.stopPropagation()}
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="service-post-expanded-title"
                     >
-                        <div className="p-4 sm:p-6 flex items-start justify-between gap-2 border-b border-gray-50">
-                            <div className="flex gap-3 sm:gap-4 items-center min-w-0">
+                        <div className="p-4 sm:p-6 flex items-start justify-between gap-2 border-b border-gray-50 relative z-0 overflow-visible shrink-0">
+                            <div className="flex gap-3 sm:gap-4 items-center min-w-0 flex-1">
                                 <div className="relative shrink-0">
                                     <img src={avatarSrc} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-gray-100" />
                                     <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
@@ -494,14 +633,32 @@ const Profile = () => {
                                     </div>
                                 </div>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setExpandedPost(null)}
-                                className="text-gray-400 hover:text-gray-900 p-1.5 sm:p-2 rounded-full hover:bg-gray-50 shrink-0"
-                                aria-label="Close post details"
-                            >
-                                <span className="material-icons-outlined text-[20px]">close</span>
-                            </button>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                                <div className="relative" data-post-menu>
+                                    <button
+                                        type="button"
+                                        className="text-gray-400 hover:text-gray-900 p-1.5 sm:p-2 rounded-full hover:bg-gray-50"
+                                        aria-label="Post options"
+                                        aria-expanded={postMenuOpenId === expMenuId}
+                                        aria-haspopup="menu"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPostMenuOpenId(v => (v === expMenuId ? null : expMenuId));
+                                        }}
+                                    >
+                                        <span className="material-icons-outlined text-[20px]">more_vert</span>
+                                    </button>
+                                    {postMenuOpenId === expMenuId ? renderPostMenuPanel(expandedPost, expIdx) : null}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setExpandedPost(null)}
+                                    className="text-gray-400 hover:text-gray-900 p-1.5 sm:p-2 rounded-full hover:bg-gray-50"
+                                    aria-label="Close post details"
+                                >
+                                    <span className="material-icons-outlined text-[20px]">close</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-4">
@@ -527,7 +684,7 @@ const Profile = () => {
                                 )}
                             </div>
 
-                        <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between border-t border-gray-100">
+                        <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between border-t border-gray-100 shrink-0">
                             <div className="flex gap-4 sm:gap-6" aria-hidden="true">
                                 <span className="flex items-center gap-1.5 sm:gap-2 text-gray-500">
                                     <span className="material-icons-outlined text-[20px] sm:text-[22px]">favorite_border</span>
@@ -550,8 +707,10 @@ const Profile = () => {
                             </div>
                         </div>
                     </div>
+                    </div>
                 </div>
-            )}
+                );
+            })() : null}
     </div>
   );
 };
