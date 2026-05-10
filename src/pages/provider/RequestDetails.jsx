@@ -267,7 +267,7 @@ const RequestDetails = () => {
     const { currentUser } = useAuth();
     const { jobs, acceptJob, isSimulated } = useData();
     const navigate = useNavigate();
-
+    
     const [loading, setLoading] = useState(true);
     const [request, setRequest] = useState(null);
     const [accepted, setAccepted] = useState(false);
@@ -311,16 +311,16 @@ const RequestDetails = () => {
         if (rejectReason === 'Other' && !customReason) { toast.error('Please add a note'); return; }
         if (isSimulated) await new Promise(r => setTimeout(r, 600));
         toast.success('Request declined');
-        setShowRejectModal(false);
+            setShowRejectModal(false);
         navigate('/provider/requests');
     };
-
+    
     if (loading) return (
         <div className="min-h-screen bg-white flex items-center justify-center">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#10B981]" />
         </div>
     );
-
+    
     if (!request) return (
         <div className="min-h-screen bg-white flex items-center justify-center flex-col gap-3">
             <p className="text-gray-500 text-sm font-medium">Request not found</p>
@@ -369,7 +369,7 @@ const RequestDetails = () => {
 
             {/* Decline modal */}
             <AnimatePresence>
-                {showRejectModal && (
+            {showRejectModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             onClick={() => setShowRejectModal(false)}
@@ -390,20 +390,20 @@ const RequestDetails = () => {
                                     <label key={r} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${rejectReason === r ? 'border-[#10B981] bg-[#10B981]/5' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
                                         <input type="radio" name="rejectReason" value={r} checked={rejectReason === r} onChange={e => setRejectReason(e.target.value)} className="accent-[#10B981] w-4 h-4 shrink-0" />
                                         <span className="text-sm font-semibold text-gray-800">{r}</span>
-                                    </label>
-                                ))}
-                                {rejectReason === 'Other' && (
+                                </label>
+                            ))}
+                            {rejectReason === 'Other' && (
                                     <textarea className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] outline-none text-sm resize-none"
                                         placeholder="Please specify…" rows="3" value={customReason} onChange={e => setCustomReason(e.target.value)} />
-                                )}
-                            </div>
+                            )}
+                        </div>
                             <div className="flex gap-3">
                                 <button onClick={() => setShowRejectModal(false)} className="flex-1 py-2.5 text-sm font-semibold text-gray-500 hover:bg-gray-100 rounded-xl transition-colors">Cancel</button>
                                 <button onClick={handleDecline} className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl transition-colors">Decline Job</button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
+                        </div>
+                    </motion.div>
+                </div>
+            )}
             </AnimatePresence>
 
             {/* Image lightbox */}
@@ -442,8 +442,8 @@ const RequestDetails = () => {
                                         </span>
                                     </>
                                 )}
-                            </div>
-
+                                    </div>
+                                    
                             {/* Title + status badge inline */}
                             <div className="flex items-start gap-3 flex-wrap mb-4">
                                 <h1 className="text-2xl sm:text-[30px] font-black tracking-tight text-gray-900 leading-tight">
@@ -455,14 +455,14 @@ const RequestDetails = () => {
                                     : statusColors[normalizedStatus] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                     <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70 shrink-0" />
                                     {finalizedPrice ? 'Finalised' : accepted ? 'Accepted' : (request.status || 'Open')}
-                                </span>
+                                        </span>
                                 {(request.urgency === 'high' || request.urgency === 'High') && (
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border font-semibold text-[11px] mt-1 bg-red-50 text-red-500 border-red-100 shrink-0">
                                         <span className="material-icons text-sm leading-none">priority_high</span>
                                         Urgent
-                                    </span>
+                                        </span>
                                 )}
-                            </div>
+                                    </div>
 
                             {/* Description */}
                             {request.description && (
@@ -484,7 +484,7 @@ const RequestDetails = () => {
                                     ₦{Number(finalizedPrice).toLocaleString()} agreed — awaiting customer payment
                                 </p>
                             )}
-                        </div>
+                                    </div>
 
                         {/* ── Images ── */}
                         {images.length > 0 && (
@@ -515,18 +515,18 @@ const RequestDetails = () => {
                                                 <div key={item.label} className={`flex items-center gap-3 py-4 ${colIdx === 0 && right ? 'border-r border-gray-100 pr-6' : ''}`}>
                                                     <div className="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
                                                         <span className="material-icons-outlined text-gray-400 text-base">{item.icon}</span>
-                                                    </div>
+                                    </div>
                                                     <div className="min-w-0">
                                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{item.label}</p>
                                                         <p className="text-sm font-semibold text-gray-900 truncate">{item.value}</p>
-                                                    </div>
-                                                </div>
+                                            </div>
+                                            </div>
                                             ) : <div key={colIdx} className="py-4" />)}
                                         </div>
                                     );
                                 })}
-                            </div>
-                        </div>
+                                        </div>
+                                    </div>
 
                         {/* ── Accept / Decline — color-cued, after details ── */}
                         {!accepted && !finalizedPrice && (
@@ -535,13 +535,13 @@ const RequestDetails = () => {
                                     className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] disabled:opacity-40 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-sm shadow-green-500/20">
                                     <span className="material-icons text-base">check_circle</span>
                                     Accept Job
-                                </button>
+                                        </button>
                                 <button onClick={() => setShowRejectModal(true)}
                                     className="inline-flex items-center gap-1.5 border border-red-200 hover:bg-red-50 text-red-500 font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors">
                                     <span className="material-icons text-base">cancel</span>
                                     Decline
-                                </button>
-                            </div>
+                                        </button>
+                                    </div>
                         )}
 
                         {isRestricted && (
@@ -554,9 +554,9 @@ const RequestDetails = () => {
                             </div>
                         )}
 
-                    </div>
-                </div>
-            </main>
+                        </div>
+                     </div>
+                </main>
 
             <ProviderMobileNavBar />
 
