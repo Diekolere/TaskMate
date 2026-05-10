@@ -15,10 +15,14 @@ const STATUS_CONFIG = {
     payment_secured:  { label: 'Payment Secured',  bg: 'bg-green-50',   text: 'text-green-700',  border: 'border-green-200',  dot: 'bg-green-500' },
     in_progress:      { label: 'In Progress',       bg: 'bg-blue-50',    text: 'text-blue-700',   border: 'border-blue-200',   dot: 'bg-blue-500 animate-pulse' },
     Completed:        { label: 'Completed',         bg: 'bg-[#10B981]/10', text: 'text-[#10B981]', border: 'border-[#10B981]/20', dot: 'bg-[#10B981]' },
+    /** Same as `Completed` — `DataContext.completeJob` uses lowercase */
+    completed:        { label: 'Completed',         bg: 'bg-[#10B981]/10', text: 'text-[#10B981]', border: 'border-[#10B981]/20', dot: 'bg-[#10B981]' },
     payment_released: { label: 'Payout Released',  bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
     Canceled:         { label: 'Canceled',          bg: 'bg-red-50',     text: 'text-red-600',    border: 'border-red-200',    dot: 'bg-red-500' },
 };
 const getStatusCfg = s => STATUS_CONFIG[s] || { label: s, bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', dot: 'bg-gray-400' };
+
+const normTimelineStatus = (s) => (String(s).toLowerCase() === 'completed' ? 'Completed' : String(s));
 
 // ── Timeline steps ───────────────────────────────────────────────
 const buildTimeline = (status) => {
@@ -30,7 +34,7 @@ const buildTimeline = (status) => {
         { key: 'payment_released',label: 'Payout Released' },
     ];
     const order = ['requested', 'payment_secured', 'in_progress', 'Completed', 'payment_released'];
-    const currentIdx = order.indexOf(status) === -1 ? 1 : order.indexOf(status);
+    const currentIdx = order.indexOf(normTimelineStatus(status)) === -1 ? 1 : order.indexOf(normTimelineStatus(status));
     return steps.map((s, i) => ({
         ...s,
         done: i <= currentIdx,
@@ -79,6 +83,7 @@ export default function JobDetails() {
         setConfirmComplete(false);
         try {
             await completeJob(id);
+            const providerName = currentUser?.full_name || currentUser?.displayName || 'Your provider';
             // Simulate pushing a notification to the customer via localStorage
             const existing = JSON.parse(localStorage.getItem('tm_customer_notifs') || '[]');
             existing.unshift({
@@ -86,15 +91,16 @@ export default function JobDetails() {
                 icon: 'task_alt',
                 iconBg: 'bg-[#10B981]/10',
                 iconColor: 'text-[#10B981]',
-                title: 'Job marked complete',
-                body: `Your provider has marked the job complete. Please confirm or raise a dispute within 48 hours.`,
+                title: `${providerName} marked job as complete`,
+                body: `Confirm release or open a dispute within 48 hours.`,
                 time: 'Just now',
                 unread: true,
                 jobId: id,
             });
             localStorage.setItem('tm_customer_notifs', JSON.stringify(existing));
+            window.dispatchEvent(new CustomEvent('tm-customer-notifs'));
             toast.success('Job marked complete!', { description: 'Customer has been notified to confirm or raise a dispute.' });
-            setJob(j => ({ ...j, status: 'Completed' }));
+            setJob(j => ({ ...j, status: 'completed' }));
         } catch {
             toast.error('Failed to update job status.');
         } finally {
@@ -282,7 +288,7 @@ export default function JobDetails() {
                                     )}
 
                                     {/* Completed → waiting message */}
-                                    {job.status === 'Completed' && (
+                                    {(job.status === 'completed' || job.status === 'Completed') && (
                                         <div className="bg-[#10B981]/5 border border-[#10B981]/20 rounded-xl p-4 flex items-start gap-3">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0 mt-0.5">
                                                 <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
