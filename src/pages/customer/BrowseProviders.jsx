@@ -5,6 +5,7 @@ import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { getMatchScore } from '../../lib/aiData';
 
 const BrowseProviders = () => {
     const navigate = useNavigate();
@@ -21,6 +22,7 @@ const BrowseProviders = () => {
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [sortFilter, setSortFilter] = useState('Highest Rated');
     const [ratingFilter, setRatingFilter] = useState('Any Rating');
+    const activeCategory = selectedCategories[0] || null;
 
     const categories = [
         "Electrical", "Plumbing", "Carpentry", "Painting & Decorating", 
@@ -239,11 +241,15 @@ const BrowseProviders = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Rating and Chevron */}
-                                            <div className="flex items-center gap-3 shrink-0">
+                                            {/* Rating, Match Score, Chevron */}
+                                            <div className="flex items-center gap-2 shrink-0">
                                                 <div className="flex items-center gap-1 bg-yellow-50 px-2.5 py-1 rounded-lg border border-yellow-100">
                                                     <span className="material-icons text-yellow-500 text-[16px]">star</span>
                                                     <span className="font-bold text-[13px] text-gray-900">{provider.rating || '4.8'}</span>
+                                                </div>
+                                                <div className="flex items-center gap-0.5 bg-green-50 px-2 py-1 rounded-lg border border-green-100">
+                                                    <span className="material-icons-outlined text-[13px] text-[#10B981]">bolt</span>
+                                                    <span className="font-bold text-[12px] text-[#10B981]">{getMatchScore(provider, activeCategory)}%</span>
                                                 </div>
                                                 <span className="material-icons text-[18px] text-gray-300 group-hover:text-gray-400 transition-colors shrink-0">chevron_right</span>
                                             </div>
