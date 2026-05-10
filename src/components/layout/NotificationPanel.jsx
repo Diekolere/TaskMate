@@ -10,8 +10,23 @@ const generateOTP = (id = '') => {
     return String((hash % 9000) + 1000);
 };
 
-// ── Notification data ────────────────────────────────────────────
-const CUSTOMER_NOTIFS = [
+// Static demo + simulation entries (real provider-driven completes go in `tm_customer_notifs`)
+const buildCustomerStaticNotifs = (navigate) => [
+    {
+        id: 'n-demo-provider-complete',
+        type: 'job_complete',
+        unread: true,
+        icon: 'task_alt',
+        iconBg: 'bg-[#10B981]/10',
+        iconColor: 'text-[#10B981]',
+        title: 'Ibrahim Musa marked job as complete',
+        body: 'Release payment or settle a dispute within 48 hours.',
+        time: 'Demo',
+        action: {
+            label: 'Review & release',
+            onClick: () => navigate('/customer/confirm/job-paid-01'),
+        },
+    },
     {
         id: 'n1', type: 'job', unread: true,
         icon: 'handshake', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]',
@@ -222,21 +237,25 @@ export default function NotificationPanel({ open, onClose }) {
     // Pick up any notifications written by the provider (e.g. job complete)
     useEffect(() => {
         if (isProvider) return;
-        const stored = JSON.parse(localStorage.getItem('tm_customer_notifs') || '[]');
-        // Attach a navigate action to each job-complete notification
-        const enriched = stored.map(n => ({
-            ...n,
-            action: n.jobId ? {
-                label: 'Review & Release',
-                onClick: () => navigate(`/customer/confirm/${n.jobId}`),
-            } : null,
-        }));
-        setLsNotifs(enriched);
-    }, [open, isProvider, navigate]);
+        const load = () => {
+            const stored = JSON.parse(localStorage.getItem('tm_customer_notifs') || '[]');
+            const enriched = stored.map(n => ({
+                ...n,
+                action: n.jobId ? {
+                    label: 'Review & Release',
+                    onClick: () => navigate(`/customer/confirm/${n.jobId}`),
+                } : null,
+            }));
+            setLsNotifs(enriched);
+        };
+        load();
+        window.addEventListener('tm-customer-notifs', load);
+        return () => window.removeEventListener('tm-customer-notifs', load);
+    }, [isProvider, navigate]);
 
     const notifications = isProvider
         ? PROVIDER_NOTIFS(navigate, openOTPModal)
-        : [...lsNotifs, ...CUSTOMER_NOTIFS];
+        : [...lsNotifs, ...buildCustomerStaticNotifs(navigate)];
 
     const unreadCount = notifications.filter(n => n.unread && !read.has(n.id)).length;
 

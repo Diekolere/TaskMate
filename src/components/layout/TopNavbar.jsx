@@ -22,6 +22,7 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
         { id: 'pn2', title: 'Counter offer received', message: 'A customer countered your ₦15,000 quote.', time: '22 mins ago', read: false, icon: 'forum', iconBg: 'bg-violet-50', iconColor: 'text-violet-500' },
         { id: 'pn3', title: 'Payout sent', message: '₦13,500 sent to your Zenith Bank account.', time: '3 hours ago', read: true, icon: 'account_balance_wallet', iconBg: 'bg-blue-50', iconColor: 'text-blue-500' },
     ] : [
+        { id: 'n-demo-provider-complete', title: 'Ibrahim Musa marked job as complete', message: 'Tap to review and release payment (48-hour window).', time: 'Demo', read: false, icon: 'task_alt', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]', ctaPath: '/customer/confirm/job-paid-01' },
         { id: 'n1', title: 'Offer accepted', message: 'Ibrahim Musa accepted your negotiated price of ₦11,000.', time: '5 mins ago', read: false, icon: 'handshake', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]' },
         { id: 'n2', title: 'Payment confirmed', message: 'Your payment of ₦11,000 is held in escrow.', time: '1 hour ago', read: false, icon: 'payments', iconBg: 'bg-blue-50', iconColor: 'text-blue-500' },
         { id: 'n3', title: 'Profile saved', message: 'Your profile changes have been saved.', time: '2 days ago', read: true, icon: 'info', iconBg: 'bg-gray-100', iconColor: 'text-gray-400' },
@@ -143,7 +144,13 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                                                 const isUnread = !notif.read && !dropReadIds.has(notif.id);
                                                 return (
                                                 <div key={notif.id}
-                                                    onClick={() => setDropReadIds(r => new Set([...r, notif.id]))}
+                                                    onClick={() => {
+                                                        setDropReadIds(r => new Set([...r, notif.id]));
+                                                        if (notif.ctaPath) {
+                                                            navigate(notif.ctaPath);
+                                                            setNotifDropOpen(false);
+                                                        }
+                                                    }}
                                                     className={`px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer flex gap-3 ${isUnread ? 'bg-[#10B981]/[0.03]' : ''}`}>
                                                     {/* Icon */}
                                                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 relative ${notif.iconBg}`}>
