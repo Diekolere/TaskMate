@@ -1,319 +1,418 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
-import StatusUpdateModal from '../../components/provider/StatusUpdateModal';
-import InvoiceUploadModal from '../../components/provider/InvoiceUploadModal';
+const COMMISSION = 0.10;
+const AUTO_RELEASE_HOURS = 48;
 
-const JobDetails = () => {
+// ── Status config ────────────────────────────────────────────────
+const STATUS_CONFIG = {
+    payment_secured:  { label: 'Payment Secured',  bg: 'bg-green-50',   text: 'text-green-700',  border: 'border-green-200',  dot: 'bg-green-500' },
+    in_progress:      { label: 'In Progress',       bg: 'bg-blue-50',    text: 'text-blue-700',   border: 'border-blue-200',   dot: 'bg-blue-500 animate-pulse' },
+    Completed:        { label: 'Completed',         bg: 'bg-[#10B981]/10', text: 'text-[#10B981]', border: 'border-[#10B981]/20', dot: 'bg-[#10B981]' },
+    payment_released: { label: 'Payout Released',  bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+    Canceled:         { label: 'Canceled',          bg: 'bg-red-50',     text: 'text-red-600',    border: 'border-red-200',    dot: 'bg-red-500' },
+};
+const getStatusCfg = s => STATUS_CONFIG[s] || { label: s, bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', dot: 'bg-gray-400' };
+
+// ── Timeline steps ───────────────────────────────────────────────
+const buildTimeline = (status) => {
+    const steps = [
+        { key: 'requested',       label: 'Request Received' },
+        { key: 'payment_secured', label: 'Payment Secured' },
+        { key: 'in_progress',     label: 'Job Started' },
+        { key: 'Completed',       label: 'Work Completed' },
+        { key: 'payment_released',label: 'Payout Released' },
+    ];
+    const order = ['requested', 'payment_secured', 'in_progress', 'Completed', 'payment_released'];
+    const currentIdx = order.indexOf(status) === -1 ? 1 : order.indexOf(status);
+    return steps.map((s, i) => ({
+        ...s,
+        done: i <= currentIdx,
+        active: i === currentIdx,
+    }));
+};
+
+// ── Progress options for in_progress ────────────────────────────
+// "On the way" removed — OTP entry already confirms provider is on-site
+const PROGRESS_OPTS = [
+    { key: 'started',  label: 'Work started',    icon: 'construction' },
+    { key: 'paused',   label: 'Paused — sourcing parts', icon: 'pause_circle' },
+    { key: 'resumed',  label: 'Work resumed',    icon: 'play_circle' },
+];
+
+export default function JobDetails() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const { jobs, markJobInProgress, completeJob, isSimulated } = useData();
-    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-    const [uploadedInvoice, setUploadedInvoice] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const { jobs, completeJob } = useData();
+
     const [job, setJob] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [lightbox, setLightbox] = useState(null);
+    const [progressOpen, setProgressOpen] = useState(false);
+    const [completing, setCompleting] = useState(false);
+    const [confirmComplete, setConfirmComplete] = useState(false);
 
     useEffect(() => {
-        if (!id || jobs.length === 0) {
-            if (jobs.length === 0 && !isSimulated) setLoading(true);
-            else setLoading(false);
-            return;
-        }
         const found = jobs.find(j => j.id === id);
-        if (found) {
-            setJob({
-                ...found,
-                timeline: found.timeline || [
-                    { title: 'Request Received', time: found.createdAt instanceof Date ? found.createdAt.toLocaleString() : 'Recently', status: 'completed' },
-                    { title: 'Provider Assigned', time: '—', status: 'current' },
-                ],
-                customer: {
-                    name: found.customerName || 'Customer',
-                    image: found.customerPhoto || '',
-                    phone: found.customerPhone || null,
-                    jobs: 0,
-                },
-                pricing: { total: `₦${Number(found.budget).toLocaleString()}`, method: 'Cash' },
-                statusCode: found.status ? found.status.toLowerCase().replace(' ', '_') : 'pending',
-            });
-        }
+        setJob(found || null);
         setLoading(false);
-    }, [id, jobs, isSimulated]);
+    }, [id, jobs]);
 
-    const getStatusLabel = (code) => {
-        const map = { 
-            on_way: 'On the way', 
-            arrived: 'Arrived', 
-            started: 'In Progress', 
-            parts: 'Paused (Parts)', 
-            completed: 'Completed',
-            payment_secured: 'Payment Secured',
-            in_progress: 'In Progress'
-        };
-        return map[code] || 'Active';
+    const agreedPrice = job?.agreedPrice || job?.budget_estimate || job?.budget || 0;
+    const commission  = Math.round(agreedPrice * COMMISSION);
+    const takeHome    = agreedPrice - commission;
+
+    const handleProgressUpdate = (opt) => {
+        setProgressOpen(false);
+        toast.success(`Status: ${opt.label}`, { description: 'Customer has been notified.' });
     };
 
-    const handleStatusUpdate = (statusCode) => {
-        setIsStatusModalOpen(false);
-        const label = getStatusLabel(statusCode);
-        const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        toast.success(`Status updated to: ${label}`, { description: 'Customer has been notified.' });
-        if (job) {
-            const updated = job.timeline.map(t => t.status === 'current' ? { ...t, status: 'completed' } : t);
-            updated.push({ title: label, time: `Today, ${time}`, status: 'current' });
-            setJob({ ...job, status: label, statusCode, timeline: updated });
-        }
-    };
-
-    const handleInvoiceUpload = async (file, amount) => {
-        setIsInvoiceModalOpen(false);
+    const handleMarkComplete = async () => {
+        setCompleting(true);
+        setConfirmComplete(false);
         try {
             await completeJob(id);
-            toast.success('Job marked as completed! Awaiting customer confirmation for payment release.');
-            setJob({ ...job, status: 'Completed', statusCode: 'completed' });
-            setUploadedInvoice({ name: file?.name || 'Payment Record', amount, date: new Date().toLocaleDateString() });
-        } catch (error) {
-            toast.error('Failed to complete job');
+            // Simulate pushing a notification to the customer via localStorage
+            const existing = JSON.parse(localStorage.getItem('tm_customer_notifs') || '[]');
+            existing.unshift({
+                id: `complete-${id}-${Date.now()}`,
+                icon: 'task_alt',
+                iconBg: 'bg-[#10B981]/10',
+                iconColor: 'text-[#10B981]',
+                title: 'Job marked complete',
+                body: `Your provider has marked the job complete. Please confirm or raise a dispute within 48 hours.`,
+                time: 'Just now',
+                unread: true,
+                jobId: id,
+            });
+            localStorage.setItem('tm_customer_notifs', JSON.stringify(existing));
+            toast.success('Job marked complete!', { description: 'Customer has been notified to confirm or raise a dispute.' });
+            setJob(j => ({ ...j, status: 'Completed' }));
+        } catch {
+            toast.error('Failed to update job status.');
+        } finally {
+            setCompleting(false);
         }
     };
 
-    const handleStartJob = async () => {
-        try {
-            await markJobInProgress(id);
-            toast.success('Job started! Customer has been notified.');
-            setJob({ ...job, status: 'In Progress', statusCode: 'in_progress' });
-        } catch (error) {
-            toast.error('Failed to start job');
-        }
-    };
+    if (loading) return (
+        <div className="min-h-screen bg-white flex items-center justify-center">
+            <span className="material-icons-outlined animate-spin text-3xl text-[#10B981]">progress_activity</span>
+        </div>
+    );
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-white flex items-center justify-center">
-                <span className="material-icons-outlined animate-spin text-3xl text-[#10B981]">progress_activity</span>
-            </div>
-        );
-    }
+    if (!job) return (
+        <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-3">
+            <p className="text-sm text-gray-500">Job not found.</p>
+            <Link to="/provider/jobs" className="text-[#10B981] font-bold text-sm hover:underline">← Back to My Jobs</Link>
+        </div>
+    );
 
-    if (!job) {
-        return (
-            <div className="min-h-screen bg-white flex items-center justify-center flex-col gap-4">
-                <p className="text-gray-500 text-sm">Job not found</p>
-                <Link to="/provider/jobs" className="text-[#10B981] font-bold hover:underline text-sm">← Back to Jobs</Link>
-            </div>
-        );
-    }
+    const cfg       = getStatusCfg(job.status);
+    const timeline  = buildTimeline(job.status);
+    const images    = job.images || job.photos || [];
+    const location  = typeof job.location === 'string' ? job.location : job.location?.address || job.location_name || 'Not specified';
 
     return (
         <div className="min-h-screen bg-white flex font-sans">
             <ProviderSidebar />
 
-            <StatusUpdateModal isOpen={isStatusModalOpen} onClose={() => setIsStatusModalOpen(false)} onUpdate={handleStatusUpdate} currentStatus={job.statusCode} />
-            <InvoiceUploadModal isOpen={isInvoiceModalOpen} onClose={() => setIsInvoiceModalOpen(false)} onUpload={handleInvoiceUpload} />
-
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <TopNavbar breadcrumbs={['My Jobs', 'Job Details']} />
 
                 <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
-                    <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">
+                    <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
 
-                        {/* Page Header */}
-                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Link to="/provider/jobs" className="text-sm text-gray-400 hover:text-[#10B981] transition-colors flex items-center gap-1">
-                                        <span className="material-icons-outlined text-base">arrow_back</span>
-                                        My Jobs
-                                    </Link>
+                        {/* ── Header ───────────────────────────────── */}
+                        <div>
+                            <Link to="/provider/jobs" className="inline-flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-[#10B981] transition-colors mb-3">
+                                <span className="material-icons text-sm">arrow_back</span>
+                                My Jobs
+                            </Link>
+
+                            <div className="flex items-start gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h1 className="text-[20px] sm:text-[24px] font-extrabold text-gray-900 tracking-tight">
+                                            {job.title || job.serviceType || 'Job'}
+                                        </h1>
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                                            {cfg.label}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                        {job.category || 'Service'} · {location}
+                                    </p>
                                 </div>
-                                <h1 className="text-2xl font-bold text-gray-900">{job.title}</h1>
-                                <p className="text-sm text-gray-400 mt-0.5 flex items-center gap-1">
-                                    <span className="material-icons-outlined text-sm">tag</span>
-                                    ID: #{job.id.substring(0, 12)}
-                                </p>
                             </div>
-                            <span className={`self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold border ${
-                                job.statusCode === 'completed'
-                                    ? 'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20'
-                                    : 'bg-blue-50 text-blue-700 border-blue-100'
-                            }`}>
-                                {job.statusCode !== 'completed' && <span className="size-2 rounded-full bg-blue-500 animate-pulse"></span>}
-                                {job.status}
-                            </span>
                         </div>
 
-                        {/* Grid */}
+                        {/* ── Main grid ────────────────────────────── */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                             {/* Left — 2 cols */}
-                            <div className="lg:col-span-2 space-y-6">
+                            <div className="lg:col-span-2 space-y-5">
+
                                 {/* Description */}
-                                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                                    <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                        <span className="material-icons-outlined text-[#10B981] text-lg">description</span>
-                                        Issue Description
-                                    </h3>
-                                    <p className="text-gray-600 leading-relaxed text-sm">{job.description || 'No description provided.'}</p>
+                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Job Description</p>
+                                    <p className="text-sm text-gray-700 leading-relaxed">
+                                        {job.description || 'No description provided.'}
+                                    </p>
+                                    {job.urgency === 'high' && (
+                                        <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                                            <span className="material-icons text-[13px]">bolt</span> Urgent
+                                        </span>
+                                    )}
                                 </div>
 
-                                {/* Photos */}
-                                {job.photos && job.photos.length > 0 && (
-                                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                                        <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                            <span className="material-icons-outlined text-[#10B981] text-lg">image</span>
-                                            Job Photos
-                                        </h3>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                            {job.photos.slice(0, 2).map((photo, i) => (
-                                                <div key={i} className="aspect-square rounded-xl overflow-hidden bg-gray-100">
-                                                    <img className="w-full h-full object-cover" src={photo} alt={`Job ${i + 1}`} />
-                                                </div>
+                                {/* Images */}
+                                {images.length > 0 && (
+                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Job Photos</p>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {images.map((src, i) => (
+                                                <button key={i} onClick={() => setLightbox(i)}
+                                                    className="aspect-square rounded-xl overflow-hidden bg-gray-100 relative group">
+                                                    <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                                        <span className="material-icons-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity text-2xl">zoom_in</span>
+                                                    </div>
+                                                </button>
                                             ))}
-                                            {job.photos.length > 2 && (
-                                                <div className="aspect-square rounded-xl overflow-hidden relative flex items-center justify-center bg-gray-100">
-                                                    <img className="w-full h-full object-cover opacity-40" src={job.photos[2]} alt="More" />
-                                                    <span className="absolute bg-gray-900/70 text-white text-sm font-bold px-3 py-1.5 rounded-full">+{job.photos.length - 2}</span>
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Location */}
-                                <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-                                    <div className="p-6 pb-3">
-                                        <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
-                                            <span className="material-icons-outlined text-[#10B981] text-lg">location_on</span>
-                                            Location
-                                        </h3>
-                                        <p className="text-sm text-gray-600">{typeof job.location === 'string' ? job.location : job.location?.address || 'No location provided'}</p>
+                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Location</p>
+                                    <div className="flex items-start gap-2">
+                                        <span className="material-icons-outlined text-[#10B981] text-lg shrink-0 mt-0.5">location_on</span>
+                                        <p className="text-sm text-gray-700">{location}</p>
                                     </div>
-                                    <div className="h-48 bg-gray-50 border-t border-gray-100 flex items-center justify-center text-gray-300">
-                                        <span className="material-icons-outlined text-3xl">map</span>
-                                        <span className="ml-2 text-sm">Map view</span>
+                                    <div className="mt-3 h-32 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center text-gray-300 gap-2">
+                                        <span className="material-icons-outlined text-2xl">map</span>
+                                        <span className="text-xs">Map preview</span>
                                     </div>
+                                </div>
+
+                                {/* Action area */}
+                                <div className="space-y-3">
+                                    {/* payment_secured → Enter Start Code */}
+                                    {job.status === 'payment_secured' && (
+                                        <Link
+                                            to={`/provider/job-start/${job.id}`}
+                                            className="w-full py-4 bg-[#10B981] hover:bg-[#059669] text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-[#10B981]/20 flex items-center justify-center gap-2"
+                                        >
+                                            <span className="material-icons text-base">key</span>
+                                            Enter Customer's Start Code
+                                        </Link>
+                                    )}
+
+                                    {/* in_progress → Update progress + Mark complete */}
+                                    {job.status === 'in_progress' && (
+                                        <>
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setProgressOpen(v => !v)}
+                                                    className="w-full py-3.5 bg-[#0F172A] hover:bg-slate-700 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <span className="material-icons text-base">sync</span>
+                                                    Update Progress
+                                                    <span className={`material-icons text-base transition-transform ${progressOpen ? 'rotate-180' : ''}`}>expand_more</span>
+                                                </button>
+                                                <AnimatePresence>
+                                                    {progressOpen && (
+                                                        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                                                            className="absolute z-10 left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden">
+                                                            {PROGRESS_OPTS.map(opt => (
+                                                                <button key={opt.key} onClick={() => handleProgressUpdate(opt)}
+                                                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 font-semibold hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                                                                    <span className="material-icons-outlined text-[#10B981] text-base">{opt.icon}</span>
+                                                                    {opt.label}
+                                                                </button>
+                                                            ))}
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                            {!confirmComplete ? (
+                                                <button
+                                                    onClick={() => setConfirmComplete(true)}
+                                                    className="w-full py-3.5 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <span className="material-icons text-base text-[#10B981]">check_circle</span>
+                                                    Mark Job as Complete
+                                                </button>
+                                            ) : (
+                                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                                                    <p className="text-sm font-bold text-gray-900">Confirm completion?</p>
+                                                    <p className="text-xs text-gray-500 leading-relaxed">The customer will be notified to release payment or raise a dispute. Only confirm if the work is fully done.</p>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={handleMarkComplete}
+                                                            disabled={completing}
+                                                            className="flex-1 py-2.5 bg-[#10B981] hover:bg-[#059669] text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                                        >
+                                                            {completing
+                                                                ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                                : <span className="material-icons text-sm">check</span>
+                                                            }
+                                                            Yes, I'm done
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setConfirmComplete(false)}
+                                                            className="px-4 py-2.5 border border-gray-200 text-gray-600 font-bold rounded-xl text-sm hover:bg-white transition-colors"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* Completed → waiting message */}
+                                    {job.status === 'Completed' && (
+                                        <div className="bg-[#10B981]/5 border border-[#10B981]/20 rounded-xl p-4 flex items-start gap-3">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0 mt-0.5">
+                                                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                                                <path d="M7.5 12l3 3 6-6" />
+                                            </svg>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900">Awaiting customer confirmation</p>
+                                                <p className="text-xs text-gray-500 mt-0.5">Payment auto-releases after {AUTO_RELEASE_HOURS} hours if no dispute is raised.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* payment_released → done */}
+                                    {job.status === 'payment_released' && (
+                                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
+                                            <span className="material-icons text-emerald-600 shrink-0">payments</span>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900">Payout complete</p>
+                                                <p className="text-xs text-gray-500 mt-0.5">₦{takeHome.toLocaleString()} was sent to your bank account.</p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             {/* Right — 1 col */}
-                            <div className="flex flex-col gap-5">
-                                {/* Customer */}
-                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                            <div className="space-y-5">
+
+                                {/* Customer card */}
+                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Customer</p>
                                     <div className="flex items-center gap-3 mb-4">
-                                        <div className="size-12 rounded-full bg-gray-100 overflow-hidden ring-2 ring-[#10B981]/20 flex items-center justify-center">
-                                            {job.customer.image
-                                                ? <img className="w-full h-full object-cover" src={job.customer.image} alt={job.customer.name} />
-                                                : <span className="material-icons-outlined text-2xl text-gray-400">person</span>
+                                        <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden ring-2 ring-[#10B981]/20 flex items-center justify-center shrink-0">
+                                            {job.customerPhoto
+                                                ? <img src={job.customerPhoto} alt={job.customerName} className="w-full h-full object-cover" />
+                                                : <span className="material-icons-outlined text-xl text-gray-400">person</span>
                                             }
                                         </div>
                                         <div>
-                                            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-1">
-                                                {job.customer.name}
+                                            <p className="text-[14px] font-bold text-gray-900 flex items-center gap-1">
+                                                {job.customerName || 'Customer'}
                                                 <span className="material-icons-outlined text-blue-500 text-sm">verified</span>
-                                            </h3>
-                                            <p className="text-xs text-gray-400">{job.customer.jobs} tasks completed</p>
+                                            </p>
+                                            <p className="text-xs text-gray-400">{job.customerLocation || location}</p>
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        {job.customer.phone ? (
-                                            <a href={`tel:${job.customer.phone}`}
-                                                className="w-full py-2.5 rounded-xl bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20 hover:bg-[#10B981]/20 transition-colors flex items-center justify-center gap-2 font-semibold text-sm">
-                                                <span className="material-icons-outlined text-base">call</span>
-                                                {job.customer.phone}
-                                            </a>
-                                        ) : (
-                                            <button disabled className="w-full py-2.5 rounded-xl bg-gray-50 text-gray-400 border border-gray-100 cursor-not-allowed flex items-center justify-center gap-2 text-sm">
-                                                <span className="material-icons-outlined text-base">no_cell</span>
-                                                No phone number
-                                            </button>
-                                        )}
+                                    {job.customerPhone ? (
+                                        <a href={`tel:${job.customerPhone}`}
+                                            className="w-full py-2.5 rounded-xl bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20 hover:bg-[#10B981]/20 transition-colors flex items-center justify-center gap-2 font-semibold text-sm">
+                                            <span className="material-icons-outlined text-base">call</span>
+                                            Call Customer
+                                        </a>
+                                    ) : (
+                                        <div className="w-full py-2.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center gap-2 text-xs text-gray-400">
+                                            <span className="material-icons-outlined text-sm">chat_bubble_outline</span>
+                                            Communicate via in-app chat
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Financials */}
+                                <div className="bg-[#0F172A] rounded-2xl p-5 text-white">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4">Your Earnings</p>
+                                    <div className="space-y-2.5 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-400">Agreed price</span>
+                                            <span className="font-bold">₦{agreedPrice.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-slate-400">
+                                            <span>Platform fee (10%)</span>
+                                            <span>− ₦{commission.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between pt-2.5 border-t border-white/10">
+                                            <span className="font-bold text-white">You receive</span>
+                                            <span className="font-black text-[#10B981] text-base">₦{takeHome.toLocaleString()}</span>
+                                        </div>
                                     </div>
+                                    <p className="text-[10px] text-slate-500 mt-3 leading-relaxed">
+                                        Released to your bank after customer confirms completion.
+                                    </p>
                                 </div>
 
                                 {/* Timeline */}
-                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                                    <h3 className="font-bold text-gray-900 text-sm mb-5">Job Timeline</h3>
-                                    <div className="relative pl-4 border-l-2 border-gray-100 space-y-6">
-                                        {job.timeline.map((step, idx) => (
-                                            <div key={idx} className="relative">
-                                                <div className={`absolute -left-[21px] top-1 rounded-full size-4 border-4 border-white ${
-                                                    step.status === 'completed' ? 'bg-[#10B981]' :
-                                                    step.status === 'current' ? 'bg-[#10B981] animate-pulse shadow-[0_0_0_4px_rgba(16,185,129,0.2)]' :
-                                                    'bg-gray-200'
-                                                }`}></div>
-                                                <div className={step.status === 'upcoming' ? 'opacity-40' : ''}>
-                                                    <p className={`text-sm font-bold ${step.status === 'current' ? 'text-[#10B981]' : 'text-gray-900'}`}>{step.title}</p>
-                                                    <p className="text-xs text-gray-400 mt-0.5">{step.time}</p>
-                                                </div>
+                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-4">Job Progress</p>
+                                    <div className="relative pl-5 border-l-2 border-gray-100 space-y-5">
+                                        {timeline.map((step, i) => (
+                                            <div key={step.key} className="relative">
+                                                <div className={`absolute -left-[22px] top-1 w-4 h-4 rounded-full border-4 border-white ${
+                                                    step.active ? 'bg-[#10B981] shadow-[0_0_0_3px_rgba(16,185,129,0.2)]' :
+                                                    step.done   ? 'bg-[#10B981]' : 'bg-gray-200'
+                                                }`} />
+                                                <p className={`text-[13px] font-bold ${step.active ? 'text-[#10B981]' : step.done ? 'text-gray-900' : 'text-gray-300'}`}>
+                                                    {step.label}
+                                                </p>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
-                                {/* Financials & Actions */}
-                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col gap-4">
-                                    <div className="flex justify-between items-end pb-4 border-b border-gray-100">
-                                        <div>
-                                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Est. Total</p>
-                                            <p className="text-2xl font-bold text-[#10B981]">{job.pricing.total}</p>
-                                        </div>
-                                        <span className="text-xs bg-gray-100 px-2.5 py-1 rounded-lg text-gray-600 font-semibold">{job.pricing.method}</span>
-                                    </div>
-                                    <div className="flex flex-col gap-3">
-                                        {job.statusCode === 'payment_secured' && (
-                                            <button
-                                                onClick={handleStartJob}
-                                                className="w-full py-3 rounded-xl bg-[#10B981] hover:bg-[#059669] text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-                                            >
-                                                <span className="material-icons-outlined text-base">play_arrow</span>
-                                                Start Job
-                                            </button>
-                                        )}
-                                        {job.statusCode === 'in_progress' && (
-                                            <button
-                                                onClick={() => setIsStatusModalOpen(true)}
-                                                className="w-full py-3 rounded-xl bg-[#0F172A] hover:bg-slate-700 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-                                            >
-                                                Update Progress
-                                                <span className="material-icons-outlined text-base">arrow_forward</span>
-                                            </button>
-                                        )}
-                                        {job.statusCode !== 'completed' && job.statusCode !== 'payment_secured' && (
-                                            <button
-                                                onClick={() => setIsInvoiceModalOpen(true)}
-                                                className="w-full py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors text-gray-700 font-semibold text-sm flex items-center justify-center gap-2"
-                                            >
-                                                <span className="material-icons-outlined text-base">check_circle</span>
-                                                Mark as Completed
-                                            </button>
-                                        )}
-                                        {job.statusCode === 'completed' && (
-                                            <div className="bg-[#10B981]/10 border border-[#10B981]/20 rounded-xl p-3 flex items-start gap-2">
-                                                <span className="material-icons-outlined text-[#10B981] text-lg shrink-0">check_circle</span>
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-900">Job Completed</p>
-                                                    <p className="text-xs text-gray-500 mt-0.5">Awaiting customer confirmation for payment release</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
                             </div>
-
                         </div>
                     </div>
                 </main>
             </div>
 
             <ProviderMobileNavBar />
+
+            {/* Lightbox */}
+            <AnimatePresence>
+                {lightbox !== null && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[80] bg-black/90 flex items-center justify-center p-4"
+                        onClick={() => setLightbox(null)}>
+                        <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 text-white/70 hover:text-white">
+                            <span className="material-icons text-3xl">close</span>
+                        </button>
+                        <motion.img initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+                            src={images[lightbox]} alt="Full view"
+                            className="max-h-[85vh] max-w-full rounded-2xl object-contain"
+                            onClick={e => e.stopPropagation()} />
+                        <div className="absolute bottom-4 flex gap-2">
+                            {images.map((_, i) => (
+                                <button key={i} onClick={e => { e.stopPropagation(); setLightbox(i); }}
+                                    className={`w-2 h-2 rounded-full transition-colors ${i === lightbox ? 'bg-white' : 'bg-white/30'}`} />
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
-};
-
-export default JobDetails;
+}

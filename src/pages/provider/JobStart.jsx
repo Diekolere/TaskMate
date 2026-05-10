@@ -59,7 +59,7 @@ const JobStart = () => {
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <TopNavbar breadcrumbs={['Jobs', 'Start Job']} />
 
-                <main className="flex-1 overflow-y-auto pb-24 md:pb-0 bg-gray-50">
+                <main className="flex-1 overflow-y-auto pb-24 md:pb-0 bg-white">
                     <div className="max-w-md mx-auto px-4 py-12 sm:py-16 flex flex-col items-center">
 
                         <AnimatePresence mode="wait">

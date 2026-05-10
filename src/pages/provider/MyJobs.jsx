@@ -28,7 +28,12 @@ const MyJobs = () => {
     const { currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState('active');
 
-    const myJobs = allJobs.filter(j => j.providerId === currentUser?.uid);
+    // Jobs where the deal is sealed — negotiating/open/provider_accepted stay on Requests page
+    const MY_JOBS_STATUSES = ['payment_secured', 'in_progress', 'Completed', 'Canceled', 'payment_released'];
+    const myJobs = allJobs.filter(j =>
+        j.providerId === currentUser?.uid &&
+        MY_JOBS_STATUSES.includes(j.status)
+    );
     const activeJobs = myJobs.filter(j => !['Completed', 'Canceled', 'payment_released'].includes(j.status));
     const completedJobs = myJobs.filter(j => ['Completed', 'Canceled', 'payment_released'].includes(j.status));
     const displayJobs = activeTab === 'active' ? activeJobs : completedJobs;
@@ -94,7 +99,7 @@ const MyJobs = () => {
                                         return (
                                             <Link
                                                 key={job.id}
-                                                to={job.status === 'negotiating' || job.status === 'provider_accepted' ? `/provider/negotiation/${job.id}` : `/provider/jobs/${job.id}`}
+                                                to={`/provider/jobs/${job.id}`}
                                                 className={`flex items-center gap-3 py-4 group hover:bg-gray-50/60 transition-colors rounded-xl px-1 -mx-1 ${idx !== 0 ? 'border-t border-gray-100' : ''}`}
                                             >
                                                 <CategoryIcon category={job.serviceType || job.category} size="md" />
