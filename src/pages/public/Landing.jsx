@@ -392,9 +392,9 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto">
             <div className="bg-[#7AC142] rounded-3xl p-12 md:p-20 flex flex-col md:flex-row items-center justify-between gap-10 mb-24 text-[#1a2b3c] relative overflow-hidden shadow-2xl">
                 <div className="absolute -left-10 -bottom-10 opacity-20">
-                    <svg width="200" height="200" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" />
-                        <circle cx="50" cy="50" r="25" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" />
+                    <svg width="200" height="200" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="40" fill="currentColor" />
+                        <circle cx="50" cy="50" r="25" fill="currentColor" opacity="0.6" />
                     </svg>
                 </div>
                 <div className="relative z-10 max-w-2xl">
