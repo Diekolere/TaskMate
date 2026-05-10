@@ -26,7 +26,7 @@ const ProviderSidebar = () => {
 
     return (
         <aside
-            className={`hidden md:flex flex-col bg-white border-r border-gray-100 h-screen sticky top-0 shrink-0 pb-8 transition-all duration-300 ease-in-out z-50 ${isCollapsed ? 'w-[80px]' : 'w-[260px]'}`}
+            className={`hidden md:flex flex-col bg-white border-r border-gray-100 h-screen sticky top-0 shrink-0 pb-8 transition-all duration-300 ease-in-out z-[110] ${isCollapsed ? 'w-[80px]' : 'w-[260px]'}`}
         >
             {/* Logo */}
             <div className={`flex items-center h-20 border-b border-gray-100 mb-6 w-full relative ${isCollapsed ? 'justify-center px-2' : 'justify-between px-6'}`}>
@@ -49,7 +49,7 @@ const ProviderSidebar = () => {
             {isCollapsed && (
                 <button
                     onClick={() => setIsCollapsed(false)}
-                    className="absolute top-10 -right-3 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 shadow-sm z-50"
+                    className="absolute top-10 -right-3 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 shadow-sm z-10"
                 >
                     <span className="material-icons-outlined text-[10px]">chevron_right</span>
                 </button>
