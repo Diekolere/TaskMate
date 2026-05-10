@@ -336,13 +336,13 @@ export default function JobDetails() {
                                             Call Customer
                                         </a>
                                     ) : (
-                                        <Link
-                                            to={`/provider/requests/${job.id}`}
+                                        <a
+                                            href={`tel:${job.customerPhone || ''}`}
                                             className="w-full py-2.5 rounded-xl bg-[#10B981] hover:bg-[#059669] text-white font-semibold flex items-center justify-center gap-2 text-sm transition-colors shadow-sm shadow-[#10B981]/20"
                                         >
-                                            <span className="material-icons-outlined text-base">chat_bubble_outline</span>
-                                            Communicate via in-app chat
-                                        </Link>
+                                            <span className="material-icons-outlined text-base">call</span>
+                                            Call Customer
+                                        </a>
                                     )}
                                 </div>
 

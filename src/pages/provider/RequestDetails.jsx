@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -267,6 +267,7 @@ const RequestDetails = () => {
     const { currentUser } = useAuth();
     const { jobs, acceptJob, isSimulated } = useData();
     const navigate = useNavigate();
+    const location = useLocation();
     
     const [loading, setLoading] = useState(true);
     const [request, setRequest] = useState(null);
@@ -277,6 +278,14 @@ const RequestDetails = () => {
     const [rejectReason, setRejectReason] = useState('');
     const [customReason, setCustomReason] = useState('');
     const [lightboxImg, setLightboxImg] = useState(null);
+
+    // Auto-open chat if navigated here with openChat flag (e.g. from JobDetails)
+    useEffect(() => {
+        if (location.state?.openChat) {
+            setAccepted(true);
+            setNegotiating(true);
+        }
+    }, [location.state]);
 
     useEffect(() => {
         if (!id) return;
