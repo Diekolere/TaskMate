@@ -18,7 +18,7 @@ export function ProviderOnboardingProvider({ children }) {
       address: '',
       website: '',
       yearsOfExperience: '', // Moved profileImage to files state
-      
+
       // Step 2: Service Details
       radius: 10,
       hourlyRate: '',
@@ -40,9 +40,9 @@ export function ProviderOnboardingProvider({ children }) {
 
   // We need separate state for files since they can't be in localStorage
   const [files, setFiles] = useState({
-      profileImage: null,
-      idFront: null,
-      businessLicense: null
+    profileImage: null,
+    idFront: null,
+    businessLicense: null
   });
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export function ProviderOnboardingProvider({ children }) {
   };
 
   const updateFiles = (newFiles) => {
-      setFiles(prev => ({ ...prev, ...newFiles }));
+    setFiles(prev => ({ ...prev, ...newFiles }));
   };
 
   return (
