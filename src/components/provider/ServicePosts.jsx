@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 const defaultPost = {
     title: '',
@@ -45,18 +46,21 @@ const ServicePosts = () => {
     return (
         <div className="bg-white rounded-[28px] border border-slate-200 shadow-sm overflow-hidden">
             <div className="bg-slate-50 p-6 sm:p-7 border-b border-slate-200">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="space-y-2">
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Service Showcase</p>
-                        <h3 className="text-2xl font-semibold text-slate-900">Create a service post</h3>
+                        <h3 className="text-lg font-semibold text-slate-900">Create a service post</h3>
                         <p className="max-w-2xl text-sm leading-6 text-slate-500">
-                            Share a recent project, highlight your work, and let customers see your expertise with a polished post.
+                            Share a recent project on your profile — opens the same composer customers see on the feed.
                         </p>
                     </div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[#10B981]/20 bg-[#10B981]/10 px-4 py-2 text-sm font-semibold text-[#10B981]">
-                        <span className="material-icons-outlined text-base">sparkles</span>
-                        New service post
-                    </div>
+                    <Link
+                        to="/provider/posts/new"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#10B981]/30 bg-white px-4 py-2.5 text-sm font-semibold text-[#10B981] hover:bg-[#10B981]/5 transition-colors shrink-0"
+                    >
+                        <span className="material-icons-outlined text-base">post_add</span>
+                        New post
+                    </Link>
                 </div>
             </div>
 

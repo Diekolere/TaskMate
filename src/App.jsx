@@ -40,6 +40,7 @@ import Earnings from './pages/provider/Earnings';
 import MyProfile from './pages/provider/Profile';
 import ProviderSettings from './pages/provider/Settings';
 import ChangePassword from './pages/provider/ChangePassword';
+import CreateServicePost from './pages/provider/CreateServicePost';
 import Support from './pages/provider/Support';
 import ProviderNegotiation from './pages/provider/Negotiation';
 import Privacy from './pages/public/Privacy';
@@ -116,7 +117,8 @@ function AnimatedRoutes() {
         <Route path="/provider/earnings" element={<ProtectedRoute allowedRoles={['provider']}><Earnings /></ProtectedRoute>} />
         <Route path="/provider/profile" element={<ProtectedRoute allowedRoles={['provider']}><MyProfile /></ProtectedRoute>} />
         <Route path="/provider/settings" element={<ProtectedRoute allowedRoles={['provider']}><ProviderSettings /></ProtectedRoute>} />
-        <Route path="/provider/settings/password" element={<ChangePassword />} />
+        <Route path="/provider/settings/password" element={<ProtectedRoute allowedRoles={['provider']}><ChangePassword /></ProtectedRoute>} />
+        <Route path="/provider/posts/new" element={<ProtectedRoute allowedRoles={['provider']}><CreateServicePost /></ProtectedRoute>} />
         <Route path="/provider/support" element={<Support />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
