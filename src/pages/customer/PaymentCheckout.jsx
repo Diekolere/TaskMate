@@ -141,38 +141,38 @@ const PaymentCheckout = () => {
 
                                         {/* ── Left col: Order Summary (shows first on mobile) ── */}
                                         <div className="lg:col-span-2 flex flex-col gap-4">
-                                            <div className="rounded-2xl bg-[#10B981] p-5">
-                                                <p className="text-[10px] font-bold text-white/60 uppercase tracking-wider mb-4">Order Summary</p>
+                                            <div className="rounded-2xl bg-[#10B981] p-5 text-white">
+                                                <p className="text-[10px] font-bold text-white uppercase tracking-wider mb-4">Order Summary</p>
 
-                                                <div className="flex items-start gap-3 mb-5 pb-5 border-b border-white/20">
+                                                <div className="flex items-start gap-3 mb-5 pb-5 border-b border-white/25">
                                                     <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
                                                         <span className="material-icons-outlined text-white text-base">handyman</span>
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-white text-sm">{request?.title}</p>
-                                                        <p className="text-xs text-white/60 mt-0.5">{request?.category} · {request?.location}</p>
+                                                        <p className="text-xs text-white mt-0.5">{request?.category} · {request?.location}</p>
                                                         {(stateProvider?.full_name || request?.providerName) && (
-                                                            <p className="text-xs text-white/80 mt-1 font-semibold">
+                                                            <p className="text-xs text-white mt-1 font-semibold">
                                                                 {stateProvider?.full_name || request.providerName}
                                                             </p>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                <div className="space-y-3 text-sm">
-                                                    <div className="flex justify-between text-white/70">
+                                                <div className="space-y-3 text-sm text-white">
+                                                    <div className="flex justify-between">
                                                         <span>Service amount</span>
-                                                        <span className="font-semibold text-white">₦{amount.toLocaleString()}</span>
+                                                        <span className="font-semibold">₦{amount.toLocaleString()}</span>
                                                     </div>
-                                                    <div className="flex justify-between text-xs text-white/50">
+                                                    <div className="flex justify-between text-xs">
                                                         <span>Platform fee (10%)</span>
-                                                        <span>₦{commission.toLocaleString()}</span>
+                                                        <span className="font-semibold">₦{commission.toLocaleString()}</span>
                                                     </div>
-                                                    <div className="flex justify-between text-xs text-white/50">
+                                                    <div className="flex justify-between text-xs">
                                                         <span>Provider receives</span>
-                                                        <span className="text-white/80 font-semibold">₦{providerReceives.toLocaleString()}</span>
+                                                        <span className="font-semibold">₦{providerReceives.toLocaleString()}</span>
                                                     </div>
-                                                    <div className="flex justify-between font-bold text-white pt-3 border-t border-white/20 text-base">
+                                                    <div className="flex justify-between font-bold pt-3 border-t border-white/25 text-base">
                                                         <span>You transfer</span>
                                                         <span>₦{amount.toLocaleString()}</span>
                                                     </div>
