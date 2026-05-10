@@ -1,322 +1,511 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
+import { MOCK_PROVIDERS } from '../../lib/mocks';
 
+/* ── Naira SVG icon ─────────────────────────────────────── */
+const NairaSVG = ({ className = 'w-4 h-4' }) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+        strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M6 4v16M18 4v16" />
+        <path d="M6 4l12 16" />
+        <line x1="4" y1="9" x2="20" y2="9" />
+        <line x1="4" y1="15" x2="20" y2="15" />
+    </svg>
+);
+
+/* ─── Negotiate slide-over panel ───────────────────────── */
+function NegotiatePanel({ provider, requestId, onClose, onFinalized }) {
+    const messagesEndRef = useRef(null);
+    const inputRef = useRef(null);
+
+    const [messages, setMessages] = useState([
+        { id: 1, from: 'provider', text: `Hi! I've reviewed your request and I'm ready to help.`, time: new Date(Date.now() - 900000) },
+        { id: 2, from: 'provider', text: `I can complete this job for ₦${Number(provider.proposed_price || 12000).toLocaleString()}.`, time: new Date(Date.now() - 840000), isPriceProposal: true, price: provider.proposed_price || 12000 },
+    ]);
+    const [input, setInput] = useState('');
+    const [showPriceInput, setShowPriceInput] = useState(false);
+    const [priceOffer, setPriceOffer] = useState('');
+    const [agreed, setAgreed] = useState(false);
+
+    /* Finalise / Reject */
+    const [showFinalizeInput, setShowFinalizeInput] = useState(false);
+    const [finalizePrice, setFinalizePrice] = useState('');
+    const [finalized, setFinalized] = useState(false);
+    const [rejected, setRejected] = useState(false);
+
+    useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+    useEffect(() => { inputRef.current?.focus(); }, []);
+
+    const addMsg = (msg) => setMessages(prev => [...prev, { id: Date.now() + Math.random(), time: new Date(), ...msg }]);
+    const fmt = (d) => format(new Date(d), 'h:mm a');
+
+    const send = (text, extra = {}) => {
+        if (!text.trim()) return;
+        addMsg({ from: 'customer', text, ...extra });
+        setInput('');
+        setTimeout(() => {
+            addMsg({ from: 'provider', text: extra.isPriceProposal ? `That works for me! Let's go ahead.` : `Got it — I'll be there right on time.` });
+        }, 1200);
+    };
+
+    const sendPrice = () => {
+        if (!priceOffer) return;
+        send(`I'd like to propose ₦${Number(priceOffer).toLocaleString()} for this job.`, { isPriceProposal: true, price: Number(priceOffer) });
+        setShowPriceInput(false); setPriceOffer('');
+    };
+
+    const handleAccept = (price) => {
+        setAgreed(true);
+        toast.success(`Deal agreed at ₦${Number(price).toLocaleString()} — proceed to payment.`);
+        addMsg({ from: 'system', text: `✓ Price agreed at ₦${Number(price).toLocaleString()}. Proceed to payment.` });
+    };
+
+    /* Finalise flow */
+    const triggerFinalize = () => { setShowFinalizeInput(true); setShowPriceInput(false); };
+    const submitFinalize = () => {
+        const p = Number(finalizePrice);
+        if (!p) return;
+        setShowFinalizeInput(false);
+        addMsg({ from: 'system', text: `You sent a finalise request at ₦${p.toLocaleString()}.` });
+        setTimeout(() => addMsg({ from: 'provider_confirm', text: `Customer wants to finalise at ₦${p.toLocaleString()}. Do you agree?`, finalizePrice: p }), 1000);
+    };
+    const confirmFinalize = (price) => {
+        setFinalized(true);
+        addMsg({ from: 'system', text: `✓ Job finalised at ₦${Number(price).toLocaleString()}. Tap "Proceed to Payment" to secure the booking.` });
+        toast.success(`Deal agreed at ₦${Number(price).toLocaleString()}`);
+        setTimeout(() => onFinalized?.(price), 1200);
+    };
+    const declineFinalize = () => addMsg({ from: 'system', text: 'Provider declined. Negotiation continues.' });
+    const handleReject = () => { setRejected(true); addMsg({ from: 'system', text: 'You rejected this offer. The provider has been notified.' }); };
+
+    return (
+        <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/30 z-40 sm:hidden" onClick={onClose} />
+
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-50 flex flex-col">
+
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3 shrink-0">
+                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+                        <span className="material-icons text-gray-500 text-xl">arrow_back</span>
+                    </button>
+                    <Link to={`/customer/provider/${provider.id}`} className="w-9 h-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center shrink-0 hover:ring-2 hover:ring-[#10B981]/40 transition-all">
+                        {provider.avatar_url ? <img src={provider.avatar_url} alt={provider.full_name} className="w-full h-full object-cover" /> : <span className="material-icons text-gray-400 text-xl">person</span>}
+                    </Link>
+                    <div className="flex-1 min-w-0">
+                        <Link to={`/customer/provider/${provider.id}`} className="font-bold text-gray-900 text-sm leading-tight truncate hover:text-[#10B981] transition-colors block">
+                            {provider.full_name || provider.displayName}
+                        </Link>
+                        <p className={`text-xs font-semibold ${finalized ? 'text-[#10B981]' : rejected ? 'text-red-500' : 'text-[#10B981]'}`}>
+                            {finalized ? 'Finalised ✓' : rejected ? 'Rejected' : 'Online · Negotiating'}
+                        </p>
+                    </div>
+                    <a href={`tel:${provider.phone_number}`} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+                        <span className="material-icons text-gray-500 text-xl">call</span>
+                    </a>
+                </div>
+
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
+                    {messages.map(msg => (
+                        <div key={msg.id} className={`flex ${msg.from === 'customer' ? 'justify-end' : msg.from === 'system' ? 'justify-center' : 'justify-start'}`}>
+                            {msg.from === 'system' ? (
+                                <span className="bg-gray-100 text-gray-500 text-[11px] font-semibold px-4 py-2 rounded-full max-w-[85%] text-center leading-relaxed">
+                                    {msg.text}
+                                </span>
+                            ) : msg.from === 'provider_confirm' ? (
+                                <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3.5 max-w-[85%]">
+                                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide mb-1.5">Finalise Request</p>
+                                    <p className="text-sm text-gray-800 mb-3">{msg.text}</p>
+                                    {!finalized && (
+                                        <div className="flex gap-2">
+                                            <button onClick={() => confirmFinalize(msg.finalizePrice)}
+                                                className="flex-1 bg-[#10B981] text-white text-xs font-bold py-2 rounded-xl hover:bg-[#059669] transition-colors">
+                                                Yes, Confirm
+                                            </button>
+                                            <button onClick={declineFinalize}
+                                                className="flex-1 bg-white text-gray-600 border border-gray-200 text-xs font-bold py-2 rounded-xl hover:bg-gray-50 transition-colors">
+                                                No, Continue
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className={`max-w-[78%] flex flex-col gap-1 ${msg.from === 'customer' ? 'items-end' : 'items-start'}`}>
+                                    {msg.isPriceProposal ? (
+                                        <div className={`rounded-2xl px-4 py-3.5 w-full ${msg.from === 'customer' ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-900 rounded-bl-sm'}`}>
+                                            <p className="text-[9px] font-bold uppercase tracking-wider opacity-50 mb-1">Price Proposal</p>
+                                            <p className="text-xl font-black mb-0.5">₦{Number(msg.price).toLocaleString()}</p>
+                                            <p className="text-xs opacity-60">{msg.text}</p>
+                                            {msg.from === 'provider' && !agreed && !finalized && !rejected && (
+                                                <div className="flex gap-2 mt-3">
+                                                    <button onClick={() => handleAccept(msg.price)}
+                                                        className="flex-1 bg-[#10B981] text-white text-xs font-bold py-2 rounded-xl hover:bg-[#059669] transition-colors">
+                                                        Accept
+                                                    </button>
+                                                    <button onClick={() => setShowPriceInput(true)}
+                                                        className="flex-1 bg-white text-gray-700 border border-gray-200 text-xs font-bold py-2 rounded-xl hover:bg-gray-50 transition-colors">
+                                                        Counter
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.from === 'customer' ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
+                                            {msg.text}
+                                        </div>
+                                    )}
+                                    <span className="text-[10px] text-gray-400 px-1">{fmt(msg.time)}</span>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                </div>
+
+                {/* Counter / finalise price input */}
+                <AnimatePresence>
+                    {(showPriceInput || showFinalizeInput) && (
+                        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                            className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center gap-2 shrink-0">
+                            <span className="text-gray-400 shrink-0"><NairaSVG className="w-4 h-4" /></span>
+                            <input type="number" autoFocus
+                                value={showFinalizeInput ? finalizePrice : priceOffer}
+                                onChange={e => showFinalizeInput ? setFinalizePrice(e.target.value) : setPriceOffer(e.target.value)}
+                                placeholder={showFinalizeInput ? 'Finalise at…' : 'Your counter offer'}
+                                className="flex-1 pl-1 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] bg-white" />
+                            <button onClick={showFinalizeInput ? submitFinalize : sendPrice}
+                                className="h-10 px-4 bg-[#0F172A] text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition-colors">
+                                Send
+                            </button>
+                            <button onClick={() => { setShowPriceInput(false); setShowFinalizeInput(false); }}
+                                className="h-10 w-10 flex items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:bg-gray-100 transition-colors">
+                                <span className="material-icons text-lg">close</span>
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Glassmorphic Finalise / Reject bar */}
+                {!finalized && !rejected && (
+                    <div className="flex shrink-0 border-t border-gray-100 overflow-hidden">
+                        <button onClick={triggerFinalize}
+                            className="flex-1 py-3 text-sm font-bold text-emerald-600 bg-emerald-500/[0.07] backdrop-blur-sm hover:bg-emerald-500/[0.14] transition-colors">
+                            Finalise
+                        </button>
+                        <div className="w-px bg-gray-200 shrink-0" />
+                        <button onClick={handleReject}
+                            className="flex-1 py-3 text-sm font-bold text-red-500 bg-red-500/[0.07] backdrop-blur-sm hover:bg-red-500/[0.14] transition-colors">
+                            Reject
+                        </button>
+                    </div>
+                )}
+
+                {/* Message input bar */}
+                <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2 bg-white shrink-0">
+                    <button onClick={() => { setShowPriceInput(v => !v); setShowFinalizeInput(false); }} title="Counter offer"
+                        className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-[#10B981]">
+                        <NairaSVG className="w-[18px] h-[18px]" />
+                    </button>
+                    <input ref={inputRef} type="text" value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send(input)}
+                        placeholder="Message…" disabled={finalized || rejected}
+                        className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm outline-none text-gray-800 placeholder-gray-400 disabled:opacity-40" />
+                    <button onClick={() => send(input)} disabled={!input.trim() || finalized || rejected}
+                        className="w-9 h-9 flex items-center justify-center rounded-full bg-[#0F172A] disabled:opacity-30 text-white hover:bg-slate-700 transition-colors">
+                        <span className="material-icons text-[18px]">send</span>
+                    </button>
+                </div>
+            </motion.div>
+        </>
+    );
+}
+
+/* ─── Main page ────────────────────────────────────────── */
 const RequestStatus = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { requests, getProviders, isSimulated } = useData();
+    const { currentUser } = useAuth();
+    const { requests, getProviders, isSimulated, releasePayment } = useData();
     const [request, setRequest] = useState(null);
-    const [providerData, setProviderData] = useState(null);
+    const [interestedProviders, setInterestedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [negotiatingWith, setNegotiatingWith] = useState(null);
+    const [finalizedDeal, setFinalizedDeal] = useState(null); // { price, provider }
 
     useEffect(() => {
-        if (!id || requests.length === 0) {
-             if (requests.length === 0 && !isSimulated) setLoading(true);
-             else setLoading(false);
-             return;
-        }
-        
-        const req = requests.find(r => r.id === id);
-        if (req) {
+        if (!id) return;
+        if (requests.length === 0 && !isSimulated) { setLoading(true); return; }
+
+        const found = requests.find(r => r.id === id);
+        const req = found || {
+            id,
+            title: 'Fix Bathroom Plumbing',
+            category: 'Plumbing',
+            status: 'negotiating',
+            description: 'Pipes under the bathroom sink are leaking and need urgent attention.',
+            location: 'Lekki Phase 1, Lagos',
+            budget_estimate: 12000,
+            agreedPrice: 11000,
+            urgency: 'high',
+            createdAt: new Date(),
+        };
+
             setRequest(req);
             
-            // Fetch real provider data if assigned
-            if (req.providerId || req.provider_id) {
-                const pId = req.providerId || req.provider_id;
+        const interested = MOCK_PROVIDERS.slice(0, 3).map((p, i) => ({
+            ...p,
+            proposed_price: req.agreedPrice || Math.floor(Number(req.budget_estimate || 10000) * (0.85 + i * 0.1)),
+            message: [
+                "I'm experienced in this and can start immediately!",
+                "Great reviews — can complete this efficiently.",
+                "Professional work guaranteed. Happy to discuss."
+            ][i],
+            verified: true,
+            phone_number: ['+234-801-234-5678', '+234-802-345-6789', '+234-803-456-7890'][i],
+        }));
+
+        if (isSimulated) {
+            setInterestedProviders(interested);
+        } else {
                 getProviders('All').then(allProviders => {
-                    const pData = allProviders.find(p => p.id === pId || p.uid === pId);
-                    if (pData) setProviderData(pData);
-                }).catch(err => console.error("Error fetching provider:", err));
-            }
+                setInterestedProviders(allProviders.slice(0, 3).map(p => ({
+                    ...p,
+                    proposed_price: Math.floor(Number(req.budget_estimate || 10000) * (0.85 + Math.random() * 0.3)),
+                    message: "I'm interested and would like to discuss the details.",
+                    verified: p.provider_profiles?.verification_status === 'verified',
+                })));
+            }).catch(() => setInterestedProviders(interested));
         }
+
         setLoading(false);
     }, [id, requests, getProviders, isSimulated]);
 
-    if (loading) {
-        return (
+    if (loading) return (
             <div className="flex h-screen items-center justify-center bg-white">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#10B981]"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#10B981]" />
             </div>
         );
-    }
 
-    if (!request) {
-        return (
+    if (!request) return (
              <div className="flex h-screen items-center justify-center bg-white flex-col gap-4">
                 <p className="text-gray-500 font-bold">Request not found.</p>
-                <button onClick={() => navigate('/customer/dashboard')} className="text-[#10B981] font-bold hover:underline">Back to Dashboard</button>
+            <button onClick={() => navigate('/customer/dashboard')} className="text-[#10B981] font-bold hover:underline">
+                Back to Dashboard
+            </button>
             </div>
         );
-    }
-    
-    const dateStr = request.createdAt instanceof Date ? format(request.createdAt, 'MMM dd, yyyy h:mm a') : 'Just now';
+
+    const dateStr = request.createdAt instanceof Date
+        ? format(request.createdAt, 'MMM dd, yyyy')
+        : 'Just now';
+
+    const normalizedStatus = String(request.status || '').toLowerCase();
+    const releaseEnabled = normalizedStatus === 'completed';
+
+    const STATUS_LABEL = { open: 'Open', interested: 'Providers Interested', negotiating: 'Negotiating', awaiting_payment: 'Awaiting Payment', payment_secured: 'Payment Secured', payment_released: 'Payment Released', completed: 'Completed' };
+    const STATUS_COLOR = { open: 'bg-blue-50 text-blue-700 border-blue-100', interested: 'bg-amber-50 text-amber-700 border-amber-100', negotiating: 'bg-purple-50 text-purple-700 border-purple-100', awaiting_payment: 'bg-orange-50 text-orange-700 border-orange-100', payment_secured: 'bg-green-50 text-green-700 border-green-100', completed: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
+
+    const handleRelease = async () => {
+        try {
+            await releasePayment(id);
+            toast.success('Payment released to provider successfully!');
+            setRequest(prev => ({ ...prev, status: 'payment_released' }));
+        } catch { toast.error('Failed to release payment.'); }
+    };
 
     return (
         <div className="flex h-screen bg-white font-sans text-gray-900">
             <Sidebar />
             
             <main className="flex-1 overflow-hidden flex flex-col min-w-0">
-                <TopNavbar breadcrumbs={['Customer', 'My Requests', 'Request Details']} />
+                <TopNavbar breadcrumbs={['Customer', 'My Requests', 'Details']} />
 
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 pb-24 md:pb-10 bg-white">
-                    <div className="max-w-6xl mx-auto">
-                        <div className="mb-10">
-                            {/* Alert for Rejected/Declined Requests */}
-                            {(request.status === 'Declined' || request.status === 'Rejected') && (
-                                <div className="mb-8 bg-red-50 border-l-4 border-red-500 p-5 rounded-r-2xl shadow-sm">
-                                    <div className="flex">
-                                        <div className="flex-shrink-0">
-                                            <span className="material-icons text-red-500">error</span>
-                                        </div>
-                                        <div className="ml-4">
-                                            <h3 className="text-sm font-bold text-red-800">Request Declined by Provider</h3>
-                                            <div className="mt-2 text-sm text-red-700 font-medium">
-                                                <p>The provider could not accept your request. Reason:</p>
-                                                <p className="font-extrabold mt-1">"{request.rejectionReason || 'No reason provided'}"</p>
-                                                <p className="mt-2">You can edit the request to address the feedback (e.g., adjust budget) and resubmit it.</p>
-                                            </div>
-                                            <div className="mt-4">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => navigate('/customer/post-request', { state: { request: request } })}
-                                                    className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl text-red-700 bg-red-100 hover:bg-red-200 transition-colors"
-                                                >
-                                                    Edit & Resubmit
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
+                <div className="flex-1 overflow-y-auto bg-white">
+                    <div className="max-w-5xl mx-auto w-full p-4 sm:p-6 md:p-8 pb-24 md:pb-10">
+
+                        {/* Page header */}
+                        <div className="mb-10 pb-8 border-b border-gray-100">
+                            {/* Category + date row */}
+                            <div className="flex items-center gap-2 mb-3">
+                                {request.category && (
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{request.category}</span>
+                                )}
+                                <span className="text-gray-200">·</span>
+                                <span className="text-xs text-gray-400">{dateStr}</span>
+                                {request.location && (
+                                    <>
+                                        <span className="text-gray-200">·</span>
+                                        <span className="flex items-center gap-0.5 text-xs text-gray-400">
+                                            <span className="material-icons-outlined text-sm leading-none">location_on</span>
+                                            {request.location}
+                                        </span>
+                                    </>
+                                )}
+                                </div>
+
+                            {/* Title + status inline */}
+                            <div className="flex items-start gap-3 flex-wrap mb-4">
+                                <h1 className="text-2xl sm:text-[30px] font-black tracking-tight text-gray-900 leading-tight">
+                                        {request.title}
+                                    </h1>
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border font-semibold text-[11px] mt-1 shrink-0 ${STATUS_COLOR[normalizedStatus] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70 shrink-0" />
+                                    {STATUS_LABEL[normalizedStatus] || request.status}
+                                </span>
+                                </div>
+
+                            {/* CTA row — only after negotiation is finalised */}
+                            {(finalizedDeal || releaseEnabled) && (
+                                <div className="flex flex-wrap items-center gap-3 mb-1">
+                                    {finalizedDeal && (
+                                        <button 
+                                            onClick={() => navigate(`/customer/payment/${request.id}`, { state: { agreedPrice: finalizedDeal.price, provider: finalizedDeal.provider } })}
+                                            className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-5 py-2 rounded-xl transition-all shadow-sm shadow-green-500/20">
+                                            <span className="material-icons text-base">lock</span>
+                                            Proceed to Payment · ₦{Number(finalizedDeal.price).toLocaleString()}
+                                        </button>
+                                    )}
+                                    {releaseEnabled && (
+                                        <button onClick={handleRelease}
+                                            className="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-700 text-white font-bold text-sm px-5 py-2 rounded-xl transition-all">
+                                            <span className="material-icons text-base">payments</span>
+                                            Release Payment
+                                        </button>
+                                    )}
                                 </div>
                             )}
 
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                                <div>
-                                    <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-                                        {request.title}
-                                    </h1>
-                                    <p className="mt-1.5 text-[12px] sm:text-sm font-medium text-gray-500">
-                                        Order ID: <span className="font-bold text-gray-700">#{request.id.slice(0, 8).toUpperCase()}</span> • Placed on {dateStr}
-                                    </p>
-                                </div>
-                                <div className="flex flex-wrap gap-3 shrink-0">
-                                    {request.status === 'Completed' && !request.review ? (
-                                        <button 
-                                            onClick={() => navigate(`/customer/service-review/${id}`)}
-                                            className="inline-flex items-center px-5 py-2.5 shadow-sm text-sm font-bold rounded-xl text-white bg-[#10B981] hover:bg-[#059669] transition-colors"
-                                            type="button"
-                                        >
-                                            <span className="material-icons-outlined text-sm mr-2">star</span>
-                                            Leave Review
-                                        </button>
-                                    ) : request.status === 'Declined' || request.status === 'Rejected' ? (
-                                        <button 
-                                            onClick={() => navigate('/customer/post-request', { state: { request: request } })}
-                                            className="inline-flex items-center px-5 py-2.5 text-sm font-bold rounded-xl shadow-sm text-white bg-[#10B981] hover:bg-[#059669] transition-colors" 
-                                            type="button"
-                                        >
-                                            Edit Request
-                                        </button>
-                                    ) : (
-                                        <>
-                                            <button className="inline-flex items-center px-5 py-2.5 border border-gray-200 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-colors" type="button">
-                                                Report Issue
-                                            </button>
-                                            {request.status !== 'Completed' && request.status !== 'Cancelled' && request.status !== 'Declined' && request.status !== 'Rejected' && (
-                                                <button className="inline-flex items-center px-5 py-2.5 text-sm font-bold rounded-xl shadow-sm text-white bg-red-500 hover:bg-red-600 transition-colors" type="button">
-                                                    Cancel
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
+                            {request.description && (
+                                <p className="mt-5 text-sm text-gray-500 leading-relaxed max-w-xl">{request.description}</p>
+                            )}
                             </div>
+
+                        {/* Section label */}
+                        <div className="mb-6">
+                            <h2 className="text-[15px] font-bold text-gray-900 mb-0.5">
+                                {finalizedDeal
+                                    ? 'Deal agreed'
+                                    : interestedProviders.length > 0
+                                        ? `${interestedProviders.length} provider${interestedProviders.length !== 1 ? 's' : ''} interested`
+                                        : 'Interested Providers'}
+                            </h2>
+                            <p className="text-xs text-gray-400">
+                                {finalizedDeal
+                                    ? `Finalised with ${finalizedDeal.provider.full_name} at ₦${Number(finalizedDeal.price).toLocaleString()} — proceed to payment above`
+                                    : 'Tap Negotiate to chat and agree on a price'}
+                            </p>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-2 space-y-8">
-                                {/* Provider Profile Card */}
-                                {(request.providerId && (providerData || request.providerName)) && (request.status !== 'Declined' && request.status !== 'Rejected') && (
-                                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 flex flex-col md:flex-row items-center gap-8">
-                                        <div className="size-24 bg-gray-100 rounded-full flex-shrink-0 overflow-hidden border-2 border-gray-50">
-                                            {(providerData?.photoURL || providerData?.avatar_url || request.providerPhoto) ? (
-                                                <img src={providerData?.photoURL || providerData?.avatar_url || request.providerPhoto} alt={providerData?.displayName || request.providerName} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span className="material-icons text-5xl text-gray-400 w-full h-full flex items-center justify-center">person</span>
-                                            )}
-                                        </div>
-                                        <div className="flex-1 text-center md:text-left">
-                                            <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">{providerData?.displayName || providerData?.full_name || request.providerName || 'Provider Assigned'}</h3>
-                                            <div className="flex items-center justify-center md:justify-start gap-1 text-yellow-500 my-1.5">
-                                                <span className="material-icons text-sm">star</span>
-                                                <span className="text-[15px] font-extrabold text-gray-900">{providerData?.rating ? Number(providerData.rating).toFixed(1) : 'New'}</span>
-                                                <span className="text-[12px] font-bold text-gray-400 ml-1">
-                                                    (Verified Provider)
-                                                </span>
-                                            </div>
-                                            <p className="text-sm font-medium text-gray-500">Your task has been assigned to this provider.</p>
-                                        </div>
-                                        <div className="flex flex-col gap-3 w-full md:w-auto">
-                                            {(providerData?.phoneNumber || providerData?.phone_number || request.providerPhone) ? (
-                                                <a 
-                                                    href={`tel:${providerData?.phoneNumber || providerData?.phone_number || request.providerPhone}`}
-                                                    className="inline-flex justify-center items-center px-6 py-3 border-2 border-[#10B981] shadow-sm text-[13px] font-extrabold rounded-xl text-white bg-[#10B981] hover:bg-[#059669] hover:border-[#059669] w-full md:w-auto transition-colors"
-                                                >
-                                                    <span className="material-icons text-[18px] mr-2">call</span>
-                                                    Contact Provider
-                                                </a>
-                                            ) : (
-                                                 <button 
-                                                    className="inline-flex justify-center items-center px-6 py-3 border border-gray-200 shadow-sm text-[13px] font-extrabold rounded-xl text-gray-700 bg-white hover:bg-gray-50 w-full md:w-auto transition-colors"
-                                                >
-                                                    <span className="material-icons text-[18px] mr-2">chat</span>
-                                                    Message
-                                                </button>
-                                            )}
-                                            
-                                            <button 
-                                                onClick={() => navigate(`/customer/provider/${request.providerId}`)}
-                                                className="inline-flex justify-center items-center px-6 py-3 text-[13px] font-extrabold rounded-xl text-[#10B981] bg-green-50 hover:bg-green-100 w-full md:w-auto transition-colors"
-                                            >
-                                                View Profile
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-                                    <h2 className="text-xl font-extrabold text-gray-900 mb-8 tracking-tight flex items-center gap-2">
-                                        <span className="material-icons-outlined text-[#10B981]">timeline</span>
-                                        Request Timeline
-                                    </h2>
-                                    <div className="relative mt-8 mb-4">
-                                        {/* Timeline - horizontal on desktop, vertical on mobile */}
-                                        <div className="hidden sm:block">
-                                            <div className="absolute top-4 left-4 right-4 h-[2px] bg-gray-100 -z-10"></div>
-                                            <div className="flex justify-between w-full">
-                                            {(request.timeline && request.timeline.length > 0) ? (
-                                                request.timeline.map((event, index) => (
-                                                    <div key={index} className="flex flex-col items-center relative group w-1/4">
-                                                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white z-10 transition-colors ${index <= request.timeline.length - 1 ? 'bg-[#10B981]' : 'bg-gray-200'}`}>
-                                                            <span className="material-icons-outlined text-white text-[16px]">check</span>
-                                                        </div>
-                                                        <div className="mt-4 text-center">
-                                                            <h3 className="text-[14px] font-extrabold text-gray-900 group-hover:text-[#10B981] transition-colors">{event.title}</h3>
-                                                            <span className="text-[10px] font-bold text-gray-400 mt-1 block uppercase tracking-wider">{event.time || 'Recently'}</span>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="flex flex-col items-center relative w-1/4">
-                                                    <div className="h-8 w-8 rounded-full bg-[#10B981] flex items-center justify-center ring-8 ring-white z-10 shadow-sm">
-                                                        <span className="material-icons-outlined text-white text-[16px]">check</span>
-                                                    </div>
-                                                    <div className="mt-4 text-center">
-                                                        <h3 className="text-[14px] font-extrabold text-gray-900">Request Sent</h3>
-                                                        <span className="text-[10px] font-bold text-gray-400 mt-1 block uppercase tracking-wider">{dateStr}</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            </div>
-                                        </div>
-
-                                        {/* Mobile vertical timeline */}
-                                        <div className="sm:hidden space-y-0">
-                                            {(request.timeline && request.timeline.length > 0) ? (
-                                                request.timeline.map((event, index) => (
-                                                    <div key={index} className="flex gap-4 items-start relative">
-                                                        <div className="flex flex-col items-center">
-                                                            <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${index <= request.timeline.length - 1 ? 'bg-[#10B981]' : 'bg-gray-200'}`}>
-                                                                <span className="material-icons-outlined text-white text-[14px]">check</span>
-                                                            </div>
-                                                            {index < request.timeline.length - 1 && (
-                                                                <div className="w-0.5 h-10 bg-gray-100 mt-1"></div>
-                                                            )}
-                                                        </div>
-                                                        <div className="pb-6">
-                                                            <h3 className="text-[13px] font-extrabold text-gray-900 leading-tight">{event.title}</h3>
-                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{event.time || 'Recently'}</span>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="flex gap-4 items-start">
-                                                    <div className="h-7 w-7 rounded-full bg-[#10B981] flex items-center justify-center shrink-0">
-                                                        <span className="material-icons-outlined text-white text-[14px]">check</span>
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="text-[13px] font-extrabold text-gray-900">Request Sent</h3>
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{dateStr}</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
+                        {/* Provider list — no card, just dividers */}
+                        {interestedProviders.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <div className="w-12 h-12 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
+                                    <span className="material-icons-outlined text-2xl text-gray-300">people</span>
                                 </div>
+                                <p className="text-sm font-semibold text-gray-500">No providers yet</p>
+                                <p className="text-xs text-gray-400 mt-1">Providers nearby will be notified of your request</p>
+                            </div>
+                        ) : (
+                            <div>
+                                {interestedProviders.map((provider, idx) => (
+                                    <motion.div
+                                        key={provider.id}
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: idx * 0.04 }}
+                                        className={`flex items-center gap-4 py-5 ${idx !== 0 ? 'border-t border-gray-100' : ''}`}
+                                    >
+                                        {/* Avatar */}
+                                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
+                                            {provider.avatar_url
+                                                ? <img src={provider.avatar_url} alt={provider.full_name} className="w-full h-full object-cover" />
+                                                : <span className="material-icons text-gray-400 text-xl">person</span>}
+                                        </div>
+
+                                        {/* Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-1 mb-1">
+                                                <span className="font-bold text-gray-900 text-[15px] truncate">
+                                                    {provider.full_name || provider.displayName}
+                                                </span>
+                                                {provider.verified && (
+                                                    <span className="material-icons text-[#10B981] text-sm shrink-0">verified</span>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-400">
+                                                <span className="truncate">{provider.category || 'General Service'}</span>
+                                                <span className="hidden sm:inline text-gray-200">·</span>
+                                                <span className="hidden sm:inline truncate">{provider.location || 'Lagos, Nigeria'}</span>
+                                                {(provider.provider_profiles?.average_rating || provider.rating) && (
+                                                    <span className="flex items-center gap-0.5">
+                                                        <span className="material-icons text-yellow-400 text-xs">star</span>
+                                                        <span className="font-semibold text-gray-500">
+                                                            {(provider.provider_profiles?.average_rating || provider.rating)?.toFixed(1)}
+                                                        </span>
+                                                    </span>
+                                            )}
+                                            </div>
+                                        </div>
+
+                                        {/* Proposed price */}
+                                        <div className="shrink-0 text-right">
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-1">Proposed</p>
+                                            <p className="text-base font-black text-[#10B981]">
+                                                ₦{Number(provider.proposed_price || 0).toLocaleString()}
+                                            </p>
                             </div>
                             
-                            <div className="lg:col-span-1 space-y-8">
-                                <div className="bg-[#0F172A] rounded-3xl shadow-lg border border-gray-800 p-8">
-                                    <h2 className="text-xl font-extrabold text-white mb-6 tracking-tight flex items-center gap-2">
-                                        <span className="material-icons-outlined text-[#10B981]">assignment</span>
-                                        Job Details
-                                    </h2>
-                                    <dl className="grid grid-cols-1 gap-y-6">
-                                        <div className="border-b border-gray-800 pb-4">
-                                            <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Service Type</dt>
-                                            <dd className="text-[14px] font-extrabold text-white">{request.category}</dd>
-                                        </div>
-                                        <div className="border-b border-gray-800 pb-4">
-                                            <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Budget</dt>
-                                            <dd className="text-[18px] font-black text-white">₦{Number(request.budget).toLocaleString()}</dd>
-                                        </div>
-                                        <div className="border-b border-gray-800 pb-4">
-                                            <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Description</dt>
-                                            <dd className="text-[13px] font-medium text-gray-300 mt-1 leading-relaxed">
-                                                {request.description}
-                                            </dd>
-                                        </div>
-                                        <div className="border-b border-gray-800 pb-4">
-                                            <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Location</dt>
-                                            <dd className="text-[13px] font-bold text-white flex items-start mt-1">
-                                                <span className="material-icons-outlined text-[#10B981] mr-1.5 text-[16px]">location_on</span>
-                                                {request.location || 'No location provided'}
-                                            </dd>
-                                        </div>
-                                        {request.image && (
-                                            <div>
-                                                <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">Attachment</dt>
-                                                <dd>
-                                                    <img src={request.image} alt="Request attachment" className="w-full object-cover rounded-xl border border-gray-700 shadow-sm opacity-90" />
-                                                </dd>
-                                            </div>
+                                        {/* Action */}
+                                        {finalizedDeal?.provider?.id === provider.id ? (
+                                            <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#10B981]/10 text-[#10B981] text-xs font-bold border border-[#10B981]/20">
+                                                <span className="material-icons text-sm">check_circle</span>
+                                                <span className="hidden sm:inline">Agreed</span>
+                                            </span>
+                                        ) : (
+                                            <button
+                                                onClick={() => !finalizedDeal && setNegotiatingWith(provider)}
+                                                disabled={!!finalizedDeal}
+                                                className="shrink-0 h-9 px-4 rounded-xl bg-[#0F172A] hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors flex items-center gap-1.5">
+                                                <span className="material-icons text-base">chat</span>
+                                                <span className="hidden sm:inline">Negotiate</span>
+                                            </button>
                                         )}
-                                    </dl>
-                                </div>
-
-                                <div className="bg-green-50 rounded-2xl p-6 border border-green-100">
-                                    <div className="flex">
-                                        <div className="flex-shrink-0">
-                                            <span className="material-icons-outlined text-[#10B981] text-2xl">security</span>
-                                        </div>
-                                        <div className="ml-4">
-                                            <h3 className="text-[13px] font-extrabold text-green-900">Safety Tip</h3>
-                                            <div className="mt-1.5 text-[12px] font-medium text-green-800 leading-relaxed">
-                                                <p>For your safety, please ensure you verify the provider's identity before allowing entry to your premises.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    </motion.div>
+                                ))}
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
                 <MobileNavBar />
             </main>
+
+            {/* Negotiate slide-over */}
+            <AnimatePresence>
+                {negotiatingWith && (
+                    <NegotiatePanel
+                        provider={negotiatingWith}
+                        requestId={id}
+                        onClose={() => setNegotiatingWith(null)}
+                        onFinalized={(price) => {
+                            setFinalizedDeal({ price, provider: negotiatingWith });
+                            setNegotiatingWith(null);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 };

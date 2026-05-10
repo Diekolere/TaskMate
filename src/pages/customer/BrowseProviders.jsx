@@ -86,11 +86,12 @@ const BrowseProviders = () => {
 
                 {/* Main Content Area */}
                 <main className="flex-1 overflow-y-auto bg-white">
-                    <div className="max-w-[1000px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-10 pb-24 md:pb-10">
+                    <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 pb-24 md:pb-10 space-y-6">
                         
                         {/* Header Section */}
-                        <div className="mb-6 sm:mb-10">
-                            <h1 className="text-[24px] sm:text-[36px] font-extrabold tracking-tight text-gray-900 mb-4 sm:mb-6">Explore Providers</h1>
+                        <div className="mb-6 sm:mb-8">
+                            <h1 className="text-[22px] sm:text-[28px] font-extrabold tracking-tight text-gray-900 mb-1">Explore Providers</h1>
+                            <p className="text-[13px] font-medium text-gray-400 mb-4 sm:mb-6">Find and hire skilled professionals near you.</p>
 
                             {/* Simple Search Bar */}
                             <div className="flex items-center bg-white rounded-xl px-4 py-3.5 border border-gray-200 group focus-within:border-gray-400 focus-within:shadow-sm transition-all cursor-text mb-4 w-full">
@@ -199,8 +200,8 @@ const BrowseProviders = () => {
                                     <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm">
                                         <span className="material-icons-outlined text-2xl text-gray-400">search_off</span>
                                     </div>
-                                    <h3 className="text-xl font-extrabold text-gray-900">No providers found</h3>
-                                    <p className="text-gray-500 text-sm mt-2 font-medium">Try adjusting your filters or search terms.</p>
+                                    <h3 className="text-lg font-extrabold text-gray-900">No providers found</h3>
+                                    <p className="text-[14px] font-medium text-gray-500 mt-1.5">Try adjusting your filters or search terms.</p>
                                 </div>
                             ) : (
                                 <div className="flex flex-col relative z-0">
@@ -208,43 +209,43 @@ const BrowseProviders = () => {
                                         <div 
                                             key={provider.id} 
                                             onClick={() => navigate(`/customer/provider/${provider.id}`)}
-                                            className={`py-3 sm:py-4 flex items-center gap-3 sm:gap-5 transition-colors hover:bg-gray-50/50 px-2 rounded-xl -mx-2 cursor-pointer group ${index !== providers.length - 1 ? 'border-b border-gray-100' : ''}`}
+                                            className={`py-5 flex items-center gap-4 transition-colors hover:bg-gray-50/60 px-1 rounded-xl -mx-1 cursor-pointer group ${index !== providers.length - 1 ? 'border-b border-gray-100' : ''}`}
                                         >
                                             {/* Avatar */}
                                             <img 
                                                 src={provider.photoURL || provider.avatar_url || `https://ui-avatars.com/api/?name=${provider.displayName || 'Artisan'}&background=random`} 
                                                 alt={provider.displayName} 
-                                                className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border border-gray-200 object-cover shrink-0" 
+                                                className="w-11 h-11 rounded-full border border-gray-200 object-cover shrink-0" 
                                             />
                                             
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-0.5">
-                                                    <h3 className="font-extrabold text-[15px] sm:text-[17px] text-gray-900 truncate group-hover:text-[#10B981] transition-colors">
+                                                <div className="flex items-center gap-1.5 mb-0.5">
+                                                    <h3 className="text-[15px] font-bold text-gray-900 truncate group-hover:text-[#10B981] transition-colors">
                                                         {provider.displayName || provider.full_name || 'Artisan'}
                                                     </h3>
-                                                    <span className="material-icons text-[#10B981] text-[16px] shrink-0" title="Verified">verified</span>
+                                                    <span className="material-icons text-[#10B981] text-[15px] shrink-0" title="Verified">verified</span>
                                                 </div>
-                                                <p className="text-[12px] sm:text-[13px] font-medium text-gray-500 flex items-center gap-1.5 truncate">
-                                                    <span className="text-gray-700 font-bold">{provider.category || 'General Service'}</span> 
-                                                    <span className="text-gray-300">•</span> 
+                                                <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5 truncate">
+                                                    <span className="text-gray-700 font-semibold">{provider.category || 'General Service'}</span> 
+                                                    <span className="text-gray-200">·</span> 
                                                     <span className="truncate">{provider.location || 'Lagos, Nigeria'}</span>
                                                 </p>
-                                                <div className="flex items-center gap-2 mt-2">
-                                                    <div className="flex items-center gap-1 text-[11px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
-                                                        <span className="material-icons-outlined text-[13px] text-gray-400">task_alt</span>
+                                                <div className="flex items-center gap-2 mt-1.5">
+                                                    <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
+                                                        <span className="material-icons-outlined text-[12px] text-gray-300">task_alt</span>
                                                         {provider.completedJobs} jobs
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {/* Rating and Chevron */}
-                                            <div className="flex items-center gap-4 shrink-0">
+                                            <div className="flex items-center gap-3 shrink-0">
                                                 <div className="flex items-center gap-1 bg-yellow-50 px-2.5 py-1 rounded-lg border border-yellow-100">
-                                                    <span className="material-icons text-yellow-500 text-[18px]">star</span>
-                                                    <span className="font-black text-[15px] text-gray-900">{provider.rating || '4.8'}</span>
+                                                    <span className="material-icons text-yellow-500 text-[16px]">star</span>
+                                                    <span className="font-bold text-[13px] text-gray-900">{provider.rating || '4.8'}</span>
                                                 </div>
-                                                <span className="material-icons text-gray-300 group-hover:text-gray-600 group-hover:translate-x-1 transition-all">chevron_right</span>
+                                                <span className="material-icons text-[18px] text-gray-300 group-hover:text-gray-400 transition-colors shrink-0">chevron_right</span>
                                             </div>
                                         </div>
                                     ))}
