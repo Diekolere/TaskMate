@@ -90,11 +90,11 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
     return (
         <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/30 z-40 sm:hidden" onClick={onClose} />
+                className="fixed inset-0 bg-black/30 z-[140] sm:hidden" onClick={onClose} />
 
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
                 transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-                className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-50 flex flex-col">
+                className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-[150] flex flex-col">
 
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3 shrink-0">

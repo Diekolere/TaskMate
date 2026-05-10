@@ -213,7 +213,7 @@ export default function KYCModal({ open, onClose, onComplete }) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 px-4">
+        <div className="fixed inset-0 z-[150] flex items-start justify-center overflow-y-auto py-6 px-4">
             {/* Backdrop */}
             <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}

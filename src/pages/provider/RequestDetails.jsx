@@ -98,11 +98,11 @@ function NegotiatePanel({ request, onClose, onFinalized }) {
     return (
         <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/30 z-40 sm:hidden" onClick={onClose} />
+                className="fixed inset-0 bg-black/30 z-[140] sm:hidden" onClick={onClose} />
 
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
                 transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-                className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-50 flex flex-col">
+                className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-[150] flex flex-col">
 
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3 shrink-0">
@@ -392,7 +392,7 @@ const RequestDetails = () => {
             {/* Decline modal */}
             <AnimatePresence>
             {showRejectModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             onClick={() => setShowRejectModal(false)}
                             className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -432,7 +432,7 @@ const RequestDetails = () => {
             <AnimatePresence>
                 {lightboxImg && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-6"
+                        className="fixed inset-0 z-[160] bg-black/80 flex items-center justify-center p-6"
                         onClick={() => setLightboxImg(null)}>
                         <img src={lightboxImg} alt="" className="max-w-full max-h-full rounded-xl object-contain shadow-2xl" onClick={e => e.stopPropagation()} />
                         <button onClick={() => setLightboxImg(null)} className="absolute top-5 right-5 w-9 h-9 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">

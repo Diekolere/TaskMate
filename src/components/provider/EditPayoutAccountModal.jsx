@@ -170,7 +170,7 @@ export default function EditPayoutAccountModal({ open, onClose, onSaved }) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto py-6 px-4">
+        <div className="fixed inset-0 z-[150] flex items-start justify-center overflow-y-auto py-6 px-4">
             <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="fixed inset-0 bg-black/40 backdrop-blur-sm"

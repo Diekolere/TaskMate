@@ -16,7 +16,7 @@ const StatusUpdateModal = ({ isOpen, onClose, onUpdate, currentStatus }) => {
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
                 <motion.div 
                     initial={{ opacity: 0 }} 
                     animate={{ opacity: 1 }} 

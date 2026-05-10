@@ -594,7 +594,7 @@ const Profile = () => {
                 const expMenuId = postMenuId(expandedPost, expIdx);
                 return (
                 <div
-                    className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-black/50"
+                    className="fixed inset-0 z-[150] overflow-y-auto overscroll-contain bg-black/50"
                     onClick={() => setExpandedPost(null)}
                     role="presentation"
                 >
