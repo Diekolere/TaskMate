@@ -87,7 +87,7 @@ const BrowseProviders = () => {
                 <TopNavbar breadcrumbs={['Customer', 'Explore Providers']} />
 
                 {/* Main Content Area */}
-                <main className="flex-1 overflow-y-auto bg-white">
+                <main className="relative z-0 flex-1 overflow-y-auto bg-white">
                     <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 pb-24 md:pb-10 space-y-6">
                         
                         {/* Header Section */}
@@ -109,7 +109,7 @@ const BrowseProviders = () => {
                             </div>
 
                             {/* Filter Pills */}
-                            <div className="flex items-center flex-wrap gap-3 relative z-40">
+                            <div className="flex items-center flex-wrap gap-3 relative">
                                 {/* Category Dropdown (Multiple Selection) */}
                                 <div className="relative">
                                     <button 
@@ -120,7 +120,7 @@ const BrowseProviders = () => {
                                         <span className="material-icons-outlined text-[16px] text-gray-500">expand_more</span>
                                     </button>
                                     {isCategoryOpen && (
-                                        <div className="absolute top-full mt-2 w-[calc(100vw-2rem)] sm:w-[280px] left-0 bg-white border border-gray-100 rounded-xl shadow-lg py-2 z-50 max-h-[350px] overflow-y-auto">
+                                        <div className="absolute top-full left-0 mt-2 w-[calc(100vw-2rem)] sm:w-[280px] bg-white border border-gray-100 rounded-xl shadow-lg py-2 z-10 max-h-[350px] overflow-y-auto">
                                             {categories.map(cat => (
                                                 <div 
                                                     key={cat}
@@ -153,7 +153,7 @@ const BrowseProviders = () => {
                                         <span className="material-icons-outlined text-[16px] text-gray-500">expand_more</span>
                                     </button>
                                     {isRatingOpen && (
-                                        <div className="absolute top-full mt-2 w-[160px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50">
+                                        <div className="absolute top-full left-0 mt-2 w-[160px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-10">
                                             {['Any Rating', '4.5+', '4.0+', '3.5+'].map(opt => (
                                                 <button key={opt} onClick={() => { setRatingFilter(opt); setIsRatingOpen(false); }} className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">{opt}</button>
                                             ))}
@@ -171,7 +171,7 @@ const BrowseProviders = () => {
                                         <span className="material-icons-outlined text-[16px] text-white">expand_more</span>
                                     </button>
                                     {isSortOpen && (
-                                        <div className="absolute top-full mt-2 w-[200px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50">
+                                        <div className="absolute top-full left-0 mt-2 w-[200px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-10">
                                             {['Highest Rated', 'Most Jobs Done', 'Nearest'].map(opt => (
                                                 <button key={opt} onClick={() => { setSortFilter(opt); setIsSortOpen(false); }} className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">{opt}</button>
                                             ))}
@@ -206,7 +206,7 @@ const BrowseProviders = () => {
                                     <p className="text-[14px] font-medium text-gray-500 mt-1.5">Try adjusting your filters or search terms.</p>
                                 </div>
                             ) : (
-                                <div className="flex flex-col relative z-0">
+                                <div className="flex flex-col relative">
                                     {providers.map((provider, index) => (
                                         <div 
                                             key={provider.id} 

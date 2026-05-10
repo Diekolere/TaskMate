@@ -84,7 +84,7 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
 
     return (
         <>
-            <div className="h-14 sm:h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-30">
+            <div className="h-14 sm:h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-[100] isolate">
                 {/* Breadcrumbs */}
                 <div className="flex items-center gap-1 sm:gap-2 text-[12px] sm:text-[14px] font-medium min-w-0 overflow-hidden">
                     {breadcrumbs.map((crumb, index) => (
@@ -122,13 +122,13 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                         <AnimatePresence>
                             {notifDropOpen && (
                                 <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setNotifDropOpen(false)} />
+                                    <div className="fixed inset-0 z-[105] bg-transparent" onClick={() => setNotifDropOpen(false)} aria-hidden="true" />
                                     <motion.div
                                         initial={{ opacity: 0, y: -8, scale: 0.97 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: -8, scale: 0.97 }}
                                         transition={{ duration: 0.15 }}
-                                        className="fixed left-2 right-2 top-14 sm:absolute sm:left-auto sm:right-0 sm:top-auto mt-0 sm:mt-3 sm:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50"
+                                        className="fixed left-2 right-2 top-14 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-3 sm:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-[110]"
                                     >
                                         <div className="bg-[#10B981] px-5 py-4 flex items-center justify-between">
                                             <h3 className="font-extrabold text-[15px] text-white">Notifications</h3>
@@ -202,7 +202,7 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                         </button>
 
                         {isProfileOpen && (
-                            <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                            <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-10">
                                 <div className="px-4 py-3 border-b border-gray-100 sm:hidden">
                                     <p className="text-[13px] font-bold text-gray-900 truncate">{currentUser?.displayName || 'User'}</p>
                                     <p className="text-[11px] font-medium text-gray-500 truncate">{currentUser?.email || 'user@taskmate.com'}</p>
@@ -237,7 +237,7 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: 80, opacity: 0 }}
                         transition={{ type: 'spring', damping: 22, stiffness: 280 }}
-                        className="fixed top-20 right-4 z-[55] w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+                        className="fixed top-20 right-4 z-[108] w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
                     >
                         {/* Green accent strip */}
                         <div className="h-1 bg-gradient-to-r from-[#10B981] to-[#059669]" />

@@ -142,7 +142,7 @@ function OTPModal({ jobId, onClose }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+                            className="fixed inset-0 z-[140] flex items-center justify-center p-4"
             style={{ background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)' }}
             onClick={onClose}
         >
@@ -275,7 +275,7 @@ export default function NotificationPanel({ open, onClose }) {
                         <motion.div
                             key="notif-backdrop"
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[60]"
+                            className="fixed inset-0 z-[120]"
                             style={{ background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(2px)' }}
                             onClick={onClose}
                         />
@@ -287,7 +287,7 @@ export default function NotificationPanel({ open, onClose }) {
                             animate={{ x: 0, opacity: 1 }}
                             exit={{ x: '100%', opacity: 0 }}
                             transition={{ type: 'spring', damping: 26, stiffness: 280 }}
-                            className="fixed right-0 top-0 bottom-0 z-[70] w-full max-w-sm bg-white shadow-2xl flex flex-col"
+                            className="fixed right-0 top-0 bottom-0 z-[130] w-full max-w-sm bg-white shadow-2xl flex flex-col"
                         >
                             {/* Header */}
                             <div className="bg-[#10B981] px-6 py-5 flex items-center justify-between shrink-0">

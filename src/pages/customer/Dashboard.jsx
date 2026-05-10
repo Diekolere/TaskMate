@@ -61,7 +61,7 @@ const Dashboard = () => {
                 <TopNavbar breadcrumbs={['Customer', 'Feed']} />
                 
                 {/* Main Content Area */}
-                <main className="flex-1 overflow-y-auto bg-white">
+                <main className="relative z-0 flex-1 overflow-y-auto bg-white">
                     <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-10 pb-24 md:pb-10 flex flex-col xl:flex-row gap-8 xl:gap-12">
                         
                         {/* Feed Column */}
@@ -84,7 +84,7 @@ const Dashboard = () => {
                                 </div>
 
                                 {/* Filter Pills */}
-                                <div className="flex items-center flex-wrap gap-3 relative z-40">
+                                <div className="flex items-center flex-wrap gap-3 relative">
                                     {/* Category Filter */}
                                     <div className="relative">
                                         <button 
@@ -95,7 +95,7 @@ const Dashboard = () => {
                                             <span className="material-icons-outlined text-[16px] text-gray-500">expand_more</span>
                                         </button>
                                         {isCategoryOpen && (
-                                            <div className="absolute top-full mt-2 w-[200px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50">
+                                            <div className="absolute top-full left-0 mt-2 w-[200px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-10">
                                                 {['All Categories', 'Electrical', 'Plumbing', 'Carpentry', 'Cleaning'].map(opt => (
                                                     <button key={opt} onClick={() => { setCategoryFilter(opt); setIsCategoryOpen(false); }} className="w-full text-left px-4 py-2 text-[13px] hover:bg-gray-50">{opt}</button>
                                                 ))}
@@ -113,7 +113,7 @@ const Dashboard = () => {
                                             <span className="material-icons-outlined text-[16px] text-white">expand_more</span>
                                         </button>
                                         {isSortOpen && (
-                                            <div className="absolute top-full mt-2 w-[180px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-50">
+                                            <div className="absolute top-full left-0 mt-2 w-[180px] bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-10">
                                                 {['Relevance', 'Following', 'Near You'].map(opt => (
                                                     <button key={opt} onClick={() => { setSortFilter(opt); setIsSortOpen(false); }} className="w-full text-left px-4 py-2 text-[13px] hover:bg-gray-50">{opt}</button>
                                                 ))}

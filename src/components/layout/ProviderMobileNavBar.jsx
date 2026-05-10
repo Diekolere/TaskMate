@@ -13,7 +13,7 @@ const ProviderMobileNavBar = () => {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+        <div className="fixed bottom-0 left-0 right-0 z-[95] md:hidden">
             {/* Fade gradient above nav */}
             <div className="absolute inset-x-0 bottom-full h-6 bg-gradient-to-t from-white/80 to-transparent pointer-events-none"></div>
 
