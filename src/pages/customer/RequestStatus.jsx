@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { MOCK_PROVIDERS } from '../../lib/mocks';
+import { getPriceRange, getFairnessLabel, getMatchScore, getSmartPriceLabel } from '../../lib/aiData';
 
 /* ── Naira SVG icon ─────────────────────────────────────── */
 const NairaSVG = ({ className = 'w-4 h-4' }) => (
@@ -22,7 +23,7 @@ const NairaSVG = ({ className = 'w-4 h-4' }) => (
 );
 
 /* ─── Negotiate slide-over panel ───────────────────────── */
-function NegotiatePanel({ provider, requestId, onClose, onFinalized }) {
+function NegotiatePanel({ provider, requestId, category, onClose, onFinalized }) {
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
 
@@ -148,6 +149,18 @@ function NegotiatePanel({ provider, requestId, onClose, onFinalized }) {
                                             <p className="text-[9px] font-bold uppercase tracking-wider opacity-50 mb-1">Price Proposal</p>
                                             <p className="text-xl font-black mb-0.5">₦{Number(msg.price).toLocaleString()}</p>
                                             <p className="text-xs opacity-60">{msg.text}</p>
+                                            {/* Fairness score badge */}
+                                            {msg.price && category && (() => {
+                                                const fair = getFairnessLabel(msg.price, category);
+                                                if (!fair) return null;
+                                                return (
+                                                    <span className={`mt-2 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                                        msg.from === 'customer' ? 'bg-white/15 text-white' : `${fair.bg} ${fair.color}`
+                                                    }`}>
+                                                        {fair.icon} {fair.label}
+                                                    </span>
+                                                );
+                                            })()}
                                             {msg.from === 'provider' && !agreed && !finalized && !rejected && (
                                                 <div className="flex gap-2 mt-3">
                                                     <button onClick={() => handleAccept(msg.price)}
@@ -315,8 +328,8 @@ const RequestStatus = () => {
     const normalizedStatus = String(request.status || '').toLowerCase();
     const releaseEnabled = normalizedStatus === 'completed';
 
-    const STATUS_LABEL = { open: 'Open', interested: 'Providers Interested', negotiating: 'Negotiating', awaiting_payment: 'Awaiting Payment', payment_secured: 'Payment Secured', payment_released: 'Payment Released', completed: 'Completed' };
-    const STATUS_COLOR = { open: 'bg-blue-50 text-blue-700 border-blue-100', interested: 'bg-amber-50 text-amber-700 border-amber-100', negotiating: 'bg-purple-50 text-purple-700 border-purple-100', awaiting_payment: 'bg-orange-50 text-orange-700 border-orange-100', payment_secured: 'bg-green-50 text-green-700 border-green-100', completed: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
+    const STATUS_LABEL = { open: 'Open', interested: 'Providers Interested', negotiating: 'Negotiating', awaiting_payment: 'Awaiting Payment', payment_secured: 'Payment Secured', in_progress: 'In Progress', payment_released: 'Payment Released', completed: 'Completed' };
+    const STATUS_COLOR = { open: 'bg-blue-50 text-blue-700 border-blue-100', interested: 'bg-amber-50 text-amber-700 border-amber-100', negotiating: 'bg-purple-50 text-purple-700 border-purple-100', awaiting_payment: 'bg-orange-50 text-orange-700 border-orange-100', payment_secured: 'bg-green-50 text-green-700 border-green-100', in_progress: 'bg-blue-50 text-blue-700 border-blue-100', completed: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
 
     const handleRelease = async () => {
         try {
@@ -388,11 +401,52 @@ const RequestStatus = () => {
                                 </div>
                             )}
 
+                            {/* Job flow shortcuts — start code & completion */}
+                            {(normalizedStatus === 'payment_secured' || normalizedStatus === 'in_progress' || normalizedStatus === 'completed') && (
+                                <div className="mt-5 flex flex-wrap items-center gap-2 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                                    <span className="text-xs font-semibold text-gray-500 mr-1">Quick actions:</span>
+                                    {(normalizedStatus === 'payment_secured' || normalizedStatus === 'in_progress') && (
+                                        <Link
+                                            to={`/customer/job-otp/${id}`}
+                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#10B981] bg-white border border-[#10B981]/30 px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors"
+                                        >
+                                            <span className="material-icons-outlined text-[14px]">vpn_key</span>
+                                            {normalizedStatus === 'payment_secured' ? 'Job start code' : 'View / renew job code'}
+                                        </Link>
+                                    )}
+                                    {normalizedStatus === 'completed' && (
+                                        <Link
+                                            to={`/customer/confirm/${id}`}
+                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F172A] bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                        >
+                                            <span className="material-icons-outlined text-[14px]">task_alt</span>
+                                            Confirm completion or dispute
+                                        </Link>
+                                    )}
+                                </div>
+                            )}
+
                             {request.description && (
                                 <p className="mt-5 text-sm text-gray-500 leading-relaxed max-w-xl">{request.description}</p>
                             )}
+
+                            {/* AI Price Estimator */}
+                            {request.category && (() => {
+                                const range = getPriceRange(request.category);
+                                const label = getSmartPriceLabel(request.title, request.description, request.category);
+                                return (
+                                    <div className="mt-4 inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl px-3.5 py-2">
+                                        <span className="material-icons-outlined text-[16px]">auto_graph</span>
+                                        <span className="text-[12px] font-bold">Market rate for described job:</span>
+                                        <span className="text-[12px] font-semibold">₦{range.min.toLocaleString()} – ₦{range.max.toLocaleString()}</span>
+                                    </div>
+                                );
+                            })()}
                             </div>
 
+                        {/* Interested providers — hidden once payment is secured (job is booked) */}
+                        {normalizedStatus !== 'payment_secured' && (
+                            <>
                         {/* Section label */}
                         <div className="mb-6">
                             <h2 className="text-[15px] font-bold text-gray-900 mb-0.5">
@@ -437,13 +491,17 @@ const RequestStatus = () => {
 
                                         {/* Info */}
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-1 mb-1">
+                                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                                                 <span className="font-bold text-gray-900 text-[15px] truncate">
                                                     {provider.full_name || provider.displayName}
                                                 </span>
                                                 {provider.verified && (
                                                     <span className="material-icons text-[#10B981] text-sm shrink-0">verified</span>
                                                 )}
+                                                <span className="flex items-center gap-0.5 bg-green-50 px-1.5 py-0.5 rounded-md border border-green-100 shrink-0">
+                                                    <span className="material-icons-outlined text-[11px] text-[#10B981]">bolt</span>
+                                                    <span className="text-[10px] font-bold text-[#10B981]">{getMatchScore(provider, request.category)}% match</span>
+                                                </span>
                                             </div>
                                             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-400">
                                                 <span className="truncate">{provider.category || 'General Service'}</span>
@@ -466,7 +524,7 @@ const RequestStatus = () => {
                                             <p className="text-base font-black text-[#10B981]">
                                                 ₦{Number(provider.proposed_price || 0).toLocaleString()}
                                             </p>
-                            </div>
+                                        </div>
                             
                                         {/* Action */}
                                         {finalizedDeal?.provider?.id === provider.id ? (
@@ -487,6 +545,8 @@ const RequestStatus = () => {
                                 ))}
                             </div>
                         )}
+                            </>
+                        )}
                     </div>
                 </div>
                 <MobileNavBar />
@@ -498,6 +558,7 @@ const RequestStatus = () => {
                     <NegotiatePanel
                         provider={negotiatingWith}
                         requestId={id}
+                        category={request?.category}
                         onClose={() => setNegotiatingWith(null)}
                         onFinalized={(price) => {
                             setFinalizedDeal({ price, provider: negotiatingWith });

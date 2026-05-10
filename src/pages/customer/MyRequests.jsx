@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
 import CategoryIcon from '../../components/ui/CategoryIcon';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
@@ -9,8 +10,17 @@ import { format } from 'date-fns';
 
 const MyRequests = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { requests: allRequests } = useData();
     const [activeTab, setActiveTab] = useState('All');
+
+    useEffect(() => {
+        if (!location.state?.jobStarted) return;
+        toast.success('Job started', {
+            description: 'When your provider finishes, you’ll get a notification to confirm or dispute within 48 hours.',
+        });
+        navigate(location.pathname + location.search, { replace: true, state: {} });
+    }, [location.state, location.pathname, location.search, navigate]);
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -25,7 +35,9 @@ const MyRequests = () => {
             case 'negotiating': return 'bg-purple-50 text-purple-700 border-purple-200';
             case 'awaiting_payment': return 'bg-orange-50 text-orange-700 border-orange-200';
             case 'payment_secured': return 'bg-green-50 text-green-700 border-green-200';
+            case 'in_progress': return 'bg-blue-50 text-blue-700 border-blue-200';
             case 'payment_released': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'completed': return 'bg-amber-50 text-amber-800 border-amber-200';
             default: return 'bg-gray-50 text-gray-700 border-gray-200';
         }
     };
@@ -43,27 +55,36 @@ const MyRequests = () => {
             case 'negotiating': return 'chat';
             case 'awaiting_payment': return 'payment';
             case 'payment_secured': return 'lock';
+            case 'in_progress': return 'autorenew';
             case 'payment_released': return 'check_circle';
+            case 'completed': return 'task_alt';
             default: return 'pending';
         }
     };
 
     const formatStatus = (status) => {
-        switch (status) {
+        switch (String(status || '').toLowerCase()) {
             case 'interested': return 'Providers Interested';
             case 'negotiating': return 'Negotiating';
             case 'awaiting_payment': return 'Awaiting Payment';
             case 'payment_secured': return 'Payment Secured';
+            case 'in_progress': return 'In Progress';
             case 'payment_released': return 'Payment Released';
+            case 'completed': return 'Awaiting confirmation';
             default: return status;
         }
     };
 
-    const filteredRequests = activeTab === 'All' 
-        ? allRequests 
-        : activeTab === 'History' 
-            ? allRequests.filter(r => ['Completed', 'Cancelled', 'Declined', 'Rejected', 'payment_released'].includes(r.status))
-            : allRequests.filter(r => ['Open', 'Interested', 'Pending', 'negotiating', 'awaiting_payment', 'payment_secured', 'in_progress'].includes(r.status));
+    const isTerminalHistory = (r) => {
+        const s = String(r.status || '').toLowerCase();
+        return ['cancelled', 'declined', 'rejected', 'payment_released'].includes(s);
+    };
+
+    const filteredRequests = activeTab === 'All'
+        ? allRequests
+        : activeTab === 'History'
+            ? allRequests.filter(isTerminalHistory)
+            : allRequests.filter(r => !isTerminalHistory(r));
 
     return (
         <div className="flex h-screen bg-white font-sans text-gray-900">
@@ -124,8 +145,10 @@ const MyRequests = () => {
                                         <div
                                             key={req.id}
                                             onClick={() => {
-                                                if (req.status === 'awaiting_payment') navigate(`/customer/payment/${req.id}`);
-                                                else if (req.status === 'Completed') navigate(`/customer/service-review/${req.id}`);
+                                                const st = String(req.status || '').toLowerCase();
+                                                if (req.status === 'awaiting_payment' || st === 'awaiting_payment') navigate(`/customer/payment/${req.id}`);
+                                                else if (st === 'completed') navigate(`/customer/confirm/${req.id}`);
+                                                else if (st === 'payment_released') navigate(`/customer/service-review/${req.id}`);
                                                 else navigate(`/customer/request-status/${req.id}`);
                                             }}
                                             className={`flex items-center gap-4 py-5 cursor-pointer group hover:bg-gray-50/60 transition-colors rounded-xl px-1 -mx-1 ${
@@ -145,6 +168,26 @@ const MyRequests = () => {
                                                     <span className="text-gray-200">·</span>
                                                     <span className="shrink-0">{date}</span>
                                                 </div>
+                                                {(() => {
+                                                    const st = String(req.status || '').toLowerCase();
+                                                    const showCode = st === 'payment_secured' || st === 'in_progress';
+                                                    const showConfirm = st === 'completed';
+                                                    if (!showCode && !showConfirm) return null;
+                                                    return (
+                                                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2" onClick={e => e.stopPropagation()}>
+                                                            {showCode && (
+                                                                <Link to={`/customer/job-otp/${req.id}`} className="text-[11px] font-bold text-[#10B981] hover:underline">
+                                                                    {st === 'payment_secured' ? 'Job start code' : 'View / renew job code'}
+                                                                </Link>
+                                                            )}
+                                                            {showConfirm && (
+                                                                <Link to={`/customer/confirm/${req.id}`} className="text-[11px] font-bold text-[#0F172A] hover:underline">
+                                                                    Confirm or dispute
+                                                                </Link>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
 
                                             {/* Status pill */}

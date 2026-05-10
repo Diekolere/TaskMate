@@ -8,6 +8,7 @@ import { useData } from '../../context/DataContext';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
+import { getPriceRange, getFairnessLabel, getSmartPriceLabel } from '../../lib/aiData';
 
 const DEBT_LIMIT = 5000;
 const rejectionReasons = ['Price is too low', 'Schedule conflict', 'Location is too far', 'Service not offered', 'Other'];
@@ -178,6 +179,18 @@ function NegotiatePanel({ request, onClose, onFinalized }) {
                                                     <p className="text-[9px] font-bold uppercase tracking-wider opacity-50 mb-1">Price Proposal</p>
                                                     <p className="text-xl font-black mb-0.5">₦{Number(msg.price).toLocaleString()}</p>
                                                     <p className="text-xs opacity-60">{msg.text}</p>
+                                                    {/* Fairness score badge */}
+                                                    {msg.price && request.category && (() => {
+                                                        const fair = getFairnessLabel(msg.price, request.category);
+                                                        if (!fair) return null;
+                                                        return (
+                                                            <span className={`mt-2 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                                                msg.from === 'provider' ? 'bg-white/15 text-white' : `${fair.bg} ${fair.color}`
+                                                            }`}>
+                                                                {fair.icon} {fair.label}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                     {msg.from === 'customer' && !finalized && !rejected && (
                                                         <div className="flex gap-2 mt-3">
                                                             <button onClick={() => acceptCustomerPrice(msg.price)}
@@ -477,6 +490,19 @@ const RequestDetails = () => {
                             {request.description && (
                                 <p className="text-sm text-gray-500 leading-relaxed max-w-xl">{request.description}</p>
                             )}
+
+                            {/* AI Price Estimator */}
+                            {request.category && (() => {
+                                const range = getPriceRange(request.category);
+                                const label = getSmartPriceLabel(request.title, request.description, request.category);
+                                return (
+                                    <div className="mt-4 inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl px-3.5 py-2">
+                                        <span className="material-icons-outlined text-[16px]">auto_graph</span>
+                                        <span className="text-[12px] font-bold">Market rate for described job:</span>
+                                        <span className="text-[12px] font-semibold">₦{range.min.toLocaleString()} – ₦{range.max.toLocaleString()}</span>
+                                    </div>
+                                );
+                            })()}
 
                             {/* Open negotiation if accepted */}
                             {accepted && !finalizedPrice && (
