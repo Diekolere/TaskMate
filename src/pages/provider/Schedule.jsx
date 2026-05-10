@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { toast } from 'sonner';
+import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import CategoryIcon from '../../components/ui/CategoryIcon';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
@@ -13,36 +13,55 @@ const Schedule = () => {
     const { currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState('upcoming');
 
-    const handleAction = (action, jobTitle) => {
-        if (action === 'start') toast.success(`Started: ${jobTitle}`, { description: 'Good luck! Track your time carefully.' });
-        else if (action === 'call') toast.info('Calling customer…', { description: 'Connecting you securely.' });
-    };
+    const userId = currentUser?.uid || currentUser?.id;
 
-    const myJobs = allJobs.filter(j => j.providerId === currentUser?.uid);
+    const myJobs = useMemo(
+        () =>
+            allJobs.filter(
+                j =>
+                    j.providerId === userId ||
+                    j.provider_id === userId ||
+                    j.worker_id === userId
+            ),
+        [allJobs, userId]
+    );
 
     const groupByDate = (list) => {
         const groups = {};
         list.forEach(job => {
-            const dateObj = job.createdAt?.seconds ? new Date(job.createdAt.seconds * 1000) : new Date();
+            const raw = job.createdAt ?? job.created_at;
+            const dateObj =
+                raw?.seconds != null
+                    ? new Date(raw.seconds * 1000)
+                    : raw
+                        ? new Date(raw)
+                        : new Date();
             const date = dateObj.toDateString();
             if (!groups[date]) groups[date] = [];
-            const timeStart = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             groups[date].push({
                 id: job.id,
                 title: job.title || job.serviceType || 'Service Request',
+                category: job.category || job.serviceType,
                 customer: job.customerName || 'Customer',
-                time: `${timeStart} - Est.`,
-                address: job.location || 'No address',
-                status: job.status?.toLowerCase() || 'pending',
-                price: job.budget || '—',
+                address: job.location || job.location_name || 'No address',
             });
         });
-        return Object.keys(groups).map(date => ({ date, jobs: groups[date] }));
+        return Object.keys(groups)
+            .sort((a, b) => new Date(b) - new Date(a))
+            .map(date => ({ date, jobs: groups[date] }));
     };
 
-    const upcomingJobs = myJobs.filter(j => ['confirmed', 'scheduled', 'in-progress', 'in progress', 'started'].includes(j.status?.toLowerCase()));
-    const pendingJobs = myJobs.filter(j => ['pending', 'awaiting', 'open'].includes(j.status?.toLowerCase()));
-    const historyJobs = myJobs.filter(j => ['completed', 'cancelled'].includes(j.status?.toLowerCase()));
+    const st = (s) => String(s || '').toLowerCase();
+
+    const upcomingJobs = myJobs.filter(j =>
+        ['confirmed', 'scheduled', 'in-progress', 'in progress', 'started', 'in_progress', 'payment_secured'].includes(st(j.status))
+    );
+    const pendingJobs = myJobs.filter(j =>
+        ['pending', 'awaiting', 'open', 'negotiating', 'awaiting_payment'].includes(st(j.status))
+    );
+    const historyJobs = myJobs.filter(j =>
+        ['completed', 'cancelled', 'canceled', 'payment_released'].includes(st(j.status))
+    );
 
     const scheduleData = {
         upcoming: groupByDate(upcomingJobs),
@@ -56,14 +75,7 @@ const Schedule = () => {
         { key: 'history', label: 'History', count: historyJobs.length },
     ];
 
-    const statusColor = (status) => {
-        const map = {
-            confirmed: 'bg-[#10B981]/10 text-[#10B981]',
-            pending: 'bg-amber-50 text-amber-700',
-            completed: 'bg-gray-100 text-gray-600',
-        };
-        return map[status] || 'bg-blue-50 text-blue-600';
-    };
+    const flatCount = scheduleData[activeTab]?.reduce((n, g) => n + g.jobs.length, 0) ?? 0;
 
     return (
         <div className="min-h-screen bg-white flex font-sans">
@@ -73,108 +85,105 @@ const Schedule = () => {
                 <TopNavbar breadcrumbs={['Schedule']} />
 
                 <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
+                    <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto space-y-6">
 
-                    {/* Tabs — sticky under navbar */}
-                    <div className="bg-white border-b border-gray-100 sticky top-0 z-20">
-                        <div className="px-4 sm:px-6 md:px-8 max-w-4xl mx-auto flex gap-1 overflow-x-auto">
+                        <div>
+                            <h1 className="text-[22px] sm:text-[28px] font-extrabold text-gray-900 tracking-tight">Schedule</h1>
+                            <p className="mt-1 text-[13px] font-medium text-gray-500">
+                                Your upcoming work, organised by day—tap a row to open the job.
+                            </p>
+                        </div>
+
+                        <div className="flex gap-6 border-b border-gray-100 overflow-x-auto">
                             {tabs.map(tab => (
                                 <button
                                     key={tab.key}
+                                    type="button"
                                     onClick={() => setActiveTab(tab.key)}
-                                    className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                                    className={`pb-3 text-sm font-semibold flex items-center gap-1.5 transition-all border-b-2 -mb-px whitespace-nowrap shrink-0 ${
                                         activeTab === tab.key
                                             ? 'border-[#10B981] text-[#10B981]'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                                            : 'border-transparent text-gray-400 hover:text-gray-700'
                                     }`}
                                 >
                                     {tab.label}
-                                    {tab.count > 0 && (
-                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${activeTab === tab.key ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-500'}`}>
-                                            {tab.count}
-                                        </span>
-                                    )}
+                                    <span
+                                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                            activeTab === tab.key ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'
+                                        }`}
+                                    >
+                                        {tab.count}
+                                    </span>
                                 </button>
                             ))}
                         </div>
-                    </div>
 
-                    <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto space-y-8">
-                        {scheduleData[activeTab]?.length > 0 ? (
-                            scheduleData[activeTab].map((group, idx) => (
-                                <div key={idx}>
-                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 pl-1">{group.date}</h3>
-                                    <div className="space-y-4">
-                                        {group.jobs.map(job => (
-                                            <motion.div
-                                                key={job.id}
-                                                initial={{ opacity: 0, y: 8 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:border-gray-200 transition-all"
-                                            >
-                                                <div className="p-5 flex flex-col sm:flex-row gap-5">
-                                                    {/* Time + Status */}
-                                                    <div className="flex sm:flex-col items-center sm:items-start gap-3 sm:w-28 shrink-0">
-                                                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide ${statusColor(job.status)}`}>
-                                                            {job.status}
-                                                        </span>
-                                                        <p className="text-sm font-bold text-gray-900">{job.time.split('-')[0]}</p>
-                                                    </div>
-
-                                                    {/* Details */}
-                                                    <div className="flex-1 sm:border-l sm:border-gray-100 sm:pl-5 min-w-0">
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <h4 className="font-bold text-gray-900 text-[15px]">{job.title}</h4>
-                                                            <span className="font-bold text-[#10B981] text-sm shrink-0 ml-2">₦{typeof job.price === 'number' ? job.price.toLocaleString() : job.price}</span>
-                                                        </div>
-                                                        <div className="space-y-1.5 mb-4">
-                                                            <p className="text-sm text-gray-500 flex items-center gap-1.5">
-                                                                <span className="material-icons-outlined text-base text-gray-400">person</span>
-                                                                {job.customer}
-                                                            </p>
-                                                            <p className="text-sm text-gray-500 flex items-center gap-1.5">
-                                                                <span className="material-icons-outlined text-base text-gray-400">location_on</span>
-                                                                {job.address}
-                                                            </p>
-                                                        </div>
-
-                                                        {activeTab === 'upcoming' && (
-                                                            <div className="flex gap-2 pt-3 border-t border-gray-50">
-                                                                <button
-                                                                    onClick={() => handleAction('call', job.title)}
-                                                                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 text-gray-700 text-xs font-semibold hover:bg-gray-100 transition-colors"
-                                                                >
-                                                                    <span className="material-icons-outlined text-sm">call</span>
-                                                                    Call
-                                                                </button>
-                                                                <Link to={`/provider/jobs/${job.id}`}
-                                                                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 text-gray-700 text-xs font-semibold hover:bg-gray-100 transition-colors"
-                                                                >
-                                                                    <span className="material-icons-outlined text-sm">info</span>
-                                                                    Details
-                                                                </Link>
-                                                                {job.status === 'confirmed' && (
-                                                                    <button
-                                                                        onClick={() => handleAction('start', job.title)}
-                                                                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#10B981] text-white text-xs font-bold hover:bg-[#059669] transition-colors shadow-sm"
-                                                                    >
-                                                                        Start Job
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </motion.div>
-                                        ))}
+                        <AnimatePresence mode="wait">
+                            {flatCount === 0 ? (
+                                <motion.div
+                                    key="empty"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="flex flex-col items-center justify-center py-20 text-center"
+                                >
+                                    <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                        <span className="material-icons-outlined text-2xl text-gray-300">event_busy</span>
                                     </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-20">
-                                <span className="material-icons-outlined text-5xl text-gray-200">event_busy</span>
-                                <p className="text-gray-400 font-medium mt-3 text-sm">No jobs in this section</p>
-                            </div>
-                        )}
+                                    <h3 className="font-bold text-gray-900 text-sm">Nothing scheduled here</h3>
+                                    <p className="text-xs text-gray-400 mt-1 max-w-xs">
+                                        When you accept paid work, it shows under Upcoming with the date it was booked.
+                                    </p>
+                                    {activeTab === 'pending' && (
+                                        <Link
+                                            to="/provider/requests"
+                                            className="mt-4 px-5 py-2.5 bg-[#0F172A] text-white text-sm font-semibold rounded-xl hover:bg-slate-700 transition-colors"
+                                        >
+                                            Open job requests
+                                        </Link>
+                                    )}
+                                </motion.div>
+                            ) : (
+                                <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-10">
+                                    {scheduleData[activeTab].map((group) => (
+                                        <section key={group.date}>
+                                            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">
+                                                {group.date}
+                                            </h2>
+                                            <div className="bg-white overflow-hidden">
+                                                {group.jobs.map((job, idx) => (
+                                                    <Link
+                                                        key={job.id}
+                                                        to={`/provider/jobs/${job.id}`}
+                                                        className={`flex items-center gap-3 sm:gap-4 py-4 px-4 sm:px-5 min-w-0 transition-colors hover:bg-gray-50/80 group border-b border-gray-100 ${
+                                                            idx === group.jobs.length - 1 ? 'border-b-0' : ''
+                                                        }`}
+                                                    >
+                                                        <div className="shrink-0">
+                                                            <CategoryIcon category={job.category} size="md" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h3 className="text-[15px] font-bold text-gray-900 truncate group-hover:text-[#10B981] transition-colors">
+                                                                {job.title}
+                                                            </h3>
+                                                            <p className="text-[13px] text-gray-500 mt-0.5 flex items-center gap-1.5 min-w-0">
+                                                                <span className="truncate">{job.customer}</span>
+                                                                <span className="text-gray-300 shrink-0">·</span>
+                                                                <span className="truncate text-gray-500">{job.address}</span>
+                                                            </p>
+                                                        </div>
+                                                        <span className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-semibold border border-blue-100">
+                                                            Open
+                                                        </span>
+                                                        <span className="material-icons text-gray-300 group-hover:text-gray-400 text-xl shrink-0">chevron_right</span>
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        </section>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </main>
             </div>
