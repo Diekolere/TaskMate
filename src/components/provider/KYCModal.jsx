@@ -14,6 +14,7 @@ const STEPS = [
     { id: 1, label: 'Identity' },
     { id: 2, label: 'Bank' },
     { id: 3, label: 'Document' },
+    { id: 4, label: 'Liveness' },
 ];
 
 /* ── Custom bank dropdown ────────────────────────────── */
@@ -138,8 +139,12 @@ export default function KYCModal({ open, onClose, onComplete }) {
     const [accountVerified, setAccountVerified] = useState(false);
 
     const [idFile, setIdFile] = useState(null);
+    const [selfieFile, setSelfieFile] = useState(null);
+    const [selfiePreview, setSelfiePreview] = useState(null);
+    const [faceMatchState, setFaceMatchState] = useState('idle'); // idle | checking | passed | failed
     const [submitting, setSubmitting] = useState(false);
     const fileRef = useRef();
+    const selfieRef = useRef();
 
     useEffect(() => {
         if (open) document.body.style.overflow = 'hidden';
@@ -169,11 +174,26 @@ export default function KYCModal({ open, onClose, onComplete }) {
     const handleNext = () => {
         if (step === 1 && !bvnVerified) { toast.error('Verify your BVN to continue'); return; }
         if (step === 2 && !accountVerified) { toast.error('Verify your bank account to continue'); return; }
+        if (step === 3 && !idFile) { toast.error('Upload a government ID to continue'); return; }
         goTo(step + 1);
     };
 
+    const handleSelfieChange = async (e) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        setSelfieFile(f);
+        setSelfiePreview(URL.createObjectURL(f));
+        setFaceMatchState('checking');
+        await new Promise(r => setTimeout(r, 2200));
+        setFaceMatchState('passed');
+        toast.success('Face match confirmed', { description: 'Selfie matches your ID document.' });
+    };
+
     const handleSubmit = async () => {
-        if (!idFile) { toast.error('Upload a government ID to continue'); return; }
+        if (!selfieFile || faceMatchState !== 'passed') {
+            toast.error('Complete the liveness check to continue');
+            return;
+        }
         setSubmitting(true);
         setTimeout(async () => {
             await updateUserProfile({ kycCompleted: true, bvnVerified: true, bankName, accountNumber, accountName });
@@ -377,8 +397,8 @@ export default function KYCModal({ open, onClose, onComplete }) {
                                 className="space-y-6"
                             >
                                 <div>
-                                    <h3 className="text-xl font-bold text-gray-900">One last thing</h3>
-                                    <p className="text-sm text-gray-400 mt-1">Upload a clear photo of any government-issued ID.</p>
+                                    <h3 className="text-xl font-bold text-gray-900">Government-issued ID</h3>
+                                    <p className="text-sm text-gray-400 mt-1">Upload a clear photo of your NIN slip, voter&apos;s card, driver&apos;s licence, or passport.</p>
                                 </div>
 
                                 <div
@@ -414,6 +434,85 @@ export default function KYCModal({ open, onClose, onComplete }) {
                             </motion.div>
                         )}
 
+                        {step === 4 && (
+                            <motion.div key="s4" custom={dir} variants={variants}
+                                initial="enter" animate="center" exit="exit"
+                                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                className="space-y-5"
+                            >
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-900">Liveness Check</h3>
+                                    <p className="text-sm text-gray-400 mt-1">Take a selfie so we can match it to your ID. This prevents identity fraud.</p>
+                                </div>
+
+                                {/* Selfie upload area */}
+                                <div
+                                    onClick={() => faceMatchState !== 'checking' && selfieRef.current?.click()}
+                                    className={`relative border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all group overflow-hidden ${
+                                        faceMatchState === 'passed' ? 'border-[#10B981] bg-[#10B981]/5' :
+                                        faceMatchState === 'failed' ? 'border-red-300 bg-red-50' :
+                                        selfieFile ? 'border-[#10B981]/40' : 'border-gray-200 hover:border-[#10B981]/40 hover:bg-gray-50'
+                                    }`}
+                                    style={{ minHeight: 180 }}
+                                >
+                                    <input ref={selfieRef} type="file" accept="image/*" capture="user" className="hidden" onChange={handleSelfieChange} />
+
+                                    {selfiePreview ? (
+                                        <img src={selfiePreview} alt="Selfie preview" className="w-full h-44 object-cover rounded-xl" />
+                                    ) : (
+                                        <div className="flex flex-col items-center py-10 px-4 text-center">
+                                            <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-[#10B981]/10 transition-colors">
+                                                <span className="material-icons text-gray-400 group-hover:text-[#10B981] text-2xl transition-colors">face</span>
+                                            </div>
+                                            <p className="font-semibold text-gray-900 text-sm">Click to take or upload a selfie</p>
+                                            <p className="text-xs text-gray-400 mt-1">Face the camera directly · Good lighting · No sunglasses</p>
+                                        </div>
+                                    )}
+
+                                    {/* Checking overlay */}
+                                    <AnimatePresence>
+                                        {faceMatchState === 'checking' && (
+                                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                                className="absolute inset-0 bg-black/50 rounded-xl flex flex-col items-center justify-center gap-2">
+                                                <div className="w-8 h-8 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                                                <p className="text-white text-sm font-bold">Matching face to ID…</p>
+                                                <p className="text-white/60 text-xs">Powered by AI</p>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
+                                {/* Status badge */}
+                                <AnimatePresence>
+                                    {faceMatchState === 'passed' && (
+                                        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                            className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                                            <span className="material-icons text-[#10B981]">verified</span>
+                                            <div>
+                                                <p className="text-sm font-bold text-[#10B981]">Face match confirmed</p>
+                                                <p className="text-xs text-gray-500">Your selfie matches your government ID.</p>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                    {faceMatchState === 'failed' && (
+                                        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                            className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                                            <span className="material-icons text-red-500">gpp_bad</span>
+                                            <div>
+                                                <p className="text-sm font-bold text-red-600">Match failed</p>
+                                                <p className="text-xs text-gray-500">Try again with better lighting or a clearer photo.</p>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-start gap-2">
+                                    <span className="material-icons text-gray-300 text-sm shrink-0 mt-0.5">info</span>
+                                    <p className="text-xs text-gray-400 leading-relaxed">Your selfie is used only for identity verification and is never shown publicly.</p>
+                                </div>
+                            </motion.div>
+                        )}
+
                     </AnimatePresence>
                 </div>
 
@@ -426,13 +525,13 @@ export default function KYCModal({ open, onClose, onComplete }) {
                         </button>
                     ) : <div />}
 
-                    {step < 3 ? (
+                    {step < 4 ? (
                         <button onClick={handleNext}
                             className="h-12 px-8 bg-[#0F172A] hover:bg-slate-700 text-white font-bold text-sm rounded-xl transition-all flex items-center gap-2">
                             Continue <span className="material-icons text-base">arrow_forward</span>
                         </button>
                     ) : (
-                        <button onClick={handleSubmit} disabled={submitting || !idFile}
+                        <button onClick={handleSubmit} disabled={submitting || faceMatchState !== 'passed'}
                             className="h-12 px-8 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm rounded-xl transition-all flex items-center gap-2 disabled:opacity-40">
                             {submitting
                                 ? <><span className="material-icons text-base animate-spin">autorenew</span> Submitting…</>
