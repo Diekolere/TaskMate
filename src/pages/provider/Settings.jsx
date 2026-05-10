@@ -37,9 +37,9 @@ const Settings = () => {
     };
 
     const accountLinks = [
-        { label: 'Edit Profile', href: '/provider/profile', icon: 'person_outline' },
-        { label: 'Change Password', href: '/provider/settings/password', icon: 'lock_outline' },
-        { label: 'Two-Factor Authentication', href: null, icon: 'security', badge: 'Enabled' },
+        { label: 'Edit Profile', href: '/provider/profile', icon: 'person', iconStyle: 'material-icons' },
+        { label: 'Change Password', href: '/provider/settings/password', icon: 'lock', iconStyle: 'material-icons' },
+        { label: 'Two-Factor Authentication', href: null, icon: 'security', iconStyle: 'material-icons', badge: 'Enabled' },
     ];
 
     const legalLinks = [
@@ -71,15 +71,15 @@ const Settings = () => {
                                 {accountLinks.map(item => (
                                     item.href ? (
                                         <Link key={item.label} to={item.href} className="flex items-center gap-3 px-5 py-4 hover:bg-gray-50/80 transition-colors group">
-                                            <span className="material-icons-outlined text-gray-400 text-lg group-hover:text-[#10B981] transition-colors">{item.icon}</span>
-                                            <span className="text-sm font-semibold text-gray-700 flex-1">{item.label}</span>
-                                            <span className="material-icons-outlined text-gray-300 text-base">chevron_right</span>
+                                            <span className={`${item.iconStyle || 'material-icons-outlined'} text-gray-400 text-lg group-hover:text-[#10B981] transition-colors w-6 flex justify-center shrink-0 leading-none`}>{item.icon}</span>
+                                            <span className="text-sm font-semibold text-gray-900 flex-1 min-w-0">{item.label}</span>
+                                            <span className="material-icons-outlined text-gray-300 text-base ml-auto shrink-0">chevron_right</span>
                                         </Link>
                                     ) : (
                                         <div key={item.label} className="flex items-center gap-3 px-5 py-4">
-                                            <span className="material-icons-outlined text-gray-400 text-lg">{item.icon}</span>
-                                            <span className="text-sm font-semibold text-gray-700 flex-1">{item.label}</span>
-                                            {item.badge && <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-2.5 py-1 rounded-lg">{item.badge}</span>}
+                                            <span className={`${item.iconStyle || 'material-icons-outlined'} text-gray-400 text-lg w-6 flex justify-center shrink-0 leading-none`}>{item.icon}</span>
+                                            <span className="text-sm font-semibold text-gray-900 flex-1 min-w-0">{item.label}</span>
+                                            {item.badge && <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-2.5 py-1 rounded-lg shrink-0">{item.badge}</span>}
                                         </div>
                                     )
                                 ))}
@@ -108,9 +108,9 @@ const Settings = () => {
                             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
                                 {legalLinks.map(item => (
                                     <Link key={item.label} to={item.href} className="flex items-center gap-3 px-5 py-4 hover:bg-gray-50/80 transition-colors group">
-                                        <span className="material-icons-outlined text-gray-400 text-lg group-hover:text-[#10B981] transition-colors">{item.icon}</span>
-                                        <span className="text-sm font-semibold text-gray-700 flex-1">{item.label}</span>
-                                        <span className="material-icons-outlined text-gray-300 text-base">chevron_right</span>
+                                        <span className="material-icons-outlined text-gray-400 text-lg group-hover:text-[#10B981] transition-colors w-6 flex justify-center shrink-0 leading-none">{item.icon}</span>
+                                        <span className="text-sm font-semibold text-gray-900 flex-1 min-w-0">{item.label}</span>
+                                        <span className="material-icons-outlined text-gray-300 text-base ml-auto shrink-0">chevron_right</span>
                                     </Link>
                                 ))}
                             </div>

@@ -89,8 +89,13 @@ const ChangePassword = () => {
 
                         <div className="bg-white rounded-[2rem] shadow-sm border border-charcoal/10 overflow-hidden mt-6">
                             <div className="px-8 py-6 border-b border-charcoal/5">
-                                <h1 className="text-2xl font-black text-charcoal tracking-tight">Change Password</h1>
-                                <p className="text-sm text-charcoal/50 mt-1 font-medium">Ensure your account is using a long, random password to stay secure.</p>
+                                <div className="flex items-start gap-3">
+                                    <span className="material-icons text-charcoal/70 text-3xl shrink-0 mt-0.5" aria-hidden>lock</span>
+                                    <div>
+                                        <h1 className="text-2xl font-black text-charcoal tracking-tight">Change Password</h1>
+                                        <p className="text-sm text-charcoal/50 mt-1 font-medium">Ensure your account is using a long, random password to stay secure.</p>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="p-8">
