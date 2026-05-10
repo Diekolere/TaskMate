@@ -336,10 +336,13 @@ export default function JobDetails() {
                                             Call Customer
                                         </a>
                                     ) : (
-                                        <div className="w-full py-2.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center gap-2 text-xs text-gray-400">
-                                            <span className="material-icons-outlined text-sm">chat_bubble_outline</span>
+                                        <Link
+                                            to={`/provider/requests/${job.id}`}
+                                            className="w-full py-2.5 rounded-xl bg-[#10B981] hover:bg-[#059669] text-white font-semibold flex items-center justify-center gap-2 text-sm transition-colors shadow-sm shadow-[#10B981]/20"
+                                        >
+                                            <span className="material-icons-outlined text-base">chat_bubble_outline</span>
                                             Communicate via in-app chat
-                                        </div>
+                                        </Link>
                                     )}
                                 </div>
 
