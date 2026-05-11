@@ -342,6 +342,8 @@ function PostRequestForm({ onClose, isModal }) {
             image: imagePreviews[0] || null,
             providerId: providerId || null,
             providerName: providerName || null,
+            request_type: providerId ? 'private' : 'public',
+            visibility: providerId ? 'private' : 'public',
             status: providerId ? 'pending' : 'open',
             customerPhone: currentUser?.phoneNumber || null,
         };

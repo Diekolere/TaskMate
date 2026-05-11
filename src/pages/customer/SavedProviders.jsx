@@ -4,24 +4,11 @@ import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useData } from '../../context/DataContext';
-import Tutorial from '../../components/ui/Tutorial';
 
 const SavedProviders = () => {
     const { savedProviderIds, toggleSavedProvider, getProviders } = useData();
     const [savedProviders, setSavedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    const tutorialSteps = [
-        {
-            target: '#tour-saved-providers-grid',
-            content: 'These are the providers you have saved for later. You can view their profiles or remove them from this list.',
-            disableBeacon: true,
-        },
-        {
-            target: '#tour-browse-more',
-            content: 'Click here to find and save more service providers.',
-        }
-    ];
 
     useEffect(() => {
         const fetchSavedProviders = async () => {
@@ -63,7 +50,6 @@ const SavedProviders = () => {
     return (
         <div className="flex h-screen bg-white font-sans text-gray-900">
             <Sidebar />
-            <Tutorial steps={tutorialSteps} tutorialKey="customerSavedProviders" />
             
             <div className="flex-1 overflow-hidden flex flex-col min-w-0">
                 <TopNavbar breadcrumbs={['Customer', 'Saved Providers']} />

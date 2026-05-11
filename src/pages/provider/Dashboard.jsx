@@ -24,9 +24,11 @@ const ProviderDashboard = () => {
     const kycCompleted = currentUser?.kycCompleted ?? true;
     const [kycOpen, setKycOpen] = useState(false);
 
+    const st = (v) => String(v || '').toLowerCase().replace(/\s+/g, '_');
+
     const completedJobs = jobs.filter(j =>
         (j.providerId === currentUser?.id || j.provider_id === currentUser?.id) &&
-        (j.status === 'Completed' || j.status === 'Paid')
+        ['completed', 'payment_released'].includes(st(j.status))
     );
 
     const totalEarnings = completedJobs.reduce((acc, j) => acc + (Number(j.finalAmount) || Number(j.budget) || 0), 0);
@@ -38,12 +40,12 @@ const ProviderDashboard = () => {
     });
 
     const nearbyRequests = jobs.filter(j =>
-        j.status === 'Open' ||
-        (j.status === 'Pending' && (j.providerId === currentUser?.id || j.provider_id === currentUser?.id))
+        st(j.status) === 'open' ||
+        (st(j.status) === 'pending' && (j.providerId === currentUser?.id || j.provider_id === currentUser?.id))
     );
 
     const schedule = jobs.filter(j =>
-        (j.status === 'Scheduled' || j.status === 'In Progress') &&
+        ['scheduled', 'in_progress'].includes(st(j.status)) &&
         (j.providerId === currentUser?.id || j.provider_id === currentUser?.id)
     );
 
