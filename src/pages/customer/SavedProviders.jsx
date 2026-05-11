@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useData } from '../../context/DataContext';
 
 const SavedProviders = () => {
+    const navigate = useNavigate();
     const { savedProviderIds, toggleSavedProvider, getProviders } = useData();
     const [savedProviders, setSavedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -78,7 +79,11 @@ const SavedProviders = () => {
                         ) : savedProviders.length > 0 ? (
                             <div className="flex flex-col relative z-0" id="tour-saved-providers-grid">
                                 {savedProviders.map((provider, index) => (
-                                    <div key={provider.id} className={`py-5 flex items-center gap-4 transition-colors hover:bg-gray-50/60 px-1 rounded-xl -mx-1 ${index !== savedProviders.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                                    <div
+                                        key={provider.id}
+                                        onClick={() => navigate(`/customer/provider/${provider.id}`)}
+                                        className={`py-5 flex items-center gap-4 transition-colors hover:bg-gray-50/60 px-1 rounded-xl -mx-1 cursor-pointer ${index !== savedProviders.length - 1 ? 'border-b border-gray-100' : ''}`}
+                                    >
                                         
                                         {/* Provider Info (Left) */}
                                         <div className="flex gap-4 items-center flex-1 min-w-0">
@@ -106,15 +111,13 @@ const SavedProviders = () => {
                                             </div>
                                         )}
 
-                                        {/* Actions */}
-                                        <div className="flex items-center shrink-0">
-                                            <Link 
-                                                to={`/customer/provider/${provider.id}`} 
-                                                className="h-9 flex items-center justify-center px-4 text-[12px] font-bold bg-[#0F172A] text-white rounded-xl hover:bg-slate-700 transition-all shadow-sm"
-                                            >
-                                                View Profile
-                                            </Link>
-                                        </div>
+                                        {/* Chevron */}
+                                        <span
+                                            className="inline-flex items-center justify-center shrink-0 text-gray-300 transition-colors"
+                                            aria-label={`View ${provider.name}`}
+                                        >
+                                            <span className="material-icons text-[20px]">chevron_right</span>
+                                        </span>
 
                                     </div>
                                 ))}
