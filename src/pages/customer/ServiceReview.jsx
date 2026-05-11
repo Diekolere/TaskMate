@@ -81,14 +81,14 @@ const ServiceReview = () => {
 
     if (loading) {
         return (
-            <div className="flex h-screen items-center justify-center bg-gray-50">
+            <div className="flex min-h-screen items-center justify-center bg-gray-50">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
             </div>
         );
     }
 
     if (!request) return (
-        <div className="flex h-screen items-center justify-center bg-gray-50 flex-col gap-4">
+        <div className="flex min-h-screen items-center justify-center bg-gray-50 flex-col gap-4">
             <p className="text-gray-500">Request not found.</p>
             <button onClick={() => navigate('/customer/dashboard')} className="text-green-700 font-bold hover:underline">Back to Dashboard</button>
         </div>
@@ -97,7 +97,7 @@ const ServiceReview = () => {
     const dateStr = request.createdAt instanceof Date ? format(request.createdAt, 'MMM dd, yyyy') : 'Recently';
 
     return (
-        <div className="flex h-screen bg-white font-sans text-gray-900">
+        <div className="flex min-h-screen bg-white font-sans text-gray-900">
             <Sidebar />
             
             <main className="flex-1 overflow-hidden flex flex-col min-w-0">

@@ -307,13 +307,13 @@ const RequestStatus = () => {
     }, [id, requests, getProviders, isSimulated]);
 
     if (loading) return (
-            <div className="flex h-screen items-center justify-center bg-white">
+            <div className="flex min-h-screen items-center justify-center bg-white">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#10B981]" />
             </div>
         );
 
     if (!request) return (
-             <div className="flex h-screen items-center justify-center bg-white flex-col gap-4">
+             <div className="flex min-h-screen items-center justify-center bg-white flex-col gap-4">
                 <p className="text-gray-500 font-bold">Request not found.</p>
             <button onClick={() => navigate('/customer/dashboard')} className="text-[#10B981] font-bold hover:underline">
                 Back to Dashboard
@@ -340,7 +340,7 @@ const RequestStatus = () => {
     };
 
     return (
-        <div className="flex h-screen bg-white font-sans text-gray-900">
+        <div className="flex min-h-screen bg-white font-sans text-gray-900">
             <Sidebar />
             
             <main className="flex-1 overflow-hidden flex flex-col min-w-0">

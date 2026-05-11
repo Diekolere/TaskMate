@@ -153,19 +153,19 @@ const Settings = () => {
     );
 
     return (
-        <div className="flex min-h-screen bg-white font-sans text-gray-900">
+        <div className="flex h-screen bg-white font-sans text-gray-900">
             <Sidebar />
             <Toaster position="top-right" richColors />
             
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <TopNavbar breadcrumbs={['Customer', 'Settings']} />
                 
                 <main className="flex-1 overflow-y-auto bg-white">
                     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 pb-24 md:pb-10">
                         {/* Page Heading */}
                         <div className="mb-8">
-                            <h2 className="text-3xl font-black text-gray-900 tracking-tight">Account Settings</h2>
-                            <p className="text-gray-500 mt-2">Manage your personal information and security preferences.</p>
+                            <h2 className="text-[22px] sm:text-[28px] font-extrabold text-gray-900 tracking-tight">Account Settings</h2>
+                            <p className="mt-1 text-[13px] font-medium text-gray-400">Manage your personal information and security preferences.</p>
                         </div>
                         
                         {renderTabs()}
@@ -173,24 +173,24 @@ const Settings = () => {
                         {/* Profile Tab Content */}
                         {activeTab === 'Profile' && (
                             <div className="space-y-10 animate-fade-in">
-                                {/* Profile Picture Section */}
-                                <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-white border border-gray-100 rounded-2xl shadow-sm gap-4">
-                                    <div className="flex items-center gap-6">
-                                        <div className="relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>
-                                            <img src={profileForm.photoURL || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')} alt="Profile" className="h-24 w-24 rounded-full object-cover border-4 border-gray-50 shadow-sm group-hover:opacity-90 transition-opacity" />
-                                            <div className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md border border-gray-100 text-[#10B981]">
-                                                <span className="material-icons-outlined text-lg">edit</span>
-                                            </div>
-                                            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                                {/* Profile Picture */}
+                                <div className="flex items-center justify-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current.click()}
+                                        className="relative group rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981]/40"
+                                        aria-label="Update profile photo"
+                                    >
+                                        <img
+                                            src={profileForm.photoURL || "https://ui-avatars.com/api/?name=" + (currentUser?.displayName || 'User')}
+                                            alt="Profile"
+                                            className="h-24 w-24 rounded-full object-cover border-4 border-gray-50 shadow-sm group-hover:opacity-90 transition-opacity"
+                                        />
+                                        <div className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md border border-gray-100 text-[#10B981]">
+                                            <span className="material-icons-outlined text-lg">edit</span>
                                         </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold">Profile Photo</h3>
-                                            <p className="text-sm text-gray-500">JPG, GIF or PNG. Max size of 5MB</p>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => fileInputRef.current.click()} className="px-5 py-2.5 bg-gray-50 text-gray-900 text-sm font-bold rounded-xl border border-gray-200 hover:bg-gray-100 transition-all">
-                                        Upload New
                                     </button>
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                                 </div>
                                 
                                 {/* Personal Information Form */}

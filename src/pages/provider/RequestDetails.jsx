@@ -386,7 +386,7 @@ const RequestDetails = () => {
     ];
 
     return (
-        <div className="flex h-screen bg-white font-sans">
+        <div className="flex min-h-screen bg-white font-sans">
             <ProviderSidebar />
 
             {/* Decline modal */}

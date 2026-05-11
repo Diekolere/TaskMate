@@ -76,7 +76,7 @@ const ChangePassword = () => {
     ];
 
     return (
-        <div className="flex h-screen bg-cream font-sans text-charcoal">
+        <div className="flex min-h-screen bg-cream font-sans text-charcoal">
             <ProviderSidebar />
             <Toaster position="top-right" />
 

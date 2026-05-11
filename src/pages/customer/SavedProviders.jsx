@@ -48,7 +48,7 @@ const SavedProviders = () => {
     }, [savedProviderIds, getProviders]);
 
     return (
-        <div className="flex h-screen bg-white font-sans text-gray-900">
+        <div className="flex min-h-screen bg-white font-sans text-gray-900">
             <Sidebar />
             
             <div className="flex-1 overflow-hidden flex flex-col min-w-0">

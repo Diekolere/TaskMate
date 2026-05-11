@@ -82,7 +82,7 @@ const ProviderProfile = () => {
 
     if (loading) {
         return (
-            <div className="flex h-screen items-center justify-center bg-white">
+            <div className="flex min-h-screen items-center justify-center bg-white">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#10B981]"></div>
             </div>
         );
@@ -90,7 +90,7 @@ const ProviderProfile = () => {
 
     if (!provider) {
         return (
-            <div className="flex h-screen items-center justify-center bg-white flex-col gap-4 font-sans">
+            <div className="flex min-h-screen items-center justify-center bg-white flex-col gap-4 font-sans">
                 <p className="text-gray-500">Provider not found.</p>
                 <button onClick={() => navigate('/customer/browse')} className="text-[#10B981] font-bold hover:underline">Back to Browse</button>
             </div>
