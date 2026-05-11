@@ -126,8 +126,8 @@ const Login = () => {
           </motion.div>
         </AnimatePresence>
 
-        {/* Card */}
-        <div className="bg-white py-8 px-8 shadow-[0_8px_30px_rgb(0,0,0,0.05)] rounded-2xl border border-gray-100">
+        {/* Form shell */}
+        <div className="bg-white py-2 px-0 sm:py-8 sm:px-8 sm:shadow-[0_8px_30px_rgb(0,0,0,0.05)] sm:rounded-2xl sm:border sm:border-gray-100">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-[#1a2b3c] mb-2">

@@ -102,8 +102,8 @@ const Register = () => {
           </p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white py-8 px-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-2xl border border-[#1a2b3c]/5">
+        {/* Form shell */}
+        <div className="bg-white py-2 px-0 sm:py-8 sm:px-8 sm:shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-2xl sm:border sm:border-[#1a2b3c]/5">
           
           {/* User Type Toggle — matches login page */}
           <div className="mb-6 p-1 bg-gray-100 rounded-xl flex gap-1">

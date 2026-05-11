@@ -49,8 +49,8 @@ const ForgotPassword = () => {
           </p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white py-10 px-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-2xl border border-[#1a2b3c]/5">
+        {/* Form shell */}
+        <div className="bg-white py-2 px-0 sm:py-10 sm:px-8 sm:shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-2xl sm:border sm:border-[#1a2b3c]/5">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-[#1a2b3c] mb-2">
