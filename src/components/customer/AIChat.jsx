@@ -72,7 +72,7 @@ const AIChat = () => {
                 dragElastic={0.1}
                 dragMomentum={false}
                 onClick={() => setIsOpen(!isOpen)}
-                className="absolute bottom-6 right-6 p-3 bg-green-700 text-white rounded-full shadow-xl hover:bg-green-800 transition-colors flex items-center justify-center group pointer-events-auto active:cursor-grabbing"
+                className="absolute bottom-20 md:bottom-6 right-4 md:right-6 p-3 bg-green-700 text-white rounded-full shadow-xl hover:bg-green-800 transition-colors flex items-center justify-center group pointer-events-auto active:cursor-grabbing"
                 style={{ touchAction: "none" }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -97,7 +97,7 @@ const AIChat = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute bottom-24 right-4 w-[calc(100vw-32px)] max-w-sm bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col h-[500px] sm:right-6 sm:w-[380px] pointer-events-auto"
+                        className="absolute bottom-36 md:bottom-24 right-4 w-[calc(100vw-32px)] max-w-sm bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col h-[min(70vh,500px)] sm:right-6 sm:w-[380px] pointer-events-auto"
                     >
                         {/* Header */}
                         <div className="bg-green-700 p-4 flex items-center justify-between text-white">
