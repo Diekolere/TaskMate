@@ -164,7 +164,7 @@ function OTPModal({ jobId, onClose }) {
                         </div>
                         <div>
                             <p className="text-white font-bold text-sm">Enter Job Start Code</p>
-                            <p className="text-slate-400 text-xs mt-0.5">Ask the customer to show their screen</p>
+                            <p className="text-white/85 text-xs mt-0.5">Ask the customer to show their screen</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="text-white/70 hover:text-white transition-colors mt-0.5">
