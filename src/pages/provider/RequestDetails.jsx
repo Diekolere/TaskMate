@@ -84,7 +84,7 @@ function NegotiatePanel({ request, onClose, onFinalized }) {
         if (!p) return;
         setShowFinalizeInput(false);
         addMsg({ from: 'system', text: `You sent a finalise request at ₦${p.toLocaleString()}.` });
-        setTimeout(() => addMsg({ from: 'customer_confirm', text: `Provider wants to finalise this job at ₦${p.toLocaleString()}. Do you agree?`, finalizePrice: p }), 1000);
+        setTimeout(() => addMsg({ from: 'customer_confirm', text: `Customer wants to finalise this job at ₦${p.toLocaleString()}. Do you agree?`, finalizePrice: p }), 1000);
     };
     const confirmFinalize = (price) => {
         setFinalized(true);

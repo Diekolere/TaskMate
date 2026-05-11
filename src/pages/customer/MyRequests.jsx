@@ -155,12 +155,13 @@ const MyRequests = () => {
                                                 else if (st === 'payment_released') navigate(`/customer/service-review/${req.id}`);
                                                 else navigate(`/customer/request-status/${req.id}`);
                                             }}
-                                            className={`flex items-center gap-4 py-5 cursor-pointer group hover:bg-gray-50/60 transition-colors rounded-xl px-1 -mx-1 ${
+                                            className={`py-5 cursor-pointer group hover:bg-gray-50/60 transition-colors rounded-xl px-1 -mx-1 ${
                                                 index !== 0 ? 'border-t border-gray-100' : ''
                                             }`}
                                         >
-                                            {/* Category icon */}
-                                            <CategoryIcon category={req.category || req.serviceType} size="md" />
+                                            <div className="flex items-center gap-4">
+                                                {/* Category icon */}
+                                                <CategoryIcon category={req.category || req.serviceType} size="md" />
 
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
@@ -200,6 +201,7 @@ const MyRequests = () => {
                                             </span>
 
                                             <span className="material-icons text-[18px] text-gray-300 group-hover:text-gray-400 shrink-0 transition-colors">chevron_right</span>
+                                            </div>
                                         </div>
                                     );
                                 })}
