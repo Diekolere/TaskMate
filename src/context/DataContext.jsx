@@ -29,11 +29,33 @@ export function DataProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [savedProviderIds, setSavedProviderIds] = useState([]);
 
+  const normalizeStatus = (status) => {
+    const s = String(status || '').trim().toLowerCase().replace(/\s+/g, '_');
+    const map = {
+      open: 'open',
+      pending: 'pending',
+      interested: 'interested',
+      negotiating: 'negotiating',
+      provider_accepted: 'provider_accepted',
+      awaiting_payment: 'awaiting_payment',
+      payment_secured: 'payment_secured',
+      in_progress: 'in_progress',
+      completed: 'completed',
+      payment_released: 'payment_released',
+      cancelled: 'cancelled',
+      canceled: 'cancelled',
+      paid: 'payment_released',
+      inprogress: 'in_progress'
+    };
+    return map[s] || (s || 'open');
+  };
+
   // Shim for Job data (Firebase compatibility)
   const shimJob = (job) => {
     if (!job) return null;
     return {
       ...job,
+      status: normalizeStatus(job.status),
       customerId: job.customer_id,
       providerId: job.worker_id,
       budget: job.budget_estimate,
@@ -191,7 +213,7 @@ export function DataProvider({ children }) {
         id: `job-${Math.random()}`,
         customer_id: currentUser.id,
         created_at: new Date().toISOString(),
-        status: requestData.status || 'open',
+        status: normalizeStatus(requestData.status || 'open'),
         timeline: requestData.timeline || []
       });
       setRequests(prev => [newJob, ...prev]);
@@ -212,7 +234,7 @@ export function DataProvider({ children }) {
             urgency: requestData.urgency,
             image: requestData.image,
             customer_id: currentUser.id,
-            status: requestData.status || 'open',
+            status: normalizeStatus(requestData.status || 'open'),
             timeline: requestData.timeline || []
           }])
           .select()
@@ -233,17 +255,17 @@ export function DataProvider({ children }) {
     if (isSimulated) {
       // Update local state
       setRequests(prev => prev.map(job => 
-        job.id === jobId ? { ...job, status: newStatus, ...additionalData } : job
+        job.id === jobId ? { ...job, status: normalizeStatus(newStatus), ...additionalData } : job
       ));
       setJobs(prev => prev.map(job => 
-        job.id === jobId ? { ...job, status: newStatus, ...additionalData } : job
+        job.id === jobId ? { ...job, status: normalizeStatus(newStatus), ...additionalData } : job
       ));
-      toast.success(`Job status updated to ${newStatus}`);
+      toast.success(`Job status updated to ${normalizeStatus(newStatus)}`);
       return;
     }
 
     try {
-      const updateData = { status: newStatus, ...additionalData };
+      const updateData = { status: normalizeStatus(newStatus), ...additionalData };
       if (additionalData.worker_id) updateData.worker_id = additionalData.worker_id;
       if (additionalData.final_budget) updateData.final_budget = additionalData.final_budget;
 

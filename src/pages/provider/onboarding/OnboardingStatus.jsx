@@ -76,7 +76,7 @@ const OnboardingStatus = () => {
 
                     <div className="flex flex-col w-full gap-3">
                         <button 
-                            onClick={() => navigate('/provider/onboarding/professional')}
+                            onClick={() => navigate('/provider/onboarding/step-1')}
                             className="w-full py-3 px-4 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-colors"
                         >
                             Update Profile & Resubmit

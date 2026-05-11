@@ -104,7 +104,7 @@ export function AuthProvider({ children }) {
       const user = role === 'provider' ? MOCK_USER_PROVIDER : MOCK_USER_CUSTOMER;
       setCurrentUser(user);
       localStorage.setItem('taskmate_mock_user', JSON.stringify(user));
-      return;
+      return user;
     }
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -122,6 +122,19 @@ export function AuthProvider({ children }) {
     }
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+  };
+
+  const resetPassword = async (email) => {
+    if (!email) throw new Error('Email is required');
+    if (IS_SIMULATED || !supabase) {
+      await new Promise(resolve => setTimeout(resolve, 400));
+      return { simulated: true };
+    }
+
+    const redirectTo = `${window.location.origin}/login`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+    return { simulated: false };
   };
 
   const updateUserProfile = async (data) => {
@@ -212,6 +225,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     register,
+    resetPassword,
     updateUserProfile,
     isSimulated: IS_SIMULATED
   };

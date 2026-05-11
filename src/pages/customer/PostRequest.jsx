@@ -10,6 +10,29 @@ import { toast } from 'sonner';
 import useImageModeration from '../../hooks/useImageModeration';
 import { enrichDescription } from '../../lib/aiData';
 
+const reverseGeocode = async (lat, lon, retries = 2) => {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(url, {
+                signal: controller.signal,
+                headers: { 'Accept-Language': 'en' }
+            });
+            clearTimeout(timeout);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data?.display_name) return data.display_name;
+            throw new Error('No display_name in response');
+        } catch (err) {
+            if (attempt === retries) throw err;
+            await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        }
+    }
+    return null;
+};
+
 // ── Custom calendar ──────────────────────────────────────────────────────────
 const DAY_NAMES = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -244,8 +267,9 @@ function PostRequestForm({ onClose, isModal }) {
         if (address) return;
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(pos => {
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
-                    .then(r => r.json()).then(d => d?.display_name && setAddress(d.display_name)).catch(() => {});
+                reverseGeocode(pos.coords.latitude, pos.coords.longitude)
+                    .then(name => name && setAddress(name))
+                    .catch(() => toast.info('Could not auto-detect address. Please enter it manually.'));
             }, () => {});
         }
     }, []);
@@ -318,7 +342,7 @@ function PostRequestForm({ onClose, isModal }) {
             image: imagePreviews[0] || null,
             providerId: providerId || null,
             providerName: providerName || null,
-            status: providerId ? 'Pending' : 'Open',
+            status: providerId ? 'pending' : 'open',
             customerPhone: currentUser?.phoneNumber || null,
         };
 
@@ -370,11 +394,11 @@ function PostRequestForm({ onClose, isModal }) {
                             {enriching
                                 ? <div className="w-3 h-3 rounded-full border-2 border-[#10B981]/30 border-t-[#10B981] animate-spin" />
                                 : <span className="material-icons-outlined text-[13px]">auto_fix_high</span>}
-                            {enriching ? 'Improving…' : 'Improve with AI'}
+                            {enriching ? 'Improving...' : 'Improve with AI'}
                         </button>
                     </div>
                     <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4}
-                        placeholder="Describe the task in detail — what's the problem, any specific requirements…"
+                        placeholder="Describe the task in detail - what's the problem, any specific requirements..."
                         className={`${FIELD} resize-none`} />
                 </div>
 
@@ -496,8 +520,9 @@ function PostRequestForm({ onClose, isModal }) {
                             onClick={() => {
                                 if (!navigator.geolocation) return;
                                 navigator.geolocation.getCurrentPosition(pos => {
-                                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
-                                        .then(r => r.json()).then(d => d?.display_name && setAddress(d.display_name)).catch(() => {});
+                                    reverseGeocode(pos.coords.latitude, pos.coords.longitude)
+                                        .then(name => name && setAddress(name))
+                                        .catch(() => toast.error('Location lookup failed. Enter address manually.'));
                                 });
                             }}
                             className="absolute right-2 top-1/2 -translate-y-1/2 text-[#10B981] text-[11px] font-bold flex items-center gap-1 bg-green-50 hover:bg-green-100 px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap">

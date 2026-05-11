@@ -87,7 +87,7 @@ const InboundRequests = () => {
                                 type="text"
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
-                                placeholder="Search by service, location or customer…"
+                                placeholder="Search by service, location or customer..."
                                 className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] transition-all"
                             />
                         </div>
@@ -153,7 +153,7 @@ const InboundRequests = () => {
                                                     </span>
                                                 )}
                                                 <span className="bg-blue-50 text-blue-600 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-blue-100 whitespace-nowrap">
-                                                    {req.status || 'Open'}
+                                                    {String(req.status || 'open').replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase())}
                                                 </span>
                                             </div>
 
