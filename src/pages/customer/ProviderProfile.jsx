@@ -193,40 +193,14 @@ const ProviderProfile = () => {
                                 </div>
                             </div>
 
-                            {/* Booking CTA Section */}
-                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 mb-8 mt-2">
-                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-5">
-                                    <div>
-                                        <h3 className="text-base font-bold text-gray-900">Booking Rate</h3>
-                                        <p className="text-sm text-gray-500">Hire this professional</p>
-                                    </div>
-                                    <div className="flex items-baseline gap-1 bg-green-50 px-4 py-2 rounded-xl border border-green-100/50">
-                                        <span className="text-2xl font-black text-[#10B981]">{provider.hourlyRate}</span>
-                                        <span className="text-sm text-green-700 font-semibold">/ hour</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col sm:flex-row gap-3">
-                                    <button 
-                                        onClick={() => navigate('/customer/post-request', { state: { providerId: id, providerName: provider.name, category: provider.category } })}
-                                        className="flex-1 py-3.5 bg-[#10B981] text-white font-bold rounded-xl hover:bg-[#059669] transition-all flex items-center justify-center gap-2 shadow-sm shadow-[#10B981]/20"
-                                    >
-                                        Request Service
-                                        <span className="material-icons-outlined text-[18px]">arrow_forward</span>
-                                    </button>
-                                    <button 
-                                        onClick={() => toast.info('Messaging feature coming soon!')}
-                                        className="flex-1 py-3.5 bg-white text-gray-900 font-bold rounded-xl border border-gray-200 hover:bg-gray-50 transition-all flex items-center justify-center gap-2 shadow-sm"
-                                    >
-                                        <span className="material-icons-outlined text-[18px]">chat_bubble_outline</span>
-                                        Message Provider
-                                    </button>
-                                </div>
-                                
-                                <div className="mt-5 flex items-center justify-center gap-2 text-[11px] text-gray-500 font-semibold uppercase tracking-wide">
-                                    <span className="material-icons-outlined text-[#10B981] text-[16px]">security</span>
-                                    Secure payments & buyer protection
-                                </div>
+                            <div className="mt-2 mb-8">
+                                <button
+                                    onClick={() => navigate('/customer/post-request', { state: { providerId: id, providerName: provider.name, category: provider.category } })}
+                                    className="w-full py-3.5 bg-[#10B981] text-white font-bold rounded-xl hover:bg-[#059669] transition-all flex items-center justify-center gap-2 shadow-sm shadow-[#10B981]/20"
+                                >
+                                    Request Service
+                                    <span className="material-icons-outlined text-[18px]">arrow_forward</span>
+                                </button>
                             </div>
 
                             {/* Tabs */}

@@ -53,9 +53,13 @@ export function DataProvider({ children }) {
   // Shim for Job data (Firebase compatibility)
   const shimJob = (job) => {
     if (!job) return null;
+    const hasTargetProvider = Boolean(job.providerId || job.worker_id);
+    const requestType = job.request_type || (hasTargetProvider ? 'private' : 'public');
     return {
       ...job,
       status: normalizeStatus(job.status),
+      request_type: requestType,
+      visibility: requestType,
       customerId: job.customer_id,
       providerId: job.worker_id,
       budget: job.budget_estimate,
@@ -208,10 +212,14 @@ export function DataProvider({ children }) {
     if (!currentUser) return;
     
     if (isSimulated) {
+      const requestType = requestData.request_type || (requestData.providerId ? 'private' : 'public');
       const newJob = shimJob({
         ...requestData,
         id: `job-${Math.random()}`,
         customer_id: currentUser.id,
+        worker_id: requestData.providerId || null,
+        request_type: requestType,
+        visibility: requestType,
         created_at: new Date().toISOString(),
         status: normalizeStatus(requestData.status || 'open'),
         timeline: requestData.timeline || []
@@ -222,6 +230,7 @@ export function DataProvider({ children }) {
     }
 
     try {
+        const requestType = requestData.request_type || (requestData.providerId ? 'private' : 'public');
         const { data, error } = await supabase
           .from('jobs')
           .insert([{
@@ -234,6 +243,9 @@ export function DataProvider({ children }) {
             urgency: requestData.urgency,
             image: requestData.image,
             customer_id: currentUser.id,
+            worker_id: requestData.providerId || null,
+            request_type: requestType,
+            visibility: requestType,
             status: normalizeStatus(requestData.status || 'open'),
             timeline: requestData.timeline || []
           }])
