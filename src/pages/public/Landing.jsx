@@ -49,6 +49,25 @@ const Landing = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const scrollRef = useRef(null);
 
+  const smoothHorizontalScroll = (distance = 0, duration = 520) => {
+    if (!scrollRef.current) return;
+    const start = scrollRef.current.scrollLeft;
+    const end = start + distance;
+    const startTime = performance.now();
+
+    const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+    const step = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeInOut(progress);
+      scrollRef.current.scrollLeft = start + (end - start) * eased;
+      if (progress < 1) requestAnimationFrame(step);
+    };
+
+    requestAnimationFrame(step);
+  };
+
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
@@ -111,12 +130,30 @@ const Landing = () => {
                 <h2 className="text-4xl md:text-6xl font-bold font-serif text-[#1a2b3c] mb-6 leading-tight">Connect with artisans and handymen that offer a wide variety of services</h2>
                 <p className="text-xl text-[#1a2b3c]/70 font-sans">Scroll to discover verified professionals for every task.</p>
               </div>
+              <div className="flex gap-3 self-start md:self-auto">
+                <button
+                  type="button"
+                  onClick={() => smoothHorizontalScroll(-360)}
+                  className="h-11 w-11 sm:h-14 sm:w-14 rounded-full border border-[#1a2b3c]/20 flex items-center justify-center hover:bg-[#1a2b3c] hover:text-white transition-all shadow-sm"
+                  aria-label="Scroll services left"
+                >
+                  <span className="material-icons">arrow_back</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => smoothHorizontalScroll(360)}
+                  className="h-11 w-11 sm:h-14 sm:w-14 rounded-full border border-[#1a2b3c]/20 flex items-center justify-center hover:bg-[#1a2b3c] hover:text-white transition-all shadow-sm"
+                  aria-label="Scroll services right"
+                >
+                  <span className="material-icons">arrow_forward</span>
+                </button>
+              </div>
             </div>
           </Reveal>
 
           <div ref={scrollRef} className="flex gap-8 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-12 -mx-4 px-4">
             {categories.map((category, idx) => (
-              <motion.div key={idx} initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.05 }} className="min-w-[320px] md:min-w-[400px] h-[500px] snap-center">
+              <motion.div key={idx} initial={{ opacity: 0, x: 36 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.55, delay: idx * 0.045, ease: [0.22, 1, 0.36, 1] }} className="min-w-[320px] md:min-w-[400px] h-[500px] snap-center">
                 <Link to="/login" className="group block h-full bg-white/40 backdrop-blur-xl border border-[#1a2b3c]/10 rounded-[40px] overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col">
                   <div className="flex-1 relative overflow-hidden flex items-center justify-center">
                     <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-10 group-hover:opacity-20 transition-opacity`}></div>

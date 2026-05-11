@@ -16,7 +16,7 @@ const LandingFooter = () => {
             <p className="text-lg font-medium opacity-90">Join thousands of customers and professionals building trust and value on TaskMate.</p>
           </div>
           <div className="relative z-10 shrink-0 w-full md:w-auto">
-            <Link to="/register" className="w-full md:w-auto text-center inline-block shrink-0 whitespace-nowrap px-4 sm:px-10 py-3 sm:py-5 rounded-full text-[12px] sm:text-lg font-bold transition-all duration-300 shadow-lg bg-[#1a2b3c] text-white hover:bg-white hover:text-[#1a2b3c]">
+            <Link to="/register" className="w-full md:w-auto text-center inline-block shrink-0 whitespace-nowrap px-6 sm:px-10 py-3.5 sm:py-5 rounded-full text-sm sm:text-lg font-bold transition-all duration-300 shadow-lg bg-[#1a2b3c] text-white hover:bg-white hover:text-[#1a2b3c]">
               Get Started Free
             </Link>
           </div>
