@@ -237,7 +237,7 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: 80, opacity: 0 }}
                         transition={{ type: 'spring', damping: 22, stiffness: 280 }}
-                        className="fixed top-20 right-4 z-[108] w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+                        className="fixed top-16 sm:top-20 right-2 sm:right-4 z-[108] w-[calc(100vw-1rem)] sm:w-80 max-w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
                     >
                         {/* Green accent strip */}
                         <div className="h-1 bg-gradient-to-r from-[#10B981] to-[#059669]" />

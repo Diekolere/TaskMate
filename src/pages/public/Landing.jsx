@@ -75,15 +75,17 @@ const StepCard = ({ num, title, desc, delay = 0, className = "" }) => (
 const Landing = () => {
   const [openFaq, setOpenFaq] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
+      if (mobileMenuOpen) setMobileMenuOpen(false);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [mobileMenuOpen]);
 
   const faqs = [
       {
@@ -138,8 +140,8 @@ const Landing = () => {
       ` }} />
       
       {/* Glassmorphic Navbar */}
-      <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'}`}>
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+      <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-md shadow-sm py-3 md:py-4' : 'bg-transparent py-4 md:py-6'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex justify-between items-center">
           <Link to="/" className="flex items-center gap-3 group">
             <img alt="TaskMate" className={`h-10 w-10 transition-transform group-hover:scale-105 ${!isScrolled && 'filter brightness-0 invert'}`} src="/icon.png" />
             <span className={`font-bold text-2xl tracking-tight font-serif transition-colors ${isScrolled ? 'text-[#1a2b3c]' : 'text-white'}`}>TaskMate</span>
@@ -159,8 +161,42 @@ const Landing = () => {
             <Link to="/register" className={`px-6 py-3 rounded-full text-[15px] font-semibold transition-all duration-300 shadow-md ${isScrolled ? 'bg-[#1a2b3c] text-white hover:bg-[#7AC142] hover:text-[#1a2b3c]' : 'bg-[#7AC142] text-[#1a2b3c] hover:bg-white hover:text-[#1a2b3c]'}`}>
               Join TaskMate
             </Link>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(v => !v)}
+              className={`lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg border transition-colors ${
+                isScrolled
+                  ? 'border-gray-200 text-[#1a2b3c] bg-white/80'
+                  : 'border-white/30 text-white bg-white/10'
+              }`}
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              <span className="material-icons text-[22px]">
+                {mobileMenuOpen ? 'close' : 'menu'}
+              </span>
+            </button>
           </div>
         </div>
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="lg:hidden border-t border-white/20 bg-[#1a2b3c]/95 backdrop-blur-md"
+            >
+              <div className="px-4 py-3 flex flex-col gap-2">
+                <a href="#about" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg text-white/90 hover:bg-white/10">About</a>
+                <a href="#services" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg text-white/90 hover:bg-white/10">Services</a>
+                <a href="#testimonials" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg text-white/90 hover:bg-white/10">Testimonials</a>
+                <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg text-white/90 hover:bg-white/10">FAQ</a>
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="md:hidden px-3 py-2 rounded-lg text-white/90 hover:bg-white/10">Log in</Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* Hero Section */}

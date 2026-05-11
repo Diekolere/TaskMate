@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body, #root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+img, video, canvas, svg {
+  max-width: 100%;
+}
+
 /* Hide scrollbars globally while keeping scroll functionality */
 * {
   scrollbar-width: none; /* Firefox */
