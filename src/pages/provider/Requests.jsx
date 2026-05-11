@@ -12,17 +12,25 @@ const InboundRequests = () => {
     const { currentUser } = useAuth();
     const { jobs } = useData();
     const [search, setSearch] = useState('');
-    const [tab, setTab] = useState('all'); // 'all' | 'upcoming'
+    const [tab, setTab] = useState('all'); // 'all' | 'upcoming' | 'private'
 
     const requests = jobs.filter(j => {
         const s = String(j.status || '').toLowerCase();
-        return s === 'open' || (s === 'pending' && j.providerId === currentUser?.uid);
+        const type = String(j.request_type || j.visibility || (j.providerId ? 'private' : 'public')).toLowerCase();
+        const isPublicOpen = type === 'public' && s === 'open';
+        const isPrivateForMe = type === 'private' && j.providerId === currentUser?.uid && ['pending', 'negotiating', 'awaiting_payment'].includes(s);
+        return isPublicOpen || isPrivateForMe;
     });
 
     const upcomingCount = requests.filter(r => !!r.scheduledDate).length;
+    const privateCount = requests.filter(r => String(r.request_type || r.visibility || (r.providerId ? 'private' : 'public')).toLowerCase() === 'private').length;
 
     const filtered = requests.filter(r => {
-        const matchesTab = tab === 'upcoming' ? !!r.scheduledDate : true;
+        const type = String(r.request_type || r.visibility || (r.providerId ? 'private' : 'public')).toLowerCase();
+        const matchesTab =
+            tab === 'upcoming' ? !!r.scheduledDate :
+            tab === 'private' ? type === 'private' :
+            true;
         if (!matchesTab) return false;
         if (!search) return true;
         const q = search.toLowerCase();
@@ -56,7 +64,7 @@ const InboundRequests = () => {
                         {/* Header */}
                         <div>
                             <h1 className="text-[22px] sm:text-[28px] font-extrabold text-gray-900 tracking-tight">Job Requests</h1>
-                            <p className="mt-1 text-[13px] font-medium text-gray-400">Open requests from customers near you.</p>
+                            <p className="mt-1 text-[13px] font-medium text-gray-400">Public requests nearby and private requests sent directly to you.</p>
                         </div>
 
                         {/* Tabs — underline style */}
@@ -66,6 +74,17 @@ const InboundRequests = () => {
                                 className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px ${tab === 'all' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
                             >
                                 All Requests
+                            </button>
+                            <button
+                                onClick={() => setTab('private')}
+                                className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'private' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
+                            >
+                                Private
+                                {privateCount > 0 && (
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'private' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
+                                        {privateCount}
+                                    </span>
+                                )}
                             </button>
                             <button
                                 onClick={() => setTab('upcoming')}

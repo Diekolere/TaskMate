@@ -80,11 +80,15 @@ const MyRequests = () => {
         return ['cancelled', 'declined', 'rejected', 'payment_released'].includes(s);
     };
 
+    const isPrivateForCustomer = (r) => String(r.request_type || r.visibility || '').toLowerCase() === 'private';
+
     const filteredRequests = activeTab === 'All'
         ? allRequests
         : activeTab === 'History'
             ? allRequests.filter(isTerminalHistory)
-            : allRequests.filter(r => !isTerminalHistory(r));
+            : activeTab === 'Private'
+                ? allRequests.filter(isPrivateForCustomer)
+                : allRequests.filter(r => !isTerminalHistory(r));
 
     return (
         <div className="flex h-screen bg-white font-sans text-gray-900">
@@ -113,7 +117,7 @@ const MyRequests = () => {
 
                         {/* Tabs — underline style */}
                         <div className="flex gap-6 border-b border-gray-100">
-                            {['All', 'Active', 'History'].map((tab) => (
+                            {['All', 'Private', 'Active', 'History'].map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
