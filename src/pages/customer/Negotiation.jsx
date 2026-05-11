@@ -313,7 +313,7 @@ const Negotiation = () => {
                             <div className="lg:col-span-2">
                                 <div className="bg-white shadow-sm rounded-3xl overflow-hidden border border-gray-100">
                                     {/* Messages */}
-                                    <div className="h-96 overflow-y-auto p-6 space-y-4">
+                                    <div className="h-[50vh] min-h-[300px] max-h-[440px] overflow-y-auto p-4 sm:p-6 space-y-4">
                                         <AnimatePresence>
                                             {messages.map((msg) => (
                                                 <motion.div
@@ -322,7 +322,7 @@ const Negotiation = () => {
                                                     animate={{ opacity: 1, y: 0 }}
                                                     className={`flex ${msg.sender === (isCustomer ? 'customer' : 'provider') ? 'justify-end' : 'justify-start'}`}
                                                 >
-                                                    <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                                                    <div className={`max-w-[85%] sm:max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
                                                         msg.sender === (isCustomer ? 'customer' : 'provider')
                                                             ? 'bg-[#10B981] text-white'
                                                             : 'bg-gray-100 text-gray-900'
@@ -339,10 +339,10 @@ const Negotiation = () => {
                                     </div>
 
                                     {/* Message Input */}
-                                    <div className="p-6 border-t border-gray-100">
+                                    <div className="p-4 sm:p-6 border-t border-gray-100">
                                         <div className="space-y-4">
                                             {/* Budget Proposal */}
-                                            <div className="flex gap-3">
+                                            <div className="flex flex-col sm:flex-row gap-3">
                                                 <div className="flex-1 relative">
                                                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
                                                         <span className="text-gray-500 font-bold sm:text-sm">₦</span>
@@ -357,14 +357,14 @@ const Negotiation = () => {
                                                 </div>
                                                 <button
                                                     onClick={proposeBudget}
-                                                    className="px-6 py-3 bg-[#10B981] hover:bg-[#059669] text-white text-sm font-bold rounded-xl transition-all"
+                                                    className="w-full sm:w-auto px-6 py-3 bg-[#10B981] hover:bg-[#059669] text-white text-sm font-bold rounded-xl transition-all"
                                                 >
                                                     Propose
                                                 </button>
                                             </div>
 
                                             {/* Text Message */}
-                                            <div className="flex gap-3">
+                                            <div className="flex flex-col sm:flex-row gap-3">
                                                 <input
                                                     type="text"
                                                     value={newMessage}
@@ -375,7 +375,7 @@ const Negotiation = () => {
                                                 />
                                                 <button
                                                     onClick={sendMessage}
-                                                    className="px-6 py-3 bg-gray-900 hover:bg-gray-700 text-white text-sm font-bold rounded-xl transition-all"
+                                                    className="w-full sm:w-auto px-6 py-3 bg-gray-900 hover:bg-gray-700 text-white text-sm font-bold rounded-xl transition-all"
                                                 >
                                                     Send
                                                 </button>
