@@ -208,8 +208,8 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        {/* Right Sidebar - Recommended */}
-                        <div className="w-full xl:w-[350px] shrink-0">
+                        {/* Right Sidebar - Recommended (Hidden on Mobile) */}
+                        <div className="hidden xl:block w-full xl:w-[350px] shrink-0">
                             {/* Need a Pro Card */}
                             <div className="bg-[#0F172A] rounded-2xl sm:rounded-3xl p-6 sm:p-8 mb-6 sm:mb-8 shadow-lg relative overflow-hidden group">
                                 <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all"></div>

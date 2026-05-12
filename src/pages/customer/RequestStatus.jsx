@@ -403,16 +403,16 @@ const RequestStatus = () => {
                             )}
 
                             {/* Job flow shortcuts — start code & completion */}
-                            {(normalizedStatus === 'payment_secured' || normalizedStatus === 'in_progress' || normalizedStatus === 'completed') && (
+                            {(normalizedStatus === 'payment_secured' || normalizedStatus === 'completed') && (
                                 <div className="mt-5 flex flex-wrap items-center gap-2 p-4 rounded-2xl bg-gray-50 border border-gray-100">
                                     <span className="text-xs font-semibold text-gray-500 mr-1">Quick actions:</span>
-                                    {(normalizedStatus === 'payment_secured' || normalizedStatus === 'in_progress') && (
+                                    {normalizedStatus === 'payment_secured' && (
                                         <Link
                                             to={`/customer/job-otp/${id}`}
                                             className="inline-flex items-center gap-1.5 text-xs font-bold text-[#10B981] bg-white border border-[#10B981]/30 px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors"
                                         >
                                             <span className="material-icons-outlined text-[14px]">vpn_key</span>
-                                            {normalizedStatus === 'payment_secured' ? 'Job start code' : 'View / renew job code'}
+                                            Job start code
                                         </Link>
                                     )}
                                     {normalizedStatus === 'completed' && (
