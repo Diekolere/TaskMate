@@ -196,7 +196,7 @@ export default function KYCModal({ open, onClose, onComplete }) {
         }
         setSubmitting(true);
         setTimeout(async () => {
-            await updateUserProfile({ kycCompleted: true, bvnVerified: true, bankName, accountNumber, accountName });
+            await updateUserProfile({ kycCompleted: true, bvnVerified: true, bankName, accountNumber, accountName, verification_status: 'verified', isVerified: true });
             setSubmitting(false);
             toast.success('Identity verified successfully!');
             onComplete?.();

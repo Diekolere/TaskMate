@@ -20,7 +20,7 @@ const ProviderDashboard = () => {
     const { currentUser } = useAuth();
     const { jobs } = useData();
 
-    const isVerified = currentUser?.isVerified || currentUser?.is_verified || false;
+    const isVerified = currentUser?.kycCompleted === true;
     const kycCompleted = currentUser?.kycCompleted === true;
     const [kycOpen, setKycOpen] = useState(false);
 
@@ -65,7 +65,7 @@ const ProviderDashboard = () => {
                     <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-6">
 
                         {/* Account Review Banner */}
-                        {!isVerified && (
+                        {false && (
                             <motion.div
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
