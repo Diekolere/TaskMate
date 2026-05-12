@@ -39,6 +39,19 @@ const Login = () => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    try {
+      await loginWithGoogle(selectedRole);
+      // OAuth redirect handles navigation
+    } catch (err) {
+      toast.error('Google sign in failed');
+      console.error(err);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   // Redirect already-authenticated users away from the login page
   if (currentUser) {
     if (currentUser.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
