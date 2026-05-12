@@ -154,7 +154,7 @@ export default function JobDetails() {
                                             {cfg.label}
                                         </span>
                                     </div>
-                                    <p className="text-xs text-gray-400 mt-0.5">
+                                    <p className="text-xs text-gray-400 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
                                         {job.category || 'Service'} · {location}
                                     </p>
                                 </div>

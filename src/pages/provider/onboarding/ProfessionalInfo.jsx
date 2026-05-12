@@ -94,7 +94,7 @@ const ProfessionalInfo = () => {
                 {formData.profileImage && (
                   <button 
                     type="button"
-                    onClick={() => setFormData({...formData, profileImage: null})}
+                    onClick={() => updateFiles({ profileImage: null })}
                     className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md border border-gray-100 text-red-500 hover:text-red-600"
                   >
                     <span className="material-symbols-outlined text-sm">delete</span>
