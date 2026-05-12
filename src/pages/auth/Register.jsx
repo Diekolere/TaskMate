@@ -7,7 +7,8 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -284,20 +285,20 @@ const Register = () => {
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="mt-5">
               <button
                 type="button"
-                className="w-full inline-flex justify-center items-center gap-2 py-2.5 px-4 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                onClick={async () => {
+                  setGoogleLoading(true);
+                  try { await loginWithGoogle(formData.userType); }
+                  catch (err) { toast.error('Google sign up failed'); console.error(err); }
+                  finally { setGoogleLoading(false); }
+                }}
+                disabled={googleLoading}
+                className="w-full inline-flex justify-center items-center gap-2 py-3 px-4 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60"
               >
-                <img className="h-4 w-4" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" />
-                Google
-              </button>
-              <button
-                type="button"
-                className="w-full inline-flex justify-center items-center gap-2 py-2.5 px-4 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <img className="h-4 w-4" src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="" />
-                Facebook
+                <img className="h-5 w-5" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" />
+                {googleLoading ? 'Connecting...' : 'Sign up with Google'}
               </button>
             </div>
           </div>

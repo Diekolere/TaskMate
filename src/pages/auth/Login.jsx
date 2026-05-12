@@ -11,8 +11,9 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login, currentUser } = useAuth();
+  const { login, loginWithGoogle, currentUser } = useAuth();
   const navigate = useNavigate();
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,6 +34,7 @@ const Login = () => {
       setError('Failed to sign in. Please check your credentials.');
       console.error(err);
       toast.error('Sign in failed');
+    } finally {
       setLoading(false);
     }
   };
@@ -224,20 +226,15 @@ const Login = () => {
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="mt-5">
               <button
                 type="button"
-                className="w-full inline-flex justify-center items-center gap-2 py-2.5 px-4 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                onClick={handleGoogleLogin}
+                disabled={googleLoading}
+                className="w-full inline-flex justify-center items-center gap-2 py-3 px-4 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60"
               >
-                <img className="h-4 w-4" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" />
-                Google
-              </button>
-              <button
-                type="button"
-                className="w-full inline-flex justify-center items-center gap-2 py-2.5 px-4 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <img className="h-4 w-4" src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="" />
-                Facebook
+                <img className="h-5 w-5" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" />
+                {googleLoading ? 'Connecting...' : 'Continue with Google'}
               </button>
             </div>
           </div>
