@@ -1,4 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
+import { supabase, IS_SIMULATED, uploadFile, generateFilePath } from '../lib/supabase';
+import { toast } from 'sonner';
 
 const ProviderOnboardingContext = createContext();
 
@@ -7,19 +10,18 @@ export function useProviderOnboarding() {
 }
 
 export function ProviderOnboardingProvider({ children }) {
+  const { currentUser, updateProviderProfile } = useAuth();
+
   const [onboardingData, setOnboardingData] = useState(() => {
     const savedData = localStorage.getItem('providerOnboardingData');
     return savedData ? JSON.parse(savedData) : {
-      // Step 1: Professional Info
       businessName: '',
       category: '',
       phoneNumber: '',
       description: '',
       address: '',
       website: '',
-      yearsOfExperience: '', // Moved profileImage to files state
-
-      // Step 2: Service Details
+      yearsOfExperience: '',
       radius: 10,
       hourlyRate: '',
       minServiceFee: '',
@@ -38,7 +40,6 @@ export function ProviderOnboardingProvider({ children }) {
     };
   });
 
-  // We need separate state for files since they can't be in localStorage
   const [files, setFiles] = useState({
     profileImage: null,
     idFront: null,
@@ -57,8 +58,69 @@ export function ProviderOnboardingProvider({ children }) {
     setFiles(prev => ({ ...prev, ...newFiles }));
   };
 
+  /** Submit the full onboarding data to Supabase */
+  const submitOnboarding = async () => {
+    if (!currentUser) return;
+
+    if (IS_SIMULATED) {
+      toast.success('Onboarding submitted (simulated)');
+      localStorage.removeItem('providerOnboardingData');
+      return;
+    }
+
+    try {
+      toast.loading('Submitting onboarding...', { id: 'onboard' });
+
+      // Upload profile image if provided
+      let avatarUrl = null;
+      if (files.profileImage) {
+        const path = generateFilePath(currentUser.id, files.profileImage.name);
+        avatarUrl = await uploadFile('avatars', path, files.profileImage);
+      }
+
+      // Update profiles table
+      const profileUpdate = {
+        phone_number: onboardingData.phoneNumber,
+        location_name: onboardingData.address,
+      };
+      if (avatarUrl) profileUpdate.avatar_url = avatarUrl;
+
+      await supabase.from('profiles').update(profileUpdate).eq('id', currentUser.id);
+
+      // Update provider_profiles
+      const categories = onboardingData.category
+        ? [onboardingData.category.toLowerCase()]
+        : [];
+
+      await supabase.from('provider_profiles').update({
+        business_name: onboardingData.businessName,
+        bio: onboardingData.description,
+        trade_category: categories,
+        years_experience: parseInt(onboardingData.yearsOfExperience) || 0,
+        hourly_rate_min: parseFloat(onboardingData.hourlyRate) || null,
+        min_service_fee: parseFloat(onboardingData.minServiceFee) || null,
+        emergency_fee: parseFloat(onboardingData.emergencyFee) || null,
+        is_negotiable: onboardingData.isNegotiable,
+        service_radius_km: onboardingData.radius,
+        website: onboardingData.website,
+        address: onboardingData.address,
+        coordinates: { lat: onboardingData.location[0], lng: onboardingData.location[1] },
+        availability: onboardingData.availability,
+      }).eq('id', currentUser.id);
+
+      localStorage.removeItem('providerOnboardingData');
+      toast.dismiss('onboard');
+      toast.success('Onboarding complete!');
+    } catch (error) {
+      toast.dismiss('onboard');
+      console.error('Onboarding submit error:', error);
+      toast.error('Failed to submit onboarding');
+      throw error;
+    }
+  };
+
   return (
-    <ProviderOnboardingContext.Provider value={{ onboardingData, updateData, files, updateFiles }}>
+    <ProviderOnboardingContext.Provider value={{ onboardingData, updateData, files, updateFiles, submitOnboarding }}>
       {children}
     </ProviderOnboardingContext.Provider>
   );
