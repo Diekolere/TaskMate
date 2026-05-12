@@ -450,21 +450,21 @@ const RequestDetails = () => {
 
                         {/* ── Header ── */}
                         <div className="mb-10 pb-8 border-b border-gray-100">
-                            {/* Category · date · location */}
-                            <div className="flex items-center gap-2 mb-3">
-                                {request.category && <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{request.category}</span>}
-                                <span className="text-gray-200">·</span>
-                                <span className="text-xs text-gray-400">{dateStr}</span>
+                            {/* Category + date + location row — wraps as single unit */}
+                            <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                                {request.category && <span className="text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">{request.category}</span>}
+                                {(request.category || dateStr || request.location || request.location_name) && <span className="text-gray-200">·</span>}
+                                <span className="text-xs text-gray-400 whitespace-nowrap">{dateStr}</span>
                                 {(request.location || request.location_name) && (
                                     <>
-                                        <span className="text-gray-200">·</span>
-                                        <span className="flex items-center gap-0.5 text-xs text-gray-400">
+                                        <span className="text-gray-200 hidden sm:inline">·</span>
+                                        <span className="flex items-center gap-0.5 text-xs text-gray-400 w-full sm:w-auto sm:flex-wrap">
                                             <span className="material-icons-outlined text-sm leading-none">location_on</span>
-                                            {request.location || request.location_name}
+                                            <span className="truncate">{request.location || request.location_name}</span>
                                         </span>
                                     </>
                                 )}
-                                    </div>
+                            </div>
                                     
                             {/* Title + status badge inline */}
                             <div className="flex items-start gap-3 flex-wrap mb-4">
@@ -496,10 +496,10 @@ const RequestDetails = () => {
                                 const range = getPriceRange(request.category);
                                 const label = getSmartPriceLabel(request.title, request.description, request.category);
                                 return (
-                                    <div className="mt-4 inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl px-3.5 py-2">
+                                    <div className="mt-4 inline-flex flex-wrap items-center gap-1.5 sm:gap-2 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl px-3.5 py-2">
                                         <span className="material-icons-outlined text-[16px]">auto_graph</span>
-                                        <span className="text-[12px] font-bold">Market rate for described job:</span>
-                                        <span className="text-[12px] font-semibold">₦{range.min.toLocaleString()} – ₦{range.max.toLocaleString()}</span>
+                                        <span className="text-[12px] font-bold whitespace-nowrap">Market rate:</span>
+                                        <span className="text-[12px] font-semibold whitespace-nowrap">₦{range.min.toLocaleString()} – ₦{range.max.toLocaleString()}</span>
                                     </div>
                                 );
                             })()}

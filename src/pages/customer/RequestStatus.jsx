@@ -327,6 +327,7 @@ const RequestStatus = () => {
 
     const normalizedStatus = String(request.status || '').toLowerCase();
     const releaseEnabled = normalizedStatus === 'completed';
+    const isPrivateRequest = String(request.request_type || request.visibility || '').toLowerCase() === 'private';
 
     const STATUS_LABEL = { open: 'Open', interested: 'Providers Interested', negotiating: 'Negotiating', awaiting_payment: 'Awaiting Payment', payment_secured: 'Payment Secured', in_progress: 'In Progress', payment_released: 'Payment Released', completed: 'Completed' };
     const STATUS_COLOR = { open: 'bg-blue-50 text-blue-700 border-blue-100', interested: 'bg-amber-50 text-amber-700 border-amber-100', negotiating: 'bg-purple-50 text-purple-700 border-purple-100', awaiting_payment: 'bg-orange-50 text-orange-700 border-orange-100', payment_secured: 'bg-green-50 text-green-700 border-green-100', in_progress: 'bg-blue-50 text-blue-700 border-blue-100', completed: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
@@ -351,23 +352,23 @@ const RequestStatus = () => {
 
                         {/* Page header */}
                         <div className="mb-10 pb-8 border-b border-gray-100">
-                            {/* Category + date row */}
-                            <div className="flex items-center gap-2 mb-3">
+                            {/* Category + date + location row — wraps as single unit */}
+                            <div className="flex flex-wrap items-center gap-1.5 mb-3">
                                 {request.category && (
-                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{request.category}</span>
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">{request.category}</span>
                                 )}
-                                <span className="text-gray-200">·</span>
-                                <span className="text-xs text-gray-400">{dateStr}</span>
+                                {(request.category || dateStr || request.location) && <span className="text-gray-200">·</span>}
+                                <span className="text-xs text-gray-400 whitespace-nowrap">{dateStr}</span>
                                 {request.location && (
                                     <>
-                                        <span className="text-gray-200">·</span>
-                                        <span className="flex items-center gap-0.5 text-xs text-gray-400">
+                                        <span className="text-gray-200 hidden sm:inline">·</span>
+                                        <span className="flex items-center gap-0.5 text-xs text-gray-400 w-full sm:w-auto sm:flex-wrap">
                                             <span className="material-icons-outlined text-sm leading-none">location_on</span>
-                                            {request.location}
+                                            <span className="truncate">{request.location}</span>
                                         </span>
                                     </>
                                 )}
-                                </div>
+                            </div>
 
                             {/* Title + status inline */}
                             <div className="flex items-start gap-3 flex-wrap mb-4">
@@ -435,36 +436,107 @@ const RequestStatus = () => {
                                 const range = getPriceRange(request.category);
                                 const label = getSmartPriceLabel(request.title, request.description, request.category);
                                 return (
-                                    <div className="mt-4 inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl px-3.5 py-2">
+                                    <div className="mt-4 inline-flex flex-wrap items-center gap-1.5 sm:gap-2 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl px-3.5 py-2">
                                         <span className="material-icons-outlined text-[16px]">auto_graph</span>
-                                        <span className="text-[12px] font-bold">Market rate for described job:</span>
-                                        <span className="text-[12px] font-semibold">₦{range.min.toLocaleString()} – ₦{range.max.toLocaleString()}</span>
+                                        <span className="text-[12px] font-bold whitespace-nowrap">Market rate:</span>
+                                        <span className="text-[12px] font-semibold whitespace-nowrap">₦{range.min.toLocaleString()} – ₦{range.max.toLocaleString()}</span>
                                     </div>
                                 );
                             })()}
                             </div>
 
-                        {/* Interested providers — hidden once payment is secured (job is booked) */}
+                        {/* Interested providers OR Private chat — hidden once payment is secured (job is booked) */}
                         {normalizedStatus !== 'payment_secured' && (
                             <>
                         {/* Section label */}
                         <div className="mb-6">
                             <h2 className="text-[15px] font-bold text-gray-900 mb-0.5">
-                                {finalizedDeal
-                                    ? 'Deal agreed'
-                                    : interestedProviders.length > 0
-                                        ? `${interestedProviders.length} provider${interestedProviders.length !== 1 ? 's' : ''} interested`
-                                        : 'Interested Providers'}
+                                {isPrivateRequest
+                                    ? 'Message with Provider'
+                                    : finalizedDeal
+                                        ? 'Deal agreed'
+                                        : interestedProviders.length > 0
+                                            ? `${interestedProviders.length} provider${interestedProviders.length !== 1 ? 's' : ''} interested`
+                                            : 'Interested Providers'}
                             </h2>
                             <p className="text-xs text-gray-400">
-                                {finalizedDeal
-                                    ? `Finalised with ${finalizedDeal.provider.full_name} at ₦${Number(finalizedDeal.price).toLocaleString()} — proceed to payment above`
-                                    : 'Tap Negotiate to chat and agree on a price'}
+                                {isPrivateRequest
+                                    ? 'Chat with the provider you selected to discuss details and agree on a price'
+                                    : finalizedDeal
+                                        ? `Finalised with ${finalizedDeal.provider.full_name} at ₦${Number(finalizedDeal.price).toLocaleString()} — proceed to payment above`
+                                        : 'Tap Negotiate to chat and agree on a price'}
                             </p>
                         </div>
 
-                        {/* Provider list — no card, just dividers */}
-                        {interestedProviders.length === 0 ? (
+                        {/* Provider list OR Private chat message — no card, just dividers */}
+                        {isPrivateRequest ? (
+                            // PRIVATE REQUEST: Show chat interface
+                            <div>
+                                {/* Single provider for private request */}
+                                {interestedProviders[0] && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="flex items-center gap-4 py-5"
+                                    >
+                                        {/* Avatar */}
+                                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
+                                            {interestedProviders[0].avatar_url
+                                                ? <img src={interestedProviders[0].avatar_url} alt={interestedProviders[0].full_name} className="w-full h-full object-cover" />
+                                                : <span className="material-icons text-gray-400 text-xl">person</span>}
+                                        </div>
+
+                                        {/* Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                                <span className="font-bold text-gray-900 text-[15px] truncate">
+                                                    {interestedProviders[0].full_name || interestedProviders[0].displayName}
+                                                </span>
+                                                {interestedProviders[0].verified && (
+                                                    <span className="material-icons text-[#10B981] text-sm shrink-0">verified</span>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-400 w-full">
+                                                <span className="whitespace-nowrap">{interestedProviders[0].category || 'Service Provider'}</span>
+                                                {interestedProviders[0].location && (
+                                                    <>
+                                                        <span className="hidden sm:inline text-gray-200">·</span>
+                                                        <span className="w-full sm:w-auto sm:flex-wrap flex items-center gap-0.5">
+                                                            <span className="material-icons-outlined text-sm leading-none">location_on</span>
+                                                            <span className="truncate">{interestedProviders[0].location}</span>
+                                                        </span>
+                                                    </>
+                                                )}
+                                                {(interestedProviders[0].provider_profiles?.average_rating || interestedProviders[0].rating) && (
+                                                    <span className="flex items-center gap-0.5">
+                                                        <span className="material-icons text-yellow-400 text-xs">star</span>
+                                                        <span className="font-semibold text-gray-500 whitespace-nowrap">
+                                                            {(interestedProviders[0].provider_profiles?.average_rating || interestedProviders[0].rating)?.toFixed(1)}
+                                                        </span>
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Action */}
+                                        {finalizedDeal?.provider?.id === interestedProviders[0].id ? (
+                                            <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#10B981]/10 text-[#10B981] text-xs font-bold border border-[#10B981]/20">
+                                                <span className="material-icons text-sm">check_circle</span>
+                                                <span className="hidden sm:inline">Agreed</span>
+                                            </span>
+                                        ) : (
+                                            <button
+                                                onClick={() => !finalizedDeal && setNegotiatingWith(interestedProviders[0])}
+                                                disabled={!!finalizedDeal}
+                                                className="shrink-0 h-9 px-4 rounded-xl bg-[#0F172A] hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors flex items-center gap-1.5">
+                                                <span className="material-icons text-base">chat</span>
+                                                <span className="hidden sm:inline">Message</span>
+                                            </button>
+                                        )}
+                                    </motion.div>
+                                )}
+                            </div>
+                        ) : interestedProviders.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center">
                                 <div className="w-12 h-12 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
                                     <span className="material-icons-outlined text-2xl text-gray-300">people</span>
