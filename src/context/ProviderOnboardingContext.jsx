@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { supabase, IS_SIMULATED, uploadFile, generateFilePath } from '../lib/supabase';
+import { supabase, uploadFile, generateFilePath } from '../lib/supabase';
 import { toast } from 'sonner';
 
 const ProviderOnboardingContext = createContext();
@@ -61,12 +61,6 @@ export function ProviderOnboardingProvider({ children }) {
   /** Submit the full onboarding data to Supabase */
   const submitOnboarding = async () => {
     if (!currentUser) return;
-
-    if (IS_SIMULATED) {
-      toast.success('Onboarding submitted (simulated)');
-      localStorage.removeItem('providerOnboardingData');
-      return;
-    }
 
     try {
       toast.loading('Submitting onboarding...', { id: 'onboard' });

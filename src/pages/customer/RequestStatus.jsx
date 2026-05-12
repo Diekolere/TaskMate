@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
-import { MOCK_PROVIDERS } from '../../lib/mocks';
+
 import { getPriceRange, getFairnessLabel, getMatchScore, getSmartPriceLabel } from '../../lib/aiData';
 
 /* ── Naira SVG icon ─────────────────────────────────────── */
