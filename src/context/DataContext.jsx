@@ -1,8 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { supabase, IS_SIMULATED, uploadFile, generateFilePath } from '../lib/supabase';
+import { supabase, uploadFile, generateFilePath } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
-import { MOCK_JOBS, MOCK_PROVIDERS } from '../lib/mocks';
 
 const DataContext = createContext({
     requests: [],
@@ -80,12 +79,6 @@ export function DataProvider({ children }) {
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'customer') return;
 
-    if (IS_SIMULATED) {
-      setRequests(MOCK_JOBS.map(shimJob));
-      setLoading(false);
-      return;
-    }
-
     const fetchJobs = async () => {
       const { data, error } = await supabase
         .from('jobs')
@@ -124,12 +117,6 @@ export function DataProvider({ children }) {
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'provider') return;
 
-    if (IS_SIMULATED) {
-      setJobs(MOCK_JOBS.map(shimJob));
-      setLoading(false);
-      return;
-    }
-
     const fetchProviderJobs = async () => {
       const { data, error } = await supabase
         .from('jobs')
@@ -156,7 +143,7 @@ export function DataProvider({ children }) {
 
   // ── Notifications (Realtime) ────────────────────────────
   useEffect(() => {
-    if (!currentUser || IS_SIMULATED) return;
+    if (!currentUser) return;
 
     const fetchNotifs = async () => {
       const { data } = await supabase
@@ -186,7 +173,7 @@ export function DataProvider({ children }) {
 
   // ── Earnings (Provider) ─────────────────────────────────
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'provider' || IS_SIMULATED) return;
+    if (!currentUser || currentUser.role !== 'provider') return;
 
     const fetch = async () => {
       const { data } = await supabase
@@ -203,20 +190,6 @@ export function DataProvider({ children }) {
   // ── Admin Data ──────────────────────────────────────────
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'admin') return;
-
-    if (IS_SIMULATED) {
-      setVerifications([
-        { id: 'v1', provider_name: 'John Electrician', email: 'john@example.com', status: 'pending', submitted_at: new Date(Date.now() - 86400000).toISOString() },
-        { id: 'v2', provider_name: 'Sarah Plumber', email: 'sarah@example.com', status: 'pending', submitted_at: new Date(Date.now() - 172800000).toISOString() }
-      ]);
-      setUsers([
-        { id: 'u1', full_name: 'John Electrician', email: 'john@example.com', role: 'provider', is_active: true },
-        { id: 'u2', full_name: 'Sarah Plumber', email: 'sarah@example.com', role: 'provider', is_active: true },
-        { id: 'u3', full_name: 'Mike Customer', email: 'mike@example.com', role: 'customer', is_active: true }
-      ]);
-      setLoading(false);
-      return;
-    }
 
     const fetchAdminData = async () => {
       const [verRes, userRes, jobRes] = await Promise.all([
@@ -237,20 +210,6 @@ export function DataProvider({ children }) {
 
   const createRequest = async (requestData) => {
     if (!currentUser) return;
-
-    if (IS_SIMULATED) {
-      const rType = requestData.request_type || (requestData.providerId ? 'private' : 'public');
-      const newJob = shimJob({
-        ...requestData, id: `job-${Math.random()}`,
-        customer_id: currentUser.id, worker_id: requestData.providerId || null,
-        request_type: rType, visibility: rType,
-        created_at: new Date().toISOString(), status: normalizeStatus(requestData.status || 'open'),
-        timeline: requestData.timeline || []
-      });
-      setRequests(prev => [newJob, ...prev]);
-      toast.success('Job request created (Simulated)');
-      return newJob.id;
-    }
 
     try {
       // Upload images if any
@@ -301,17 +260,6 @@ export function DataProvider({ children }) {
   const updateJobStatus = async (jobId, newStatus, additionalData = {}) => {
     if (!currentUser) return;
 
-    if (IS_SIMULATED) {
-      setRequests(prev => prev.map(j =>
-        j.id === jobId ? { ...j, status: normalizeStatus(newStatus), ...additionalData } : j
-      ));
-      setJobs(prev => prev.map(j =>
-        j.id === jobId ? { ...j, status: normalizeStatus(newStatus), ...additionalData } : j
-      ));
-      toast.success(`Status updated to ${normalizeStatus(newStatus)}`);
-      return;
-    }
-
     try {
       const updateData = { status: normalizeStatus(newStatus), ...additionalData };
       const { error } = await supabase.from('jobs').update(updateData).eq('id', jobId);
@@ -357,17 +305,6 @@ export function DataProvider({ children }) {
   // ── Providers ───────────────────────────────────────────
 
   const getProviders = useCallback(async (category = null) => {
-    if (IS_SIMULATED) {
-      let filtered = MOCK_PROVIDERS.map(p => ({
-        ...p, ...p.provider_profiles,
-        uid: p.id, displayName: p.full_name, photoURL: p.avatar_url, isVerified: true
-      }));
-      if (category && category !== 'All') {
-        filtered = filtered.filter(p => p.trade_category?.includes(category.toLowerCase()));
-      }
-      return filtered;
-    }
-
     try {
       let query = supabase
         .from('profiles')
@@ -407,8 +344,6 @@ export function DataProvider({ children }) {
       toast.success('Provider saved!');
     }
 
-    if (IS_SIMULATED) { setSavedProviderIds(newSavedIds); return; }
-
     const { error } = await supabase
       .from('customer_profiles')
       .update({ saved_workers: newSavedIds })
@@ -422,11 +357,6 @@ export function DataProvider({ children }) {
 
   const submitReview = async (jobId, providerId, rating, comment, tags = []) => {
     if (!currentUser) return;
-
-    if (IS_SIMULATED) {
-      toast.success('Review submitted (simulated)');
-      return;
-    }
 
     try {
       const { error } = await supabase.from('reviews').insert([{
@@ -445,19 +375,11 @@ export function DataProvider({ children }) {
   // ── Notifications ───────────────────────────────────────
 
   const markNotificationRead = async (notifId) => {
-    if (IS_SIMULATED) {
-      setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n));
-      return;
-    }
     await supabase.from('notifications').update({ is_read: true }).eq('id', notifId);
     setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n));
   };
 
   const markAllNotificationsRead = async () => {
-    if (IS_SIMULATED) {
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      return;
-    }
     await supabase.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id).eq('is_read', false);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
@@ -512,13 +434,6 @@ export function DataProvider({ children }) {
   // ── Support Tickets ─────────────────────────────────────
 
   const createSupportTicket = async (subject, message, category = 'general') => {
-    if (!currentUser) return;
-
-    if (IS_SIMULATED) {
-      toast.success('Ticket submitted (simulated)');
-      return;
-    }
-
     try {
       const { error } = await supabase.from('support_tickets').insert([{
         user_id: currentUser.id, subject, message, category
@@ -534,13 +449,6 @@ export function DataProvider({ children }) {
   // ── Verifications (KYC) ─────────────────────────────────
 
   const submitVerification = async (verificationData) => {
-    if (!currentUser) return;
-
-    if (IS_SIMULATED) {
-      toast.success('Verification submitted (simulated)');
-      return;
-    }
-
     try {
       let urls = {};
       for (const [key, file] of Object.entries(verificationData.files || {})) {
@@ -577,11 +485,6 @@ export function DataProvider({ children }) {
   // ── Admin Actions ───────────────────────────────────────
 
   const updateVerificationStatus = async (verificationId, status, notes = '') => {
-    if (IS_SIMULATED) {
-      setVerifications(prev => prev.map(v => v.id === verificationId ? { ...v, status } : v));
-      toast.success(`Verification ${status}`);
-      return;
-    }
 
     const { error } = await supabase.from('verifications')
       .update({ status, admin_notes: notes, reviewed_by: currentUser.id, reviewed_at: new Date().toISOString() })
@@ -593,11 +496,6 @@ export function DataProvider({ children }) {
   };
 
   const updateUserStatus = async (userId, isActive) => {
-    if (IS_SIMULATED) {
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: isActive } : u));
-      toast.success(`User ${isActive ? 'activated' : 'suspended'}`);
-      return;
-    }
 
     const { error } = await supabase.from('profiles')
       .update({ is_active: isActive, status: isActive ? 'Active' : 'Suspended' })
@@ -616,8 +514,7 @@ export function DataProvider({ children }) {
     releasePayment, getProviders, savedProviderIds, toggleSavedProvider,
     submitReview, markNotificationRead, markAllNotificationsRead,
     createServicePost, getServicePosts, createSupportTicket,
-    submitVerification, updateVerificationStatus, updateUserStatus,
-    isSimulated: IS_SIMULATED
+    submitVerification, updateVerificationStatus, updateUserStatus
   };
 
   return (

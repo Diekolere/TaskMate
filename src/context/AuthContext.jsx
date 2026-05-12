@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase, IS_SIMULATED } from '../lib/supabase';
-import { MOCK_USER_CUSTOMER, MOCK_USER_PROVIDER } from '../lib/mocks';
+import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 
 const AuthContext = createContext();
@@ -15,29 +14,6 @@ export function AuthProvider({ children }) {
 
   // ── Session bootstrap ───────────────────────────────────
   useEffect(() => {
-    if (IS_SIMULATED || !supabase) {
-      console.log('🚀 TaskMate running in Simulation Mode');
-      const savedUser = localStorage.getItem('taskmate_mock_user');
-      const currentUserData = savedUser ? JSON.parse(savedUser) : null;
-
-      if (window.location.pathname.startsWith('/provider') && currentUserData?.role !== 'provider') {
-        setCurrentUser(MOCK_USER_PROVIDER);
-        localStorage.setItem('taskmate_mock_user', JSON.stringify(MOCK_USER_PROVIDER));
-      } else if (window.location.pathname.startsWith('/admin') && currentUserData?.role !== 'admin') {
-        const adminUser = { ...MOCK_USER_CUSTOMER, role: 'admin', email: 'admin@taskmate.com', full_name: 'Admin User', displayName: 'Admin User' };
-        setCurrentUser(adminUser);
-        localStorage.setItem('taskmate_mock_user', JSON.stringify(adminUser));
-      } else if (savedUser) {
-        setCurrentUser(currentUserData);
-      } else {
-        setCurrentUser(MOCK_USER_CUSTOMER);
-        localStorage.setItem('taskmate_mock_user', JSON.stringify(MOCK_USER_CUSTOMER));
-      }
-
-      setLoading(false);
-      return;
-    }
-
     // Real Supabase session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -72,9 +48,9 @@ export function AuthProvider({ children }) {
           customer_profiles (*)
         `)
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Profile fetch error:', error);
         throw error;
       }
@@ -127,12 +103,6 @@ export function AuthProvider({ children }) {
 
   // ── Email/Password Login ────────────────────────────────
   const login = async (email, password, role) => {
-    if (IS_SIMULATED) {
-      const user = role === 'provider' ? MOCK_USER_PROVIDER : MOCK_USER_CUSTOMER;
-      setCurrentUser(user);
-      localStorage.setItem('taskmate_mock_user', JSON.stringify(user));
-      return user;
-    }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
@@ -143,14 +113,6 @@ export function AuthProvider({ children }) {
 
   // ── Google OAuth ────────────────────────────────────────
   const loginWithGoogle = async (role = 'customer') => {
-    if (IS_SIMULATED) {
-      const user = role === 'provider' ? MOCK_USER_PROVIDER : MOCK_USER_CUSTOMER;
-      setCurrentUser(user);
-      localStorage.setItem('taskmate_mock_user', JSON.stringify(user));
-      toast.success('Signed in with Google (simulated)');
-      return user;
-    }
-
     const redirectTo = `${window.location.origin}/customer/dashboard`;
     
     const { error } = await supabase.auth.signInWithOAuth({
@@ -173,12 +135,6 @@ export function AuthProvider({ children }) {
 
   // ── Logout ──────────────────────────────────────────────
   const logout = async () => {
-    if (IS_SIMULATED) {
-      setCurrentUser(null);
-      localStorage.removeItem('taskmate_mock_user');
-      toast.success('Signed out');
-      return;
-    }
 
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
@@ -187,12 +143,6 @@ export function AuthProvider({ children }) {
 
   // ── Register ────────────────────────────────────────────
   const register = async (email, password, name, role) => {
-    if (IS_SIMULATED) {
-      const user = { ...MOCK_USER_CUSTOMER, email, full_name: name, displayName: name, role };
-      setCurrentUser(user);
-      localStorage.setItem('taskmate_mock_user', JSON.stringify(user));
-      return user;
-    }
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -214,11 +164,6 @@ export function AuthProvider({ children }) {
   // ── Reset Password ─────────────────────────────────────
   const resetPassword = async (email) => {
     if (!email) throw new Error('Email is required');
-    if (IS_SIMULATED || !supabase) {
-      await new Promise(resolve => setTimeout(resolve, 400));
-      toast.success('Password reset email sent (simulated)');
-      return { simulated: true };
-    }
 
     const redirectTo = `${window.location.origin}/login`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
@@ -230,14 +175,6 @@ export function AuthProvider({ children }) {
   // ── Update Profile ─────────────────────────────────────
   const updateUserProfile = async (data) => {
     if (!currentUser) return;
-
-    if (IS_SIMULATED) {
-      const updatedUser = { ...currentUser, ...data };
-      setCurrentUser(updatedUser);
-      localStorage.setItem('taskmate_mock_user', JSON.stringify(updatedUser));
-      toast.success('Profile updated');
-      return;
-    }
 
     try {
       const { error } = await supabase
@@ -259,14 +196,6 @@ export function AuthProvider({ children }) {
   // ── Update Provider Profile ─────────────────────────────
   const updateProviderProfile = async (data) => {
     if (!currentUser) return;
-
-    if (IS_SIMULATED) {
-      const updatedUser = { ...currentUser, provider_profiles: { ...currentUser.provider_profiles, ...data } };
-      setCurrentUser(updatedUser);
-      localStorage.setItem('taskmate_mock_user', JSON.stringify(updatedUser));
-      toast.success('Provider profile updated');
-      return;
-    }
 
     try {
       const { error } = await supabase
@@ -290,11 +219,6 @@ export function AuthProvider({ children }) {
 
   // ── Update Password ─────────────────────────────────────
   const updatePassword = async (newPassword) => {
-    if (IS_SIMULATED) {
-      await new Promise(resolve => setTimeout(resolve, 400));
-      toast.success('Password updated (simulated)');
-      return;
-    }
 
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
@@ -311,8 +235,7 @@ export function AuthProvider({ children }) {
     resetPassword,
     updateUserProfile,
     updateProviderProfile,
-    updatePassword,
-    isSimulated: IS_SIMULATED
+    updatePassword
   };
 
   return (
