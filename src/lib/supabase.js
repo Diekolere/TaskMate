@@ -3,28 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Validate config — app falls back to simulation mode if missing
-const isValidConfig = supabaseUrl && 
-                     supabaseAnonKey && 
-                     supabaseUrl !== 'https://your-project-id.supabase.co' &&
-                     supabaseAnonKey !== 'your-anon-key';
-
-export const supabase = isValidConfig 
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
-      },
-    }) 
-  : null;
-
-export const IS_SIMULATED = !isValidConfig;
-
-if (!isValidConfig) {
-  console.log('🚀 TaskMate: No Supabase credentials. Running in Simulation Mode.');
-  console.log('   → Copy .env.example to .env and add your credentials to connect.');
+if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'https://your-project-id.supabase.co') {
+  throw new Error('Supabase credentials are missing! Please check your .env file.');
 }
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+});
 
 // ── Storage helpers ───────────────────────────────────────
 
