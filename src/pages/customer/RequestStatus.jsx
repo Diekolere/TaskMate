@@ -445,8 +445,38 @@ const RequestStatus = () => {
                             })()}
                             </div>
 
+                        {/* Live Progress Timeline */}
+                        {request.timeline && request.timeline.length > 0 && (
+                            <div className="mb-8 bg-white border border-gray-100 rounded-2xl shadow-sm p-5 md:p-6">
+                                <h2 className="text-[14px] font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <span className="material-icons-outlined text-[#10B981] text-lg">timeline</span>
+                                    Live Progress Updates
+                                </h2>
+                                <div className="relative pl-6 border-l-2 border-gray-100 space-y-6">
+                                    {request.timeline.map((event, idx) => {
+                                        const isLast = idx === request.timeline.length - 1;
+                                        return (
+                                            <div key={event.id || idx} className="relative">
+                                                <div className={`absolute -left-[31px] top-1 w-7 h-7 rounded-full flex items-center justify-center border-4 border-white ${isLast ? 'bg-[#10B981] text-white shadow-[0_0_0_3px_rgba(16,185,129,0.2)]' : 'bg-gray-100 text-gray-400'}`}>
+                                                    <span className="material-icons text-[12px]">{event.icon || 'check'}</span>
+                                                </div>
+                                                <div>
+                                                    <p className={`text-[14px] font-bold ${isLast ? 'text-[#10B981]' : 'text-gray-700'}`}>
+                                                        {event.label}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        {event.timestamp ? new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Interested providers OR Private chat — hidden once payment is secured (job is booked) */}
-                        {normalizedStatus !== 'payment_secured' && (
+                        {!['payment_secured', 'in_progress', 'completed', 'payment_released'].includes(normalizedStatus) && (
                             <>
                         {/* Section label */}
                         <div className="mb-6">

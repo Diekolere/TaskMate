@@ -54,7 +54,7 @@ export default function JobDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const { jobs, completeJob } = useData();
+    const { jobs, completeJob, updateJobStatus } = useData();
 
     const [job, setJob] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -73,9 +73,24 @@ export default function JobDetails() {
     const commission  = Math.round(agreedPrice * COMMISSION);
     const takeHome    = agreedPrice - commission;
 
-    const handleProgressUpdate = (opt) => {
+    const handleProgressUpdate = async (opt) => {
         setProgressOpen(false);
-        toast.success(`Status: ${opt.label}`, { description: 'Customer has been notified.' });
+        try {
+            const currentTimeline = job?.timeline || [];
+            const newEvent = {
+                id: Date.now().toString(),
+                label: opt.label,
+                key: opt.key,
+                timestamp: new Date().toISOString(),
+                icon: opt.icon
+            };
+            const updatedTimeline = [...currentTimeline, newEvent];
+            await updateJobStatus(id, job.status, { timeline: updatedTimeline });
+            setJob(prev => ({ ...prev, timeline: updatedTimeline }));
+            toast.success(`Status: ${opt.label}`, { description: 'Customer has been notified.' });
+        } catch (error) {
+            toast.error('Failed to update progress');
+        }
     };
 
     const handleMarkComplete = async () => {
