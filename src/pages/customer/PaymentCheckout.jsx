@@ -150,7 +150,7 @@ const PaymentCheckout = () => {
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-white text-sm">{request?.title}</p>
-                                                        <p className="text-xs text-white mt-0.5">{request?.category} · {request?.location}</p>
+                                                        <p className="text-xs text-white mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">{request?.category} · {request?.location}</p>
                                                         {(stateProvider?.full_name || request?.providerName) && (
                                                             <p className="text-xs text-white mt-1 font-semibold">
                                                                 {stateProvider?.full_name || request.providerName}
