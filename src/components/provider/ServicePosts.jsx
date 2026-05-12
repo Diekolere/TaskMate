@@ -168,7 +168,7 @@ const ServicePosts = () => {
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                     <div>
                                         <p className="text-xl font-semibold text-slate-900">{postItem.title}</p>
-                                        <p className="text-sm text-slate-500 mt-1">{postItem.category} · {postItem.location || 'Location not set'}</p>
+                                        <p className="text-sm text-slate-500 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">{postItem.category} · {postItem.location || 'Location not set'}</p>
                                     </div>
                                     <span className="inline-flex items-center rounded-full bg-[#10B981]/10 px-4 py-2 text-sm font-semibold text-[#10B981]">
                                         {postItem.createdAt}
