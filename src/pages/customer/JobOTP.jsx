@@ -78,7 +78,7 @@ const JobOTP = () => {
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
             <Sidebar />
             <div className="flex-1 flex flex-col min-w-0">
-                <TopNavbar breadcrumbs={['Customer', 'Active Job', 'Job Code']} />
+                <TopNavbar breadcrumbs={['Customer', { label: 'Active Job', path: `/customer/request/${jobId}` }, 'Job Code']} />
 
                 <main className="flex-1 overflow-y-auto bg-white pb-24 md:pb-0">
                     <div className="max-w-lg mx-auto px-4 py-12 sm:py-16 flex flex-col items-center">

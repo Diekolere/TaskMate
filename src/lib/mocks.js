@@ -96,6 +96,11 @@ export const MOCK_JOBS = [
         location_name: 'Lekki Phase 1',
         customerName: 'Diekolere Olaitan',
         urgency: 'high',
+        timeline: [
+            { id: 't1', label: 'Work started', key: 'started', icon: 'construction', timestamp: new Date(Date.now() - 3600000).toISOString() },
+            { id: 't2', label: 'Paused — sourcing parts', key: 'paused', icon: 'pause_circle', timestamp: new Date(Date.now() - 1800000).toISOString() },
+            { id: 't3', label: 'Work resumed', key: 'resumed', icon: 'play_circle', timestamp: new Date(Date.now() - 900000).toISOString() },
+        ],
         created_at: new Date(Date.now() - 86400000).toISOString(),
         updated_at: new Date().toISOString()
     },
