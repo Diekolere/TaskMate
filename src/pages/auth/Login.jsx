@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import EmailVerificationModal from '../../components/auth/EmailVerificationModal';
 
 const Login = () => {
   const [selectedRole, setSelectedRole] = useState('customer');
@@ -11,6 +12,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const { login, loginWithGoogle, currentUser } = useAuth();
   const navigate = useNavigate();
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -27,13 +29,16 @@ const Login = () => {
     try {
       await login(formData.email, formData.password, selectedRole);
       toast.success('Welcome back!');
-      // Navigate based on the role the user selected in the toggle
       if (selectedRole === 'provider') navigate('/provider/dashboard', { replace: true });
       else navigate('/dashboard', { replace: true });
     } catch (err) {
-      setError('Failed to sign in. Please check your credentials.');
+      if (err.message === 'Email not confirmed') {
+        setShowVerificationModal(true);
+      } else {
+        setError('Failed to sign in. Please check your credentials.');
+        toast.error('Sign in failed');
+      }
       console.error(err);
-      toast.error('Sign in failed');
     } finally {
       setLoading(false);
     }
@@ -257,6 +262,12 @@ const Login = () => {
           &copy; {new Date().getFullYear()} TaskMate Inc. All rights reserved.
         </div>
       </div>
+
+      <EmailVerificationModal 
+        isOpen={showVerificationModal} 
+        onClose={() => setShowVerificationModal(false)} 
+        email={formData.email} 
+      />
     </motion.div>
   );
 };

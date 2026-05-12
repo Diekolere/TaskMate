@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import EmailVerificationModal from '../../components/auth/EmailVerificationModal';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [errors, setErrors] = useState({});
 
   const validateForm = () => {
@@ -62,16 +64,12 @@ const Register = () => {
     
     try {
         await register(formData.email, formData.password, formData.fullName, formData.userType);
-        toast.success(`Welcome, ${formData.fullName}!`);
-        
-        if (formData.userType === 'customer') {
-          navigate('/customer/onboarding', { replace: true });
-        } else {
-          navigate('/provider/onboarding/step-1', { replace: true });
-        }
+        // If we reach here, registration was successful.
+        // If email confirmation is ON, the user is not automatically logged in.
+        setShowVerificationModal(true);
     } catch (error) {
         console.error("Registration failed", error);
-        let msg = "Sign up failed: " + error.message;
+        let msg = error.message || "Registration failed";
         if (error.code === 'auth/email-already-in-use') msg = "Email is already registered.";
         toast.error(msg);
     } finally {
@@ -309,6 +307,12 @@ const Register = () => {
             &copy; {new Date().getFullYear()} TaskMate Inc. All rights reserved.
         </div>
       </div>
+
+      <EmailVerificationModal 
+        isOpen={showVerificationModal} 
+        onClose={() => setShowVerificationModal(false)} 
+        email={formData.email} 
+      />
     </motion.div>
   );
 };

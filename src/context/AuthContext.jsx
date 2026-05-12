@@ -141,6 +141,15 @@ export function AuthProvider({ children }) {
     toast.success('Signed out');
   };
 
+  const resendVerification = async (email) => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+    });
+    if (error) throw error;
+    toast.success('Verification email resent!');
+  };
+
   // ── Register ────────────────────────────────────────────
   const register = async (email, password, name, role) => {
 
@@ -232,6 +241,7 @@ export function AuthProvider({ children }) {
     loginWithGoogle,
     logout,
     register,
+    resendVerification,
     resetPassword,
     updateUserProfile,
     updateProviderProfile,
