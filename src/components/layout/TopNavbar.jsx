@@ -70,6 +70,7 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
             'Dashboard': currentUser?.role === 'provider' ? '/provider/dashboard' : '/customer/dashboard',
             'Job Requests': '/provider/requests',
             'My Jobs': '/provider/jobs',
+            'Jobs': '/provider/jobs',
             'Earnings': '/provider/earnings',
             'Schedule': '/provider/schedule',
             'Profile': currentUser?.role === 'provider' ? '/provider/profile' : '/customer/profile',
@@ -87,20 +88,26 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
             <div className="h-14 sm:h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-[100] isolate">
                 {/* Breadcrumbs */}
                 <div className="flex items-center gap-1 sm:gap-2 text-[12px] sm:text-[14px] font-medium min-w-0 overflow-hidden">
-                    {breadcrumbs.map((crumb, index) => (
-                        <React.Fragment key={index}>
-                            {index === breadcrumbs.length - 1 ? (
-                                <span className="text-slate-900 font-bold truncate">{crumb}</span>
-                            ) : (
-                                <Link to={getPath(crumb)} className="text-slate-400 hover:text-[#10B981] transition-colors shrink-0">
-                                    {crumb}
-                                </Link>
-                            )}
-                            {index < breadcrumbs.length - 1 && (
-                                <span className="material-icons text-[14px] sm:text-[16px] text-slate-300 shrink-0">chevron_right</span>
-                            )}
-                        </React.Fragment>
-                    ))}
+                    {breadcrumbs.map((crumb, index) => {
+                        const isString = typeof crumb === 'string';
+                        const label = isString ? crumb : crumb.label;
+                        const path = isString ? getPath(crumb) : crumb.path;
+                        
+                        return (
+                            <React.Fragment key={index}>
+                                {index === breadcrumbs.length - 1 ? (
+                                    <span className="text-slate-900 font-bold truncate">{label}</span>
+                                ) : (
+                                    <Link to={path} className="text-slate-400 hover:text-[#10B981] transition-colors shrink-0">
+                                        {label}
+                                    </Link>
+                                )}
+                                {index < breadcrumbs.length - 1 && (
+                                    <span className="material-icons text-[14px] sm:text-[16px] text-slate-300 shrink-0">chevron_right</span>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
                 </div>
 
                 {/* Right side */}
