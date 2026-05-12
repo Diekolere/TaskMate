@@ -4,10 +4,13 @@ import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
+import { formatDistanceToNow } from 'date-fns';
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const { getAllServicePosts, getProviders } = useData();
     
     // Custom Filter States
     const [searchQuery, setSearchQuery] = useState('');
@@ -15,43 +18,33 @@ const Dashboard = () => {
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [categoryFilter, setCategoryFilter] = useState('Category');
     const [sortFilter, setSortFilter] = useState('Relevance');
+    const [posts, setPosts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [recommendedArtisans, setRecommendedArtisans] = useState([]);
 
-    // Mock Feed Data (Artisan Updates)
-    const feedPosts = [
-        {
-            id: 1,
-            artisan: { name: 'David O.', category: 'Electrical', location: 'Victoria Island, Lagos', avatar: 'https://ui-avatars.com/api/?name=David+O&background=random' },
-            time: '2 hours ago',
-            content: 'Just completed a full smart-home rewiring project. Installed automated lighting and security systems. Everything is running perfectly and energy efficient! ⚡🏡',
-            image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=2070&auto=format&fit=crop',
-            likes: 24,
-            tags: ['Smart Home', 'Rewiring']
-        },
-        {
-            id: 2,
-            artisan: { name: 'Sarah M.', category: 'Interior Design', location: 'Lekki Phase 1', avatar: 'https://ui-avatars.com/api/?name=Sarah+M&background=random' },
-            time: '5 hours ago',
-            content: 'Transformed this living space with a modern minimalist approach. Focus was on natural light and neutral tones. Swipe to see the before and after! ✨',
-            image: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=1974&auto=format&fit=crop',
-            likes: 56,
-            tags: ['Minimalist', 'Renovation']
-        },
-        {
-            id: 3,
-            artisan: { name: 'Emmanuel K.', category: 'Carpentry', location: 'Ikeja, Lagos', avatar: 'https://ui-avatars.com/api/?name=Emmanuel+K&background=random' },
-            time: '1 day ago',
-            content: 'Custom oak dining table finished and delivered today. Handcrafted joints and a durable matte finish. Built to last generations. 🪚🪵',
-            image: 'https://images.unsplash.com/photo-1622372738946-62e02505feb3?q=80&w=2032&auto=format&fit=crop',
-            likes: 41,
-            tags: ['Custom Furniture', 'Woodworking']
-        }
-    ];
+    React.useEffect(() => {
+        const loadFeed = async () => {
+            setLoading(true);
+            const data = await getAllServicePosts(categoryFilter === 'Category' ? null : categoryFilter);
+            setPosts(data);
+            
+            // Also load some recommended providers
+            const providers = await getProviders();
+            setRecommendedArtisans(providers.slice(0, 3));
+            setLoading(false);
+        };
+        loadFeed();
+    }, [categoryFilter, getAllServicePosts, getProviders]);
 
-    const recommendedArtisans = [
-        { name: 'Michael T.', category: 'Plumbing', rating: 4.9, jobs: 120 },
-        { name: 'Grace A.', category: 'Cleaning', rating: 4.8, jobs: 85 },
-        { name: 'John P.', category: 'Painting', rating: 5.0, jobs: 42 }
-    ];
+    const filteredPosts = posts.filter(post => {
+        if (!searchQuery) return true;
+        const s = searchQuery.toLowerCase();
+        return (
+            post.caption?.toLowerCase().includes(s) ||
+            post.profiles?.full_name?.toLowerCase().includes(s) ||
+            post.category?.toLowerCase().includes(s)
+        );
+    });
 
     return (
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
@@ -135,76 +128,83 @@ const Dashboard = () => {
 
                             {/* Feed Posts */}
                             <div className="space-y-4 sm:space-y-8">
-                                {feedPosts.map(post => (
-                                    <div key={post.id} className="bg-white border border-gray-200 rounded-2xl sm:rounded-[20px] overflow-hidden hover:shadow-md transition-shadow">
-                                        {/* Post Header */}
-                                        <div className="p-4 sm:p-6 flex items-start justify-between gap-2">
-                                            <div className="flex gap-3 sm:gap-4 items-center cursor-pointer group min-w-0">
-                                                <div className="relative shrink-0">
-                                                    <img src={post.artisan.avatar} alt={post.artisan.name} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-transparent group-hover:border-gray-200 transition-colors" />
-                                                    <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
-                                                        <span className="material-icons text-blue-500 text-[12px] sm:text-[14px]" title="Verified Artisan">verified</span>
-                                                    </div>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <h3 className="font-extrabold text-[14px] sm:text-[15px] text-gray-900 group-hover:underline tracking-wide truncate">{post.artisan.name}</h3>
-                                                    <div className="flex items-center flex-wrap gap-x-1 text-[11px] sm:text-[12px] text-gray-500 font-medium mt-0.5">
-                                                        <span>{post.artisan.category}</span>
-                                                        <span className="text-gray-300">•</span>
-                                                        <span className="hidden sm:inline-flex items-center"><span className="material-icons-outlined text-[14px] mr-0.5">location_on</span>{post.artisan.location}</span>
-                                                        <span className="hidden sm:inline text-gray-300">•</span>
-                                                        <span>{post.time}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button className="text-gray-400 hover:text-gray-900 transition-colors p-1.5 sm:p-2 rounded-full hover:bg-gray-50 shrink-0">
-                                                <span className="material-icons-outlined text-[20px]">more_horiz</span>
-                                            </button>
-                                        </div>
-
-                                        {/* Post Content */}
-                                        <div className="px-4 sm:px-6 pb-4 sm:pb-6">
-                                            <p className="text-[14px] sm:text-[15px] text-gray-800 leading-relaxed font-medium mb-3 sm:mb-4">{post.content}</p>
-                                            
-                                            {post.image && (
-                                                <div className="w-full h-48 sm:h-64 md:h-80 rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 border border-gray-100 bg-gray-50">
-                                                    <img src={post.image} alt="Post media" className="w-full h-full object-cover" />
-                                                </div>
-                                            )}
-
-                                            <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
-                                                {post.tags.map(tag => (
-                                                    <span key={tag} className="text-[10px] sm:text-xs font-bold text-blue-700 bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg border border-blue-100/50 tracking-wide">#{tag}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Post Footer/Actions */}
-                                        <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between border-t border-gray-100">
-                                            <div className="flex gap-4 sm:gap-6">
-                                                <button className="flex items-center gap-1.5 sm:gap-2 text-gray-500 hover:text-gray-900 transition-colors group">
-                                                    <span className="material-icons-outlined text-[20px] sm:text-[22px] group-hover:text-red-500 transition-colors">favorite_border</span>
-                                                    <span className="text-[13px] sm:text-sm font-bold">{post.likes}</span>
-                                                </button>
-                                                <button className="flex items-center gap-1.5 sm:gap-2 text-gray-500 hover:text-gray-900 transition-colors group">
-                                                    <span className="material-icons-outlined text-[20px] sm:text-[22px]">chat_bubble_outline</span>
-                                                    <span className="text-[13px] sm:text-sm font-bold hidden sm:inline">Comment</span>
-                                                </button>
-                                                <button className="flex items-center gap-1.5 sm:gap-2 text-gray-500 hover:text-gray-900 transition-colors group">
-                                                    <span className="material-icons-outlined text-[20px] sm:text-[22px]">share</span>
-                                                </button>
-                                            </div>
-                                            <button onClick={() => navigate(`/customer/provider/${post.id}`)} className="text-[12px] sm:text-sm font-extrabold bg-white border-2 border-gray-200 text-gray-900 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl hover:border-gray-900 transition-all">
-                                                View Profile
-                                            </button>
-                                        </div>
+                                {loading ? (
+                                    <div className="py-20 flex flex-col items-center justify-center text-gray-400">
+                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#10B981] mb-4"></div>
+                                        <p className="text-sm font-medium">Fetching the latest updates...</p>
                                     </div>
-                                ))}
-                                
-                                {/* Loading Indicator */}
-                                <div className="py-10 flex justify-center">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                                </div>
+                                ) : filteredPosts.length === 0 ? (
+                                    <div className="py-20 text-center">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-4">
+                                            <span className="material-icons-outlined text-gray-300 text-3xl">rss_feed</span>
+                                        </div>
+                                        <h3 className="text-lg font-extrabold text-gray-900">No updates yet</h3>
+                                        <p className="text-[14px] font-medium text-gray-500 mt-1.5">Check back later for new artisan updates in {categoryFilter === 'Category' ? 'all categories' : categoryFilter}.</p>
+                                    </div>
+                                ) : (
+                                    filteredPosts.map(post => (
+                                        <div key={post.id} className="bg-white border border-gray-200 rounded-2xl sm:rounded-[20px] overflow-hidden hover:shadow-md transition-shadow">
+                                            {/* Post Header */}
+                                            <div className="p-4 sm:p-6 flex items-start justify-between gap-2">
+                                                <div className="flex gap-3 sm:gap-4 items-center cursor-pointer group min-w-0" onClick={() => navigate(`/customer/provider/${post.provider_id}`)}>
+                                                    <div className="relative shrink-0">
+                                                        <img src={post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.full_name}&background=random`} alt={post.profiles?.full_name} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-transparent group-hover:border-gray-200 transition-colors" />
+                                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
+                                                            <span className="material-icons text-blue-500 text-[12px] sm:text-[14px]" title="Verified Artisan">verified</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <h3 className="font-extrabold text-[14px] sm:text-[15px] text-gray-900 group-hover:underline tracking-wide truncate">{post.profiles?.full_name}</h3>
+                                                        <div className="flex items-center flex-wrap gap-x-1 text-[11px] sm:text-[12px] text-gray-500 font-medium mt-0.5">
+                                                            <span>{post.category}</span>
+                                                            <span className="text-gray-300">•</span>
+                                                            <span className="hidden sm:inline-flex items-center"><span className="material-icons-outlined text-[14px] mr-0.5">location_on</span>{post.profiles?.location_name || 'Lagos'}</span>
+                                                            <span className="hidden sm:inline text-gray-300">•</span>
+                                                            <span>{formatDistanceToNow(new Date(post.created_at))} ago</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button className="text-gray-400 hover:text-gray-900 transition-colors p-1.5 sm:p-2 rounded-full hover:bg-gray-50 shrink-0">
+                                                    <span className="material-icons-outlined text-[20px]">more_horiz</span>
+                                                </button>
+                                            </div>
+
+                                            {/* Post Content */}
+                                            <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+                                                <p className="text-[14px] sm:text-[15px] text-gray-800 leading-relaxed font-medium mb-3 sm:mb-4">{post.caption}</p>
+                                                
+                                                {post.images && post.images.length > 0 && (
+                                                    <div className="w-full h-48 sm:h-64 md:h-80 rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 border border-gray-100 bg-gray-50">
+                                                        <img src={post.images[0]} alt="Post media" className="w-full h-full object-cover" />
+                                                    </div>
+                                                )}
+
+                                                <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
+                                                    {post.tags?.map(tag => (
+                                                        <span key={tag} className="text-[10px] sm:text-xs font-bold text-blue-700 bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg border border-blue-100/50 tracking-wide">#{tag}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Post Footer/Actions */}
+                                            <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between border-t border-gray-100">
+                                                <div className="flex gap-4 sm:gap-6">
+                                                    <button className="flex items-center gap-1.5 sm:gap-2 text-gray-500 hover:text-gray-900 transition-colors group">
+                                                        <span className="material-icons-outlined text-[20px] sm:text-[22px] group-hover:text-red-500 transition-colors">favorite_border</span>
+                                                        <span className="text-[13px] sm:text-sm font-bold">{post.likes_count || 0}</span>
+                                                    </button>
+                                                    <button className="flex items-center gap-1.5 sm:gap-2 text-gray-500 hover:text-gray-900 transition-colors group">
+                                                        <span className="material-icons-outlined text-[20px] sm:text-[22px]">chat_bubble_outline</span>
+                                                        <span className="text-[13px] sm:text-sm font-bold hidden sm:inline">Comment</span>
+                                                    </button>
+                                                </div>
+                                                <button onClick={() => navigate(`/customer/provider/${post.provider_id}`)} className="text-[12px] sm:text-sm font-extrabold bg-white border-2 border-gray-200 text-gray-900 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl hover:border-gray-900 transition-all">
+                                                    View Profile
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
 

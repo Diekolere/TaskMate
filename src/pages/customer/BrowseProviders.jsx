@@ -196,9 +196,9 @@ const BrowseProviders = () => {
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                                 </div>
                             ) : providers.length === 0 ? (
-                                <div className="bg-gray-50 border border-gray-200 rounded-3xl p-16 text-center mt-6">
-                                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm">
-                                        <span className="material-icons-outlined text-2xl text-gray-400">search_off</span>
+                                <div className="py-20 text-center">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-4">
+                                        <span className="material-icons-outlined text-gray-300 text-3xl">search_off</span>
                                     </div>
                                     <h3 className="text-lg font-extrabold text-gray-900">No providers found</h3>
                                     <p className="text-[14px] font-medium text-gray-500 mt-1.5">Try adjusting your filters or search terms.</p>
