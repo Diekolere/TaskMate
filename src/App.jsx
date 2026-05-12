@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'sonner';
-import { ProviderOnboardingProvider } from './context/ProviderOnboardingContext';
 import Landing from './pages/public/Landing'
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -24,11 +23,8 @@ import Negotiation from './pages/customer/Negotiation';
 import Payment from './pages/customer/Payment';
 
 // Provider Pages
-import ProfessionalInfo from './pages/provider/onboarding/ProfessionalInfo';
 import ProviderInviteFriends from './pages/provider/InviteFriends';
-import ServiceDetails from './pages/provider/onboarding/ServiceDetails';
-import IdentityVerification from './pages/provider/onboarding/IdentityVerification';
-import OnboardingStatus from './pages/provider/onboarding/OnboardingStatus';
+import KYCGate from './components/provider/KYCGate';
 import ProviderDashboard from './pages/provider/Dashboard';
 import RequestDetails from './pages/provider/RequestDetails';
 import Schedule from './pages/provider/Schedule';
@@ -100,31 +96,29 @@ function AnimatedRoutes() {
         <Route path="/customer/job-otp/:jobId" element={<ProtectedRoute allowedRoles={['customer']}><JobOTP /></ProtectedRoute>} />
         <Route path="/customer/confirm/:jobId" element={<ProtectedRoute allowedRoles={['customer']}><ConfirmCompletion /></ProtectedRoute>} />
 
-        {/* Provider Onboarding Routes */}
-        <Route path="/provider/onboarding" element={<ProtectedRoute allowedRoles={['provider']}><Navigate to="/provider/onboarding/step-1" replace /></ProtectedRoute>} />
-        <Route path="/provider/onboarding/step-1" element={<ProtectedRoute allowedRoles={['provider']}><ProfessionalInfo /></ProtectedRoute>} />
-        <Route path="/provider/onboarding/step-2" element={<ProtectedRoute allowedRoles={['provider']}><ServiceDetails /></ProtectedRoute>} />
-        <Route path="/provider/onboarding/step-3" element={<ProtectedRoute allowedRoles={['provider']}><IdentityVerification /></ProtectedRoute>} />
-        <Route path="/provider/onboarding/status" element={<ProtectedRoute allowedRoles={['provider']}><OnboardingStatus /></ProtectedRoute>} />
+        {/* Provider Onboarding — redirect to dashboard (KYC handles everything now) */}
+        <Route path="/provider/onboarding/*" element={<Navigate to="/provider/dashboard" replace />} />
 
-        {/* Provider Routes */}
+        {/* Provider Routes — Dashboard is always accessible */}
         <Route path="/provider/dashboard" element={<ProtectedRoute allowedRoles={['provider']}><ProviderDashboard /></ProtectedRoute>} />
-        <Route path="/provider/requests" element={<ProtectedRoute allowedRoles={['provider']}><Requests /></ProtectedRoute>} />
-        <Route path="/provider/requests/:id" element={<ProtectedRoute allowedRoles={['provider']}><RequestDetails /></ProtectedRoute>} />
-        <Route path="/provider/jobs" element={<ProtectedRoute allowedRoles={['provider']}><MyJobs /></ProtectedRoute>} />
-        <Route path="/provider/jobs/:id" element={<ProtectedRoute allowedRoles={['provider']}><JobDetails /></ProtectedRoute>} />
-        <Route path="/provider/negotiation/:id" element={<ProtectedRoute allowedRoles={['provider']}><ProviderNegotiation /></ProtectedRoute>} />
-        <Route path="/provider/earnings" element={<ProtectedRoute allowedRoles={['provider']}><Earnings /></ProtectedRoute>} />
-        <Route path="/provider/profile" element={<ProtectedRoute allowedRoles={['provider']}><MyProfile /></ProtectedRoute>} />
+
+        {/* Provider Feature Routes — gated behind KYC */}
+        <Route path="/provider/requests" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><Requests /></KYCGate></ProtectedRoute>} />
+        <Route path="/provider/requests/:id" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><RequestDetails /></KYCGate></ProtectedRoute>} />
+        <Route path="/provider/jobs" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><MyJobs /></KYCGate></ProtectedRoute>} />
+        <Route path="/provider/jobs/:id" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><JobDetails /></KYCGate></ProtectedRoute>} />
+        <Route path="/provider/negotiation/:id" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><ProviderNegotiation /></KYCGate></ProtectedRoute>} />
+        <Route path="/provider/earnings" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><Earnings /></KYCGate></ProtectedRoute>} />
+        <Route path="/provider/profile" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><MyProfile /></KYCGate></ProtectedRoute>} />
         <Route path="/provider/settings" element={<ProtectedRoute allowedRoles={['provider']}><ProviderSettings /></ProtectedRoute>} />
         <Route path="/provider/settings/password" element={<ProtectedRoute allowedRoles={['provider']}><ChangePassword /></ProtectedRoute>} />
-        <Route path="/provider/posts/new" element={<ProtectedRoute allowedRoles={['provider']}><CreateServicePost /></ProtectedRoute>} />
+        <Route path="/provider/posts/new" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><CreateServicePost /></KYCGate></ProtectedRoute>} />
         <Route path="/provider/support" element={<Support />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
-        <Route path="/provider/schedule" element={<Schedule />} />
+        <Route path="/provider/schedule" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><Schedule /></KYCGate></ProtectedRoute>} />
         <Route path="/provider/invite" element={<ProtectedRoute allowedRoles={['provider']}><ProviderInviteFriends /></ProtectedRoute>} />
-        <Route path="/provider/job-start/:jobId" element={<ProtectedRoute allowedRoles={['provider']}><JobStart /></ProtectedRoute>} />
+        <Route path="/provider/job-start/:jobId" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><JobStart /></KYCGate></ProtectedRoute>} />
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -159,9 +153,7 @@ function App() {
   return (
     <Router>  
       <Toaster position="top-right" richColors />
-      <ProviderOnboardingProvider>
-        <AnimatedRoutes />
-      </ProviderOnboardingProvider>
+      <AnimatedRoutes />
     </Router>
   )
 }

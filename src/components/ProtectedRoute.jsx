@@ -38,17 +38,6 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
     );
   }
 
-  // Check verification status for providers
-  // Only redirect if explicitly false (new users). Allow undefined (existing/legacy users).
-  if (currentUser.role === 'provider' && currentUser.isVerified === false) {
-    // Allow access to onboarding pages
-    if (location.pathname.startsWith('/provider/onboarding')) {
-      return children;
-    }
-    // Otherwise redirect to status page
-    return <Navigate to="/provider/onboarding/status" replace />;
-  }
-
   if (allowedRoles.length > 0 && !allowedRoles.includes(currentUser.role)) {
     // Redirect based on role if they try to access a route not for them
     if (currentUser.role === 'provider') return <Navigate to="/provider/dashboard" replace />;
