@@ -420,14 +420,27 @@ export function DataProvider({ children }) {
   };
 
   const getServicePosts = async (providerId) => {
-    if (IS_SIMULATED) return [];
-
     const { data } = await supabase
       .from('service_posts')
-      .select('*')
+      .select('*, profiles(full_name, avatar_url, location_name)')
       .eq('provider_id', providerId)
       .eq('is_active', true)
       .order('created_at', { ascending: false });
+    return data || [];
+  };
+
+  const getAllServicePosts = async (category = null) => {
+    let query = supabase
+      .from('service_posts')
+      .select('*, profiles(full_name, avatar_url, location_name)')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (category && category !== 'All') {
+      query = query.eq('category', category);
+    }
+
+    const { data } = await query;
     return data || [];
   };
 
@@ -513,7 +526,7 @@ export function DataProvider({ children }) {
     finalizeAgreement, securePayment, markJobInProgress, completeJob,
     releasePayment, getProviders, savedProviderIds, toggleSavedProvider,
     submitReview, markNotificationRead, markAllNotificationsRead,
-    createServicePost, getServicePosts, createSupportTicket,
+    createServicePost, getServicePosts, getAllServicePosts, createSupportTicket,
     submitVerification, updateVerificationStatus, updateUserStatus
   };
 
