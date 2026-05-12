@@ -20,8 +20,8 @@ const ProviderDashboard = () => {
     const { currentUser } = useAuth();
     const { jobs } = useData();
 
-    const isVerified = currentUser?.isVerified || currentUser?.is_verified || true;
-    const kycCompleted = currentUser?.kycCompleted ?? true;
+    const isVerified = currentUser?.isVerified || currentUser?.is_verified || false;
+    const kycCompleted = currentUser?.kycCompleted === true;
     const [kycOpen, setKycOpen] = useState(false);
 
     const st = (v) => String(v || '').toLowerCase().replace(/\s+/g, '_');

@@ -235,10 +235,10 @@ const Dashboard = () => {
                                         <div key={idx} className="flex items-center justify-between group cursor-pointer">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-12 h-12 bg-lime-400 rounded-full flex items-center justify-center font-black text-[#0F172A] text-sm shrink-0 border-2 border-white shadow-sm group-hover:scale-110 transition-transform">
-                                                    {artisan.name.split(' ').map(n => n[0]).join('')}
+                                                    {(artisan.name || artisan.displayName || 'P').split(' ').map(n => n[0]).join('')}
                                                 </div>
                                                 <div>
-                                                    <h3 className="font-extrabold text-[15px] text-gray-900 group-hover:text-[#10B981] transition-colors">{artisan.name}</h3>
+                                                    <h3 className="font-extrabold text-[15px] text-gray-900 group-hover:text-[#10B981] transition-colors">{artisan.name || artisan.displayName || 'Provider'}</h3>
                                                     <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide">{artisan.category}</p>
                                                 </div>
                                             </div>
