@@ -11,16 +11,12 @@ import MobileNavBar from '../../components/layout/MobileNavBar';
 const Payment = () => {
     const { id } = useParams();
     const { currentUser } = useAuth();
-    const { requests, securePayment, isSimulated } = useData();
+    const { requests, processPayment } = useData();
     const navigate = useNavigate();
 
     const [job, setJob] = useState(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
-    const [cardNumber, setCardNumber] = useState('');
-    const [expiryDate, setExpiryDate] = useState('');
-    const [cvv, setCvv] = useState('');
-    const [cardName, setCardName] = useState('');
 
     useEffect(() => {
         const foundJob = requests.find(j => j.id === id);
@@ -42,22 +38,12 @@ const Payment = () => {
     }, [id, requests, navigate]);
 
     const handlePayment = async () => {
-        if (!cardNumber || !expiryDate || !cvv || !cardName) {
-            toast.error('Please fill in all payment details');
-            return;
-        }
-
         setProcessing(true);
         try {
-            // Simulate payment processing
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            await securePayment(id);
-            toast.success('Payment secured successfully! Funds are now held in escrow.');
-            navigate('/customer/dashboard');
+            await processPayment(id, Number(job.final_budget || job.budget_estimate));
+            // The processPayment method handles the window.location.href redirect
         } catch (error) {
             toast.error('Payment failed. Please try again.');
-        } finally {
             setProcessing(false);
         }
     };
@@ -101,63 +87,16 @@ const Payment = () => {
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* Payment Form */}
+                            {/* Payment Info */}
                             <div className="space-y-6">
-                                <div className="bg-white shadow-sm rounded-3xl overflow-hidden border border-gray-100 p-6">
-                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-50">
-                                        <span className="material-icons-outlined text-[#10B981]">credit_card</span>
-                                        <h2 className="text-lg font-bold text-gray-900">Payment Details</h2>
+                                <div className="bg-white shadow-sm rounded-3xl overflow-hidden border border-gray-100 p-6 flex flex-col justify-center items-center text-center">
+                                    <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4">
+                                        <span className="material-icons-outlined text-[#10B981] text-3xl">shield</span>
                                     </div>
-
-                                    <div className="space-y-4 mt-4">
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">Card Number</label>
-                                            <input
-                                                type="text"
-                                                value={cardNumber}
-                                                onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').replace(/(\d{4})(?=\d)/g, '$1 '))}
-                                                placeholder="1234 5678 9012 3456"
-                                                maxLength="19"
-                                                className="block w-full rounded-xl border-gray-200 focus:border-[#10B981] focus:ring-4 focus:ring-green-50 sm:text-sm py-3.5 px-4 border focus:outline-none transition-all"
-                                            />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">Expiry Date</label>
-                                                <input
-                                                    type="text"
-                                                    value={expiryDate}
-                                                    onChange={(e) => setExpiryDate(e.target.value.replace(/\D/g, '').replace(/(\d{2})(?=\d)/, '$1/'))}
-                                                    placeholder="MM/YY"
-                                                    maxLength="5"
-                                                    className="block w-full rounded-xl border-gray-200 focus:border-[#10B981] focus:ring-4 focus:ring-green-50 sm:text-sm py-3.5 px-4 border focus:outline-none transition-all"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">CVV</label>
-                                                <input
-                                                    type="text"
-                                                    value={cvv}
-                                                    onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                                                    placeholder="123"
-                                                    maxLength="4"
-                                                    className="block w-full rounded-xl border-gray-200 focus:border-[#10B981] focus:ring-4 focus:ring-green-50 sm:text-sm py-3.5 px-4 border focus:outline-none transition-all"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">Cardholder Name</label>
-                                            <input
-                                                type="text"
-                                                value={cardName}
-                                                onChange={(e) => setCardName(e.target.value)}
-                                                placeholder="John Doe"
-                                                className="block w-full rounded-xl border-gray-200 focus:border-[#10B981] focus:ring-4 focus:ring-green-50 sm:text-sm py-3.5 px-4 border focus:outline-none transition-all"
-                                            />
-                                        </div>
-                                    </div>
+                                    <h2 className="text-xl font-bold text-gray-900 mb-2">Secure Squad Checkout</h2>
+                                    <p className="text-gray-500 text-sm mb-6">
+                                        You will be redirected to our secure payment partner (Squad) to complete your transaction. TaskMate never stores your card details.
+                                    </p>
                                 </div>
 
                                 <button

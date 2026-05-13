@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 
 const BANKS = [
     'Access Bank', 'Ecobank', 'Fidelity Bank', 'First Bank of Nigeria',
@@ -124,6 +125,7 @@ function SquadBadge() {
 /* ── Main modal ──────────────────────────────────────── */
 export default function KYCModal({ open, onClose, onComplete }) {
     const { currentUser, updateUserProfile } = useAuth();
+    const { submitKYC } = useData();
     const [step, setStep] = useState(1);
     const [dir, setDir] = useState(1);
 
@@ -195,13 +197,22 @@ export default function KYCModal({ open, onClose, onComplete }) {
             return;
         }
         setSubmitting(true);
-        setTimeout(async () => {
+        try {
+            // Trigger the edge function for Squad BVN / ID verification
+            await submitKYC({ bvn });
+            
+            // Still update the local auth context profile so UI reflects verification immediately
             await updateUserProfile({ kycCompleted: true, bvnVerified: true, bankName, accountNumber, accountName, verification_status: 'verified', isVerified: true });
-            setSubmitting(false);
+            
             toast.success('Identity verified successfully!');
             onComplete?.();
             onClose?.();
-        }, 2000);
+        } catch (error) {
+            toast.error('Verification failed. Please try again.');
+            console.error(error);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const variants = {

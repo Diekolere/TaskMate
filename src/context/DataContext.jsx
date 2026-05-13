@@ -224,6 +224,9 @@ export function DataProvider({ children }) {
         toast.dismiss('img-upload');
       }
 
+      // TODO (Phase 3): Call ai/enhance-description edge function here
+      // const { data: aiData } = await supabase.functions.invoke('ai', { body: { action: 'enhance-description', ... }});
+
       const rType = requestData.request_type || (requestData.providerId ? 'private' : 'public');
       const { data, error } = await supabase
         .from('jobs')
@@ -243,12 +246,18 @@ export function DataProvider({ children }) {
           visibility: rType,
           status: normalizeStatus(requestData.status || 'open'),
           timeline: requestData.timeline || []
+          // enhanced_description: aiData.enhanced_description,
+          // ai_suggested_price: aiData.suggested_price
         }])
         .select()
         .single();
 
       if (error) throw error;
       toast.success('Request posted!');
+      
+      // TODO (Phase 5): Trigger matching/auto-match-job edge function here async
+      // supabase.functions.invoke('matching', { body: { action: 'auto-match', jobId: data.id }});
+
       return data.id;
     } catch (error) {
       console.error('Create request error:', error);
@@ -264,6 +273,11 @@ export function DataProvider({ children }) {
       const updateData = { status: normalizeStatus(newStatus), ...additionalData };
       const { error } = await supabase.from('jobs').update(updateData).eq('id', jobId);
       if (error) throw error;
+      
+      // TODO (Phase 2): If newStatus === 'payment_released', trigger squad/initiate-payout edge function
+      // if (normalizeStatus(newStatus) === 'payment_released') {
+      //    supabase.functions.invoke('squad', { body: { action: 'initiate-payout', jobId }});
+      // }
     } catch (error) {
       console.error('Update job error:', error);
       toast.error('Failed to update job status');
@@ -273,6 +287,7 @@ export function DataProvider({ children }) {
 
   const acceptJob = async (jobId) => {
     await updateJobStatus(jobId, 'provider_accepted', { worker_id: currentUser.id });
+    // TODO (Phase 5): Trigger matching/auto-match-job
     toast.success('Job accepted!');
   };
 
@@ -299,7 +314,59 @@ export function DataProvider({ children }) {
 
   const releasePayment = async (jobId) => {
     await updateJobStatus(jobId, 'payment_released');
+    // Actual payout triggered by Edge function via updateJobStatus hook above
     toast.success('Payment released to provider');
+  };
+
+  // ── Squad / Edge Function Stubs (Phase 1) ───────────────
+
+  const processPayment = async (jobId, amount) => {
+    if (!currentUser) return;
+    try {
+      const { data, error } = await supabase.functions.invoke('squad', {
+        body: { action: 'initialize-payment', jobId, amount, customerEmail: currentUser.email, customerId: currentUser.id }
+      });
+      if (error) throw error;
+      if (data?.paymentUrl) {
+        window.location.href = data.paymentUrl; // Redirect to Squad checkout
+      }
+    } catch (err) {
+      console.error('Payment initialization failed:', err);
+      toast.error('Failed to initialize payment. Please try again.');
+    }
+  };
+
+  const submitKYC = async (kycData) => {
+    if (!currentUser) return;
+    try {
+      // In Phase 1 we use the submitVerification method. We can trigger the squad function to verify BVN immediately.
+      const { error } = await supabase.functions.invoke('squad', {
+        body: { action: 'verify-kyc', providerId: currentUser.id, bvn: kycData.bvn }
+      });
+      if (error) throw error;
+      toast.success('KYC Verified successfully!');
+      // Update local state if needed
+      if (currentUser.role === 'provider') {
+         // The user's account is now verified
+      }
+    } catch (err) {
+      console.error('KYC Verification failed:', err);
+      toast.error('Failed to verify KYC.');
+    }
+  };
+
+  const releaseEarnings = async (jobId) => {
+    if (!currentUser) return;
+    try {
+      const { error } = await supabase.functions.invoke('squad', {
+        body: { action: 'initiate-payout', jobId, providerId: currentUser.id, amount: 0 /* amount will be derived securely on backend */ }
+      });
+      if (error) throw error;
+      toast.success('Payout initiated!');
+    } catch (err) {
+      console.error('Payout failed:', err);
+      toast.error('Failed to initiate payout.');
+    }
   };
 
   // ── Providers ───────────────────────────────────────────
@@ -522,7 +589,9 @@ export function DataProvider({ children }) {
     releasePayment, getProviders, savedProviderIds, toggleSavedProvider,
     submitReview, markNotificationRead, markAllNotificationsRead,
     createServicePost, getServicePosts, getAllServicePosts, createSupportTicket,
-    submitVerification, updateVerificationStatus, updateUserStatus
+    submitVerification, updateVerificationStatus, updateUserStatus,
+    // New Edge Function Stubs:
+    processPayment, submitKYC, releaseEarnings
   };
 
   return (
