@@ -3,43 +3,52 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * Hook to periodically update the provider's live location in the database.
- * This enables "Uber-style" real-time proximity matching.
+ * Hook to periodically update the user's live location in the database.
+ * - Providers: Frequent updates (5m) for real-time discovery.
+ * - Customers: Occasional updates (30m) for relevant feed recommendations.
  */
-export function useLocationHeartbeat(intervalMs = 300000) { // Default 5 minutes
+export function useLocationHeartbeat(customInterval = null) {
     const { currentUser } = useAuth();
     const timerRef = useRef(null);
 
-    const updateLocation = async () => {
-        if (!currentUser || currentUser.role !== 'provider') return;
+    // Providers update every 5m, Customers every 30m
+    const intervalMs = customInterval || (currentUser?.role === 'provider' ? 300000 : 1800000);
 
-        // 1. Get current GPS
+    const updateLocation = async () => {
+        if (!currentUser) return;
+
         navigator.geolocation.getCurrentPosition(async (position) => {
             const { latitude, longitude } = position.coords;
             const wkt = `POINT(${longitude} ${latitude})`;
 
-            // 2. Update Supabase
-            const { error } = await supabase
-                .from('provider_profiles')
+            // 1. Update base profile (for all users)
+            await supabase
+                .from('profiles')
                 .update({
                     location_coords: wkt,
-                    last_seen_at: new Date().toISOString(),
-                    is_online: true
+                    last_seen_at: new Date().toISOString()
                 })
                 .eq('id', currentUser.id);
 
-            if (error) console.error('Heartbeat update failed:', error);
+            // 2. Update provider-specific table if applicable
+            if (currentUser.role === 'provider') {
+                await supabase
+                    .from('provider_profiles')
+                    .update({
+                        location_coords: wkt,
+                        last_seen_at: new Date().toISOString(),
+                        is_online: true
+                    })
+                    .eq('id', currentUser.id);
+            }
         }, (err) => {
             console.warn('Heartbeat: Could not get GPS', err);
         });
     };
 
     useEffect(() => {
-        if (currentUser?.role === 'provider') {
-            // Run immediately on mount
+        if (currentUser) {
             updateLocation();
-
-            // Set up interval
             timerRef.current = setInterval(updateLocation, intervalMs);
         }
 
