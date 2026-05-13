@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import { toast } from 'sonner';
 
 // Deterministic OTP (must match JobOTP.jsx + JobStart.jsx)
@@ -225,45 +226,40 @@ function OTPModal({ jobId, onClose }) {
 // ── Main Notification Panel ──────────────────────────────────────
 export default function NotificationPanel({ open, onClose }) {
     const { currentUser } = useAuth();
+    const { notifications, markNotificationRead, markAllNotificationsRead } = useData();
     const navigate = useNavigate();
     const isProvider = currentUser?.role === 'provider';
 
     const [otpJobId, setOtpJobId] = useState(null);
-    const [read, setRead] = useState(new Set());
-    const [lsNotifs, setLsNotifs] = useState([]);
-
     const openOTPModal = (jobId) => { setOtpJobId(jobId); };
 
-    // Pick up any notifications written by the provider (e.g. job complete)
-    useEffect(() => {
-        if (isProvider) return;
-        const load = () => {
-            const stored = JSON.parse(localStorage.getItem('tm_customer_notifs') || '[]');
-            const enriched = stored.map(n => ({
-                ...n,
-                action: n.jobId ? {
-                    label: 'Review & Release',
-                    onClick: () => navigate(`/customer/confirm/${n.jobId}`),
-                } : null,
-            }));
-            setLsNotifs(enriched);
-        };
-        load();
-        window.addEventListener('tm-customer-notifs', load);
-        return () => window.removeEventListener('tm-customer-notifs', load);
-    }, [isProvider, navigate]);
+    const unreadCount = notifications.filter(n => !n.is_read).length;
 
-    const notifications = isProvider
-        ? PROVIDER_NOTIFS(navigate, openOTPModal)
-        : [...lsNotifs, ...buildCustomerStaticNotifs(navigate)];
+    const handleMarkAll = async () => {
+        await markAllNotificationsRead();
+    };
 
-    const unreadCount = notifications.filter(n => n.unread && !read.has(n.id)).length;
+    const handleNotifClick = async (notif) => {
+        if (!notif.is_read) await markNotificationRead(notif.id);
+        if (notif.cta_path) {
+            // Handle OTP modals specially
+            if (notif.cta_path.startsWith('otp:')) {
+                openOTPModal(notif.cta_path.replace('otp:', ''));
+            } else {
+                navigate(notif.cta_path);
+                onClose();
+            }
+        }
+    };
 
-    const markAll = () => setRead(new Set(notifications.map(n => n.id)));
-
-    const handleAction = (notif) => {
-        setRead(r => new Set([...r, notif.id]));
-        notif.action?.onClick();
+    const formatTime = (ts) => {
+        if (!ts) return '';
+        const d = new Date(ts);
+        const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+        return d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
     };
 
     return (
@@ -299,7 +295,7 @@ export default function NotificationPanel({ open, onClose }) {
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {unreadCount > 0 && (
-                                        <button onClick={markAll} className="text-white/80 text-xs font-bold hover:text-white transition-colors">
+                                        <button onClick={handleMarkAll} className="text-white/80 text-xs font-bold hover:text-white transition-colors">
                                             Mark all as read
                                         </button>
                                     )}
@@ -312,17 +308,23 @@ export default function NotificationPanel({ open, onClose }) {
 
                             {/* Notification list */}
                             <div className="flex-1 overflow-y-auto">
-                                {notifications.map((notif, idx) => {
-                                    const isUnread = notif.unread && !read.has(notif.id);
+                                {notifications.length === 0 && (
+                                    <div className="flex flex-col items-center justify-center h-48 gap-3 text-gray-400">
+                                        <span className="material-icons-outlined text-4xl text-gray-200">notifications_none</span>
+                                        <p className="text-sm font-medium">No notifications yet</p>
+                                    </div>
+                                )}
+                                {notifications.map((notif) => {
+                                    const isUnread = !notif.is_read;
                                     return (
                                         <div key={notif.id}
-                                            onClick={() => setRead(r => new Set([...r, notif.id]))}
+                                            onClick={() => handleNotifClick(notif)}
                                             className={`px-6 py-4 border-b border-gray-50 transition-colors cursor-pointer ${isUnread ? 'bg-[#10B981]/[0.03] hover:bg-[#10B981]/[0.06]' : 'hover:bg-gray-50'}`}
                                         >
                                             <div className="flex gap-3.5">
                                                 {/* Icon */}
-                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${notif.iconBg}`}>
-                                                    <span className={`material-icons-outlined text-base ${notif.iconColor}`}>{notif.icon}</span>
+                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${notif.icon_bg || 'bg-gray-100'}`}>
+                                                    <span className={`material-icons-outlined text-base ${notif.icon_color || 'text-gray-400'}`}>{notif.icon || 'info'}</span>
                                                 </div>
 
                                                 {/* Content */}
@@ -331,19 +333,19 @@ export default function NotificationPanel({ open, onClose }) {
                                                         <p className="text-[13px] font-bold text-gray-900 leading-snug">{notif.title}</p>
                                                         <div className="flex items-center gap-1.5 shrink-0">
                                                             {isUnread && <div className="w-2 h-2 bg-[#10B981] rounded-full" />}
-                                                            <span className="text-[10px] text-gray-400 whitespace-nowrap">{notif.time}</span>
+                                                            <span className="text-[10px] text-gray-400 whitespace-nowrap">{formatTime(notif.created_at)}</span>
                                                         </div>
                                                     </div>
                                                     <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">{notif.body}</p>
 
-                                                    {/* Action button */}
-                                                    {notif.action && (
+                                                    {/* CTA button */}
+                                                    {notif.cta_path && (
                                                         <button
-                                                            onClick={e => { e.stopPropagation(); handleAction(notif); onClose(); }}
+                                                            onClick={e => { e.stopPropagation(); handleNotifClick(notif); }}
                                                             className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0F172A] hover:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all shadow-sm"
                                                         >
                                                             <span className="material-icons text-[12px]">arrow_forward</span>
-                                                            {notif.action.label}
+                                                            View
                                                         </button>
                                                     )}
                                                 </div>

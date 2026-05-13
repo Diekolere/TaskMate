@@ -3,35 +3,21 @@ import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationPanel from './NotificationPanel';
+import { useData } from '../../context/DataContext';
 
 const TopNavbar = ({ breadcrumbs = [] }) => {
     const { currentUser, logout } = useAuth();
+    const { notifications, markAllNotificationsRead, markNotificationRead } = useData();
     const navigate = useNavigate();
     const [notifDropOpen, setNotifDropOpen] = useState(false);
     const [panelOpen, setPanelOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [pushVisible, setPushVisible] = useState(false);
     const [pushDismissed, setPushDismissed] = useState(false);
-    const [dropReadIds, setDropReadIds] = useState(new Set());
     const profileRef = useRef(null);
 
     const isProvider = currentUser?.role === 'provider';
-
-    const notifications = isProvider ? [
-        { id: 'pn1', title: 'Customer is ready', message: 'Diekolere Olaitan has paid — enter the start code.', time: 'Just now', read: false, urgent: true, icon: 'key', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]' },
-        { id: 'pn2', title: 'Counter offer received', message: 'A customer countered your ₦15,000 quote.', time: '22 mins ago', read: false, icon: 'forum', iconBg: 'bg-violet-50', iconColor: 'text-violet-500' },
-        { id: 'pn3', title: 'Payout sent', message: '₦13,500 sent to your Zenith Bank account.', time: '3 hours ago', read: true, icon: 'account_balance_wallet', iconBg: 'bg-blue-50', iconColor: 'text-blue-500' },
-    ] : [
-        { id: 'n-demo-provider-complete', title: 'Ibrahim Musa marked job as complete', message: 'Tap to review and release payment (48-hour window).', time: 'Demo', read: false, icon: 'task_alt', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]', ctaPath: '/customer/confirm/job-paid-01' },
-        { id: 'n1', title: 'Offer accepted', message: 'Ibrahim Musa accepted your negotiated price of ₦11,000.', time: '5 mins ago', read: false, icon: 'handshake', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]' },
-        { id: 'n2', title: 'Payment confirmed', message: 'Your payment of ₦11,000 is held in escrow.', time: '1 hour ago', read: false, icon: 'payments', iconBg: 'bg-blue-50', iconColor: 'text-blue-500' },
-        { id: 'n3', title: 'Profile saved', message: 'Your profile changes have been saved.', time: '2 days ago', read: true, icon: 'info', iconBg: 'bg-gray-100', iconColor: 'text-gray-400' },
-    ];
-
-    const lsUnread = !isProvider
-        ? (JSON.parse(localStorage.getItem('tm_customer_notifs') || '[]')).filter(n => n.unread).length
-        : 0;
-    const unreadCount = notifications.filter(n => !n.read && !dropReadIds.has(n.id)).length + lsUnread;
+    const unreadCount = notifications.filter(n => !n.is_read).length;
 
     // Simulate push notification for providers after 4 seconds
     useEffect(() => {
@@ -140,34 +126,36 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                                         <div className="bg-[#10B981] px-5 py-4 flex items-center justify-between">
                                             <h3 className="font-extrabold text-[15px] text-white">Notifications</h3>
                                             <button
-                                                onClick={() => setDropReadIds(new Set(notifications.map(n => n.id)))}
+                                                onClick={markAllNotificationsRead}
                                                 className="text-[12px] font-bold text-white/80 hover:text-white transition-colors"
                                             >
                                                 Mark all as read
                                             </button>
                                         </div>
                                         <div className="max-h-[60vh] sm:max-h-72 overflow-y-auto">
+                                            {notifications.length === 0 && (
+                                                <div className="p-10 text-center text-gray-400 text-sm">No notifications yet</div>
+                                            )}
                                             {notifications.map(notif => {
-                                                const isUnread = !notif.read && !dropReadIds.has(notif.id);
+                                                const isUnread = !notif.is_read;
                                                 return (
                                                 <div key={notif.id}
                                                     onClick={() => {
-                                                        setDropReadIds(r => new Set([...r, notif.id]));
-                                                        if (notif.ctaPath) {
-                                                            navigate(notif.ctaPath);
+                                                        markNotificationRead(notif.id);
+                                                        if (notif.cta_path) {
+                                                            navigate(notif.cta_path);
                                                             setNotifDropOpen(false);
                                                         }
                                                     }}
                                                     className={`px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer flex gap-3 ${isUnread ? 'bg-[#10B981]/[0.03]' : ''}`}>
                                                     {/* Icon */}
-                                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 relative ${notif.iconBg}`}>
-                                                        <span className={`material-icons-outlined text-[15px] ${notif.iconColor}`}>{notif.icon}</span>
+                                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 relative ${notif.icon_bg || 'bg-gray-100'}`}>
+                                                        <span className={`material-icons-outlined text-[15px] ${notif.icon_color || 'text-gray-400'}`}>{notif.icon || 'info'}</span>
                                                         {isUnread && <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#10B981] rounded-full border border-white" />}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-[13px] font-bold text-gray-900 mb-0.5">{notif.title}</p>
-                                                        <p className="text-[12px] font-medium text-gray-500 leading-snug">{notif.message}</p>
-                                                        <p className="text-[10px] font-bold text-gray-400 mt-1.5 uppercase tracking-wider">{notif.time}</p>
+                                                        <p className="text-[12px] font-medium text-gray-500 leading-snug">{notif.body}</p>
                                                     </div>
                                                 </div>
                                                 );
