@@ -539,7 +539,7 @@ export default function KYCModal({ open, onClose, onComplete }) {
                             Continue <span className="material-icons text-base">arrow_forward</span>
                         </button>
                     ) : (
-                        <button onClick={handleSubmit} disabled={submitting || faceMatchState !== 'passed'}
+                        <button onClick={handleSubmit} disabled={submitting || !selfieFile}
                             className="h-12 px-8 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm rounded-xl transition-all flex items-center gap-2 disabled:opacity-40">
                             {submitting
                                 ? <><span className="material-icons text-base animate-spin">autorenew</span> Submitting…</>

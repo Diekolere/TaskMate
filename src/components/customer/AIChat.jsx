@@ -1,15 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { supabase } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
 
 const AIChat = () => {
     const { currentUser } = useAuth();
-    const { requests, savedProviderIds, isSimulated } = useData();
+    const { requests } = useData();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
-        { role: 'model', text: 'Hello! I am your TaskMate AI assistant. How can I help you today?' }
+        { role: 'model', text: 'Hello! I\'m your TaskMate AI assistant. Ask me anything about your requests, providers, or how TaskMate works.' }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +21,21 @@ const AIChat = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isOpen]);
 
+    // Build context about the user's current state for the AI
+    const buildContext = () => {
+        const parts = [];
+        parts.push(`User: ${currentUser?.displayName || 'Customer'}`);
+        if (requests.length > 0) {
+            parts.push(`Active requests (${requests.length}):`);
+            requests.slice(0, 5).forEach(r => {
+                parts.push(`- "${r.title}" (Status: ${r.status}, Category: ${r.category || 'General'})`);
+            });
+        } else {
+            parts.push('No active requests.');
+        }
+        return parts.join('\n');
+    };
+
     const handleSend = async (e) => {
         e.preventDefault();
         if (!input.trim() || isLoading) return;
@@ -31,32 +46,56 @@ const AIChat = () => {
         setIsLoading(true);
 
         try {
-            // SIMULATED AI RESPONSE
-            // In a production app, this would call a Supabase Edge Function 
-            // which handles the AI model interaction securely.
-            
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate latency
+            const systemPrompt = `You are TaskMate Assistant, an AI chatbot embedded in a Nigerian service marketplace app called TaskMate. You help customers find service providers (artisans), manage their job requests, and answer questions about the platform.
 
-            let response = "";
-            const lowerMsg = userMessage.toLowerCase();
+Current user context:
+${buildContext()}
 
-            if (lowerMsg.includes('hello') || lowerMsg.includes('hi')) {
-                response = `Hi ${currentUser?.displayName || 'there'}! I can help you find providers, check your request status, or explain how TaskMate works.`;
-            } else if (lowerMsg.includes('request') || lowerMsg.includes('job')) {
-                const count = requests.length;
-                response = count > 0 
-                    ? `You currently have ${count} active requests. One of them is "${requests[0].title}" which is currently ${requests[0].status}.`
-                    : "You don't have any active requests yet. Would you like to post one?";
-            } else if (lowerMsg.includes('provider') || lowerMsg.includes('worker')) {
-                response = "You can browse verified providers in the 'Browse' section. We have electricians, plumbers, and more nearby.";
+Rules:
+- Be concise and friendly. Responses should be 1-3 sentences max.
+- Use Naira (₦) for prices.
+- If asked about a specific request, reference the data above.
+- If asked to do something you can't (like booking), explain how the user can do it in the app.
+- Never reveal you are using Gemini or any specific AI model. Just say you are the TaskMate assistant.`;
+
+            const { data, error } = await supabase.functions.invoke('ai', {
+                body: {
+                    action: 'chat',
+                    systemPrompt,
+                    userMessage,
+                    history: messages.slice(-6).map(m => ({
+                        role: m.role === 'model' ? 'model' : 'user',
+                        parts: [{ text: m.text }]
+                    }))
+                }
+            });
+
+            if (error || !data?.reply) {
+                // Fallback to local responses if Edge Function fails
+                let fallback = '';
+                const lowerMsg = userMessage.toLowerCase();
+
+                if (lowerMsg.includes('hello') || lowerMsg.includes('hi')) {
+                    fallback = `Hi ${currentUser?.displayName || 'there'}! I can help you find providers, check your request status, or explain how TaskMate works.`;
+                } else if (lowerMsg.includes('request') || lowerMsg.includes('job')) {
+                    const count = requests.length;
+                    fallback = count > 0
+                        ? `You currently have ${count} active request${count > 1 ? 's' : ''}. Your latest is "${requests[0].title}" (${requests[0].status}).`
+                        : "You don't have any active requests yet. Tap 'Post Request' to get started!";
+                } else if (lowerMsg.includes('provider') || lowerMsg.includes('artisan')) {
+                    fallback = "Browse verified providers in the 'Browse' tab. You can filter by category, rating, and proximity.";
+                } else if (lowerMsg.includes('pay') || lowerMsg.includes('price')) {
+                    fallback = "Payments are secured in escrow until you confirm the job is complete. The provider only gets paid after your approval.";
+                } else {
+                    fallback = "I'm here to help with anything about TaskMate — finding artisans, tracking requests, or understanding how our platform works. What do you need?";
+                }
+                setMessages(prev => [...prev, { role: 'model', text: fallback }]);
             } else {
-                response = "That's a great question! As a TaskMate assistant, I'm here to ensure your service experience is smooth. Is there anything specific about your tasks you'd like to know?";
+                setMessages(prev => [...prev, { role: 'model', text: data.reply }]);
             }
-
-            setMessages(prev => [...prev, { role: 'model', text: response }]);
         } catch (error) {
             console.error("AI Error:", error);
-            setMessages(prev => [...prev, { role: 'model', text: "Sorry, I'm having trouble connecting right now." }]);
+            setMessages(prev => [...prev, { role: 'model', text: "Sorry, I'm having trouble connecting right now. Please try again." }]);
         } finally {
             setIsLoading(false);
         }
@@ -103,7 +142,10 @@ const AIChat = () => {
                         <div className="bg-green-700 p-4 flex items-center justify-between text-white">
                             <div className="flex items-center gap-2">
                                 <span className="material-icons-outlined">smart_toy</span>
-                                <h3 className="font-bold">TaskMate Assistant</h3>
+                                <div>
+                                    <h3 className="font-bold text-sm">TaskMate Assistant</h3>
+                                    <p className="text-[10px] text-green-200">Powered by AI</p>
+                                </div>
                             </div>
                             <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 rounded-full p-1">
                                 <span className="material-icons-outlined text-sm">remove</span>
@@ -157,9 +199,6 @@ const AIChat = () => {
                                 >
                                     <span className="material-icons-outlined text-lg">send</span>
                                 </button>
-                            </div>
-                            <div className="text-center mt-2">
-                                <p className="text-[10px] text-gray-400">Simulation Mode {isSimulated ? '(Active)' : ''}</p>
                             </div>
                         </form>
                     </motion.div>

@@ -485,19 +485,33 @@ export function DataProvider({ children }) {
   const submitKYC = async (kycData) => {
     if (!currentUser) return;
     try {
-      // In Phase 1 we use the submitVerification method. We can trigger the squad function to verify BVN immediately.
-      const { error } = await supabase.functions.invoke('squad', {
-        body: { action: 'verify-kyc', providerId: currentUser.id, bvn: kycData.bvn }
+      const { data, error } = await supabase.functions.invoke('squad', {
+        body: { 
+          action: 'verify-kyc', 
+          providerId: currentUser.id, 
+          bvn: kycData.bvn,
+          idPhotoUrl: kycData.idPhotoUrl || null,
+          selfieUrl: kycData.selfieUrl || null
+        }
       });
       if (error) throw error;
-      toast.success('KYC Verified successfully!');
-      // Update local state if needed
-      if (currentUser.role === 'provider') {
-         // The user's account is now verified
+      
+      // Check the response for verification status
+      if (data?.verified) {
+        toast.success('Identity verified successfully!');
+      } else if (data?.status === 'pending_review') {
+        toast.info('Your verification is under review.');
+      } else if (kycData.partial) {
+        // Partial check (BVN only step) — don't show final status
+        return data;
+      } else {
+        throw new Error(data?.status === 'rejected' ? 'Face match failed. Please try again.' : 'Verification could not be completed.');
       }
+      return data;
     } catch (err) {
       console.error('KYC Verification failed:', err);
-      toast.error('Failed to verify KYC.');
+      toast.error(err.message || 'Failed to verify KYC.');
+      throw err;
     }
   };
 
