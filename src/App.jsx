@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'sonner';
+import NetworkStatus from './components/common/NetworkStatus';
 import Landing from './pages/public/Landing'
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -152,6 +153,7 @@ function AnimatedRoutes() {
 function App() {
   return (
     <Router>  
+      <NetworkStatus />
       <Toaster position="top-right" richColors />
       <AnimatedRoutes />
     </Router>
