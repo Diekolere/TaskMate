@@ -160,7 +160,6 @@ export default function KYCModal({ open, onClose, onComplete }) {
         if (bvn.length !== 11) { toast.error('BVN must be 11 digits'); return; }
         setVerifyingBvn(true);
         try {
-            // Check if BVN is valid via Squad Sandbox
             await submitKYC({ bvn, partial: true });
             setBvnVerified(true);
             toast.success('BVN verification passed');
@@ -189,51 +188,33 @@ export default function KYCModal({ open, onClose, onComplete }) {
         goTo(step + 1);
     };
 
-    const startFaceIO = async () => {
-        if (!window.faceIO) {
-            toast.error('FaceIO not loaded. Check connection.');
-            return;
-        }
-
-        const faceio = new window.faceIO("fioa9632"); // Placeholder App ID
-
-        setFaceMatchState('checking');
-        try {
-            const response = await faceio.enroll({
-                "locale": "auto",
-                "payload": {
-                    "whoami": currentUser.id,
-                    "email": currentUser.email
-                }
-            });
-            
-            console.log("FaceIO Success:", response);
-            setFaceMatchState('passed');
-            toast.success('Liveness check passed');
-        } catch (err) {
-            console.error("FaceIO Error:", err);
-            setFaceMatchState('failed');
-            toast.error('Liveness check failed. Please try again.');
-        }
+    const handleSelfieChange = (e) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        setSelfieFile(f);
+        setSelfiePreview(URL.createObjectURL(f));
+        setFaceMatchState('idle'); // We check on the server now
     };
 
     const handleSubmit = async () => {
-        if (faceMatchState !== 'passed') {
-            toast.error('Complete the liveness check to continue');
+        if (!selfieFile) {
+            toast.error('Please upload a selfie for face matching');
             return;
         }
         setSubmitting(true);
         try {
-            // Upload ID photo first for Sightengine check in the edge function
-            let idPhotoUrl = '';
-            if (idFile) {
-                const path = `kyc/${currentUser.id}_id_${Date.now()}`;
-                const { uploadFile } = await import('../../lib/supabase');
-                idPhotoUrl = await uploadFile('verifications', path, idFile);
-            }
+            const { uploadFile } = await import('../../lib/supabase');
+            
+            // 1. Upload ID photo
+            const idPath = `kyc/${currentUser.id}_id_${Date.now()}`;
+            const idPhotoUrl = await uploadFile('verifications', idPath, idFile);
 
-            // Final verification call (Squad + Sightengine)
-            await submitKYC({ bvn, idPhotoUrl });
+            // 2. Upload Selfie
+            const selfiePath = `kyc/${currentUser.id}_selfie_${Date.now()}`;
+            const selfieUrl = await uploadFile('verifications', selfiePath, selfieFile);
+
+            // 3. Final verification call (Squad + Sightengine + Gemini)
+            await submitKYC({ bvn, idPhotoUrl, selfieUrl });
             
             await updateUserProfile({ 
                 kycCompleted: true, 
@@ -241,11 +222,11 @@ export default function KYCModal({ open, onClose, onComplete }) {
                 isVerified: true 
             });
             
-            toast.success('Identity verified successfully!');
+            toast.success('KYC Submitted', { description: 'Your identity is being verified by our AI.' });
             onComplete?.();
             onClose?.();
         } catch (error) {
-            toast.error('Verification failed. Please check your data.');
+            toast.error('Verification failed. Please check your photos.');
             console.error(error);
         } finally {
             setSubmitting(false);
@@ -493,48 +474,41 @@ export default function KYCModal({ open, onClose, onComplete }) {
                                     <p className="text-sm text-gray-400 mt-1">Take a selfie so we can match it to your ID. This prevents identity fraud.</p>
                                 </div>
 
-                                {/* FaceIO Scan Area */}
+                                {/* Selfie Upload Area (For Gemini Match) */}
                                 <div
-                                    onClick={() => faceMatchState !== 'passed' && faceMatchState !== 'checking' && startFaceIO()}
+                                    onClick={() => !submitting && selfieRef.current?.click()}
                                     className={`relative border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all group overflow-hidden ${
-                                        faceMatchState === 'passed' ? 'border-[#10B981] bg-[#10B981]/5' :
-                                        faceMatchState === 'failed' ? 'border-red-300 bg-red-50' :
-                                        'border-gray-200 hover:border-[#10B981]/40 hover:bg-gray-50'
+                                        selfieFile ? 'border-[#10B981] bg-[#10B981]/5' : 'border-gray-200 hover:border-[#10B981]/40 hover:bg-gray-50'
                                     }`}
                                     style={{ minHeight: 220 }}
                                 >
-                                     {faceMatchState === 'passed' ? (
-                                         <div className="flex flex-col items-center py-10 px-4 text-center">
-                                             <div className="w-16 h-16 bg-[#10B981]/10 rounded-full flex items-center justify-center mb-3">
-                                                 <span className="material-icons text-[#10B981] text-3xl">verified</span>
-                                             </div>
-                                             <p className="font-bold text-gray-900 text-base">Face Verified</p>
-                                             <p className="text-xs text-[#10B981] mt-1 font-medium">Biometric scan successful</p>
+                                     <input ref={selfieRef} type="file" accept="image/*" capture="user" className="hidden" onChange={handleSelfieChange} />
+
+                                     {selfiePreview ? (
+                                         <div className="w-full h-full p-2">
+                                             <img src={selfiePreview} alt="Selfie" className="w-full h-44 object-cover rounded-xl" />
+                                             <p className="text-[10px] text-gray-400 text-center mt-2">Tap to change selfie</p>
                                          </div>
                                      ) : (
                                          <div className="flex flex-col items-center py-10 px-4 text-center">
                                              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-[#10B981]/10 transition-colors">
-                                                 <span className="material-icons text-gray-400 group-hover:text-[#10B981] text-3xl transition-colors">face</span>
+                                                 <span className="material-icons text-gray-400 group-hover:text-[#10B981] text-3xl transition-colors">add_a_photo</span>
                                              </div>
-                                             <p className="font-bold text-gray-900 text-base">Start Biometric Scan</p>
+                                             <p className="font-bold text-gray-900 text-base">Take a Selfie</p>
                                              <p className="text-xs text-gray-400 mt-1.5 max-w-[240px]">
-                                                 We use FaceIO to securely verify you are the same person as on your ID.
+                                                 Ensure your face is clear and well-lit. We'll match this with your ID.
                                              </p>
-                                             <button className="mt-5 px-6 py-2.5 bg-[#0F172A] text-white text-xs font-bold rounded-xl hover:bg-slate-700 transition-colors flex items-center gap-2">
-                                                 <span className="material-icons text-sm">camera_alt</span>
-                                                 Open Camera
-                                             </button>
                                          </div>
                                      )}
 
-                                    {/* Checking overlay */}
+                                    {/* Submitting overlay */}
                                     <AnimatePresence>
-                                        {faceMatchState === 'checking' && (
+                                        {submitting && (
                                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                                                 className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-2">
                                                 <div className="w-8 h-8 rounded-full border-2 border-[#10B981]/30 border-t-[#10B981] animate-spin" />
-                                                <p className="text-[#0F172A] text-sm font-bold">Initializing Scanner…</p>
-                                                <p className="text-gray-400 text-xs">Stay in clear lighting</p>
+                                                <p className="text-[#0F172A] text-sm font-bold">Verifying Identity…</p>
+                                                <p className="text-gray-400 text-xs">Comparing face to ID document</p>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
