@@ -5,12 +5,16 @@ import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { useLocationHeartbeat } from '../../hooks/useLocationHeartbeat';
 import { formatDistanceToNow } from 'date-fns';
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
     const { getAllServicePosts, getProviders } = useData();
+    
+    // Track customer location for optimal proximity matching
+    useLocationHeartbeat();
     
     // Custom Filter States
     const [searchQuery, setSearchQuery] = useState('');
