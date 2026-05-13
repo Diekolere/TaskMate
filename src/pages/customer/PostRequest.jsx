@@ -8,6 +8,7 @@ import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import useImageModeration from '../../hooks/useImageModeration';
+import { supabase } from '../../lib/supabase';
 import { enrichDescription } from '../../lib/aiData';
 
 const reverseGeocode = async (lat, lon, retries = 2) => {
@@ -250,6 +251,7 @@ function PostRequestForm({ onClose, isModal }) {
     const [showCalendar, setShowCalendar] = useState(false);
     const [enriching, setEnriching] = useState(false);
     const [address, setAddress] = useState(editingRequest?.location || currentUser?.location_name || '');
+    const [coordinates, setCoordinates] = useState(null); // { lat, lng }
     const fileInputRef = useRef();
 
     const initImages = () => {
@@ -262,12 +264,14 @@ function PostRequestForm({ onClose, isModal }) {
     };
     const [images, setImages] = useState(initImages);
 
-    // Geolocation on mount
+    // Geolocation on mount — also captures coords
     useEffect(() => {
         if (address) return;
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(pos => {
-                reverseGeocode(pos.coords.latitude, pos.coords.longitude)
+                const { latitude, longitude } = pos.coords;
+                setCoordinates({ lat: latitude, lng: longitude });
+                reverseGeocode(latitude, longitude)
                     .then(name => name && setAddress(name))
                     .catch(() => toast.info('Could not auto-detect address. Please enter it manually.'));
             }, () => {});
@@ -315,10 +319,24 @@ function PostRequestForm({ onClose, isModal }) {
     const handleEnrich = async () => {
         if (!description.trim()) { toast.error('Write a description first'); return; }
         setEnriching(true);
-        await new Promise(r => setTimeout(r, 1200));
-        setDescription(enrichDescription(description, category));
-        setEnriching(false);
-        toast.success('Description improved');
+        try {
+            const { data, error } = await supabase.functions.invoke('ai', {
+                body: { action: 'enhance-description', title, description, category, urgency: urgency || 'medium' }
+            });
+            if (!error && data?.success && data.enhanced_description) {
+                setDescription(data.enhanced_description);
+                toast.success('Description improved by AI');
+            } else {
+                // Fallback to local template if edge function unavailable
+                setDescription(enrichDescription(description, category));
+                toast.success('Description improved');
+            }
+        } catch (e) {
+            setDescription(enrichDescription(description, category));
+            toast.success('Description improved');
+        } finally {
+            setEnriching(false);
+        }
     };
 
     const formatDate = (iso) => {
@@ -336,6 +354,7 @@ function PostRequestForm({ onClose, isModal }) {
         const data = {
             title: title.trim(), category, description: description.trim(),
             location: address,
+            coordinates: coordinates || null, // { lat, lng } for geospatial matching
             urgency: urgency || 'medium',
             scheduledDate: scheduledDate || null,
             images: imagePreviews,
@@ -522,7 +541,9 @@ function PostRequestForm({ onClose, isModal }) {
                             onClick={() => {
                                 if (!navigator.geolocation) return;
                                 navigator.geolocation.getCurrentPosition(pos => {
-                                    reverseGeocode(pos.coords.latitude, pos.coords.longitude)
+                                    const { latitude, longitude } = pos.coords;
+                                    setCoordinates({ lat: latitude, lng: longitude });
+                                    reverseGeocode(latitude, longitude)
                                         .then(name => name && setAddress(name))
                                         .catch(() => toast.error('Location lookup failed. Enter address manually.'));
                                 });
