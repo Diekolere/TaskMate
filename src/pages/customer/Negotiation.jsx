@@ -16,6 +16,9 @@ const Negotiation = () => {
     const {
         requests,
         jobs,
+        messages: liveMessages,
+        fetchMessages,
+        sendMessage: sendLiveMessage,
         startNegotiation,
         finalizeAgreement,
         isSimulated
@@ -86,13 +89,25 @@ const Negotiation = () => {
         }
     }, [id, requests, jobs, isCustomer, startNegotiation, navigate, isSimulated]);
 
+    // Fetch real messages on mount
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+        if (id) fetchMessages(id);
+    }, [id]);
 
-    // Mock messages for demo
+    // Update local messages state when liveMessages changes (filtered for this job)
     useEffect(() => {
-        if (job && isSimulated) {
+        const filtered = liveMessages.filter(m => m.job_id === id);
+        if (filtered.length > 0) {
+            setMessages(filtered.map(m => ({
+                id: m.id,
+                sender: m.sender_id === currentUser.id ? 'customer' : 'provider',
+                message: m.message,
+                timestamp: new Date(m.created_at),
+                type: m.type,
+                budget: m.metadata?.budget
+            })));
+        } else if (job && isSimulated) {
+            // Mock messages for demo
             setMessages([
                 {
                     id: 1,
@@ -111,39 +126,20 @@ const Negotiation = () => {
                 }
             ]);
         }
-    }, [job, isCustomer, isSimulated]);
+    }, [job, isCustomer, isSimulated, liveMessages, id, currentUser.id]);
 
-    const sendMessage = () => {
+    const sendMessage = async () => {
         if (!newMessage.trim()) return;
-
-        const message = {
-            id: Date.now(),
-            sender: isCustomer ? 'customer' : 'provider',
-            message: newMessage,
-            timestamp: new Date(),
-            type: 'text'
-        };
-
-        setMessages(prev => [...prev, message]);
+        await sendLiveMessage(id, newMessage.trim(), 'text');
         setNewMessage('');
     };
 
-    const proposeBudget = () => {
+    const proposeBudget = async () => {
         if (!proposedBudget || isNaN(proposedBudget)) {
             toast.error('Please enter a valid budget amount');
             return;
         }
-
-        const message = {
-            id: Date.now(),
-            sender: isCustomer ? 'customer' : 'provider',
-            message: `I propose ₦${Number(proposedBudget).toLocaleString()} for this job.`,
-            timestamp: new Date(),
-            type: 'budget_proposal',
-            budget: Number(proposedBudget)
-        };
-
-        setMessages(prev => [...prev, message]);
+        await sendLiveMessage(id, `I propose ₦${Number(proposedBudget).toLocaleString()} for this job.`, 'budget_proposal', { budget: Number(proposedBudget) });
         setProposedBudget('');
     };
 
@@ -329,7 +325,7 @@ const Negotiation = () => {
                                                     }`}>
                                                         <p className="text-sm">{msg.message}</p>
                                                         <p className="text-xs opacity-70 mt-1">
-                                                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                         </p>
                                                     </div>
                                                 </motion.div>
