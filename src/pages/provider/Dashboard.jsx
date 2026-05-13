@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
@@ -7,6 +7,7 @@ import TopNavbar from '../../components/layout/TopNavbar';
 import KYCModal from '../../components/provider/KYCModal';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { useLocationHeartbeat } from '../../hooks/useLocationHeartbeat';
 
 const categoryIcon = (cat) => {
     const c = (cat || '').toLowerCase();
@@ -19,6 +20,10 @@ const categoryIcon = (cat) => {
 const ProviderDashboard = () => {
     const { currentUser } = useAuth();
     const { jobs } = useData();
+    const navigate = useNavigate();
+
+    // Start live location tracking for proximity matching
+    useLocationHeartbeat();
 
     const isVerified = currentUser?.kycCompleted === true;
     const kycCompleted = currentUser?.kycCompleted === true;

@@ -27,6 +27,7 @@ export function DataProvider({ children }) {
   const [users, setUsers] = useState([]);
   const [earnings, setEarnings] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savedProviderIds, setSavedProviderIds] = useState([]);
 
@@ -168,7 +169,20 @@ export function DataProvider({ children }) {
       })
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    // ── Messages (Realtime)
+    const msgChannel = supabase
+      .channel('messages:user')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'job_messages'
+      }, (payload) => {
+        setMessages(prev => [...prev, payload.new]);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(msgChannel);
+    };
   }, [currentUser]);
 
   // ── Earnings (Provider) ─────────────────────────────────
@@ -208,6 +222,16 @@ export function DataProvider({ children }) {
 
   // ── Actions ─────────────────────────────────────────────
 
+  // Central helper to insert a notification into Supabase (triggers Realtime to all listening UIs)
+  const sendNotification = async (userId, { type = 'system', title, body, icon = 'info', iconBg = 'bg-gray-100', iconColor = 'text-gray-400', ctaPath = null } = {}) => {
+    if (!userId || !title) return;
+    try {
+      await supabase.from('notifications').insert([{
+        user_id: userId, type, title, body, icon, icon_bg: iconBg, icon_color: iconColor, cta_path: ctaPath
+      }]);
+    } catch (e) { console.error('sendNotification failed:', e); }
+  };
+
   const createRequest = async (requestData) => {
     if (!currentUser) return;
 
@@ -224,10 +248,33 @@ export function DataProvider({ children }) {
         toast.dismiss('img-upload');
       }
 
-      // TODO (Phase 3): Call ai/enhance-description edge function here
-      // const { data: aiData } = await supabase.functions.invoke('ai', { body: { action: 'enhance-description', ... }});
+      // Call ai/enhance-description edge function here
+      let enhancedDesc = requestData.description;
+      let suggestedPrice = requestData.budget;
+      
+      try {
+        const { data: aiData, error: aiError } = await supabase.functions.invoke('ai', { 
+            body: { 
+                action: 'enhance-description', 
+                title: requestData.title,
+                description: requestData.description,
+                category: requestData.category || 'General',
+                urgency: requestData.urgency || 'medium'
+            }
+        });
+        if (!aiError && aiData?.success) {
+            enhancedDesc = aiData.enhanced_description;
+            suggestedPrice = aiData.suggested_price || requestData.budget;
+        }
+      } catch (e) { console.error('AI Enhance skipped:', e); }
 
       const rType = requestData.request_type || (requestData.providerId ? 'private' : 'public');
+      
+      // Format coordinates for PostGIS (WKT: POINT(lng lat))
+      const locationCoords = requestData.coordinates 
+        ? `POINT(${requestData.coordinates.lng} ${requestData.coordinates.lat})`
+        : null;
+
       const { data, error } = await supabase
         .from('jobs')
         .insert([{
@@ -236,6 +283,7 @@ export function DataProvider({ children }) {
           category: requestData.category || 'General',
           budget_estimate: requestData.budget,
           location_name: requestData.location,
+          location_coords: locationCoords,
           coordinates: requestData.coordinates,
           urgency: requestData.urgency || 'medium',
           images: imageUrls.length > 0 ? imageUrls : (requestData.images || []),
@@ -245,9 +293,9 @@ export function DataProvider({ children }) {
           request_type: rType,
           visibility: rType,
           status: normalizeStatus(requestData.status || 'open'),
-          timeline: requestData.timeline || []
-          // enhanced_description: aiData.enhanced_description,
-          // ai_suggested_price: aiData.suggested_price
+          timeline: requestData.timeline || [],
+          enhanced_description: enhancedDesc,
+          ai_suggested_price: suggestedPrice
         }])
         .select()
         .single();
@@ -255,8 +303,11 @@ export function DataProvider({ children }) {
       if (error) throw error;
       toast.success('Request posted!');
       
-      // TODO (Phase 5): Trigger matching/auto-match-job edge function here async
-      // supabase.functions.invoke('matching', { body: { action: 'auto-match', jobId: data.id }});
+      // Trigger matching/auto-match-job edge function async if it's a public request
+      if (rType === 'public') {
+          supabase.functions.invoke('matching', { body: { action: 'auto-match', jobId: data.id }})
+            .catch(e => console.error('Auto-match failed silently:', e));
+      }
 
       return data.id;
     } catch (error) {
@@ -287,7 +338,18 @@ export function DataProvider({ children }) {
 
   const acceptJob = async (jobId) => {
     await updateJobStatus(jobId, 'provider_accepted', { worker_id: currentUser.id });
-    // TODO (Phase 5): Trigger matching/auto-match-job
+    
+    // Find the job to get customer ID for notification
+    const { data: job } = await supabase.from('jobs').select('customer_id, title').eq('id', jobId).single();
+    if (job) {
+      await sendNotification(job.customer_id, {
+        type: 'job_update',
+        title: 'Provider Accepted Your Request',
+        body: `A provider has accepted "${job.title}". Proceed to negotiate terms.`,
+        icon: 'handshake', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]',
+        ctaPath: `/customer/request/${jobId}`
+      });
+    }
     toast.success('Job accepted!');
   };
 
@@ -297,25 +359,109 @@ export function DataProvider({ children }) {
 
   const finalizeAgreement = async (jobId, finalBudget) => {
     await updateJobStatus(jobId, 'awaiting_payment', { final_budget: finalBudget, agreed_price: finalBudget });
+    // Notify customer to proceed with payment
+    const { data: job } = await supabase.from('jobs').select('customer_id, worker_id, title').eq('id', jobId).single();
+    if (job) {
+      await sendNotification(job.customer_id, {
+        type: 'payment',
+        title: 'Deal Agreed — Pay Now',
+        body: `Your deal for "${job.title}" is finalized at ₦${Number(finalBudget).toLocaleString()}. Tap to pay.`,
+        icon: 'payments', iconBg: 'bg-blue-50', iconColor: 'text-blue-500',
+        ctaPath: `/customer/payment/${jobId}`
+      });
+    }
   };
 
   const securePayment = async (jobId) => {
     await updateJobStatus(jobId, 'payment_secured');
+    // Notify provider that payment is secured and they can start
+    const { data: job } = await supabase.from('jobs').select('customer_id, worker_id, title').eq('id', jobId).single();
+    if (job?.worker_id) {
+      await sendNotification(job.worker_id, {
+        type: 'payment',
+        title: 'Payment Secured — Ready to Start',
+        body: `The customer has paid for "${job.title}". You can now start the job.`,
+        icon: 'account_balance_wallet', iconBg: 'bg-green-50', iconColor: 'text-[#10B981]',
+        ctaPath: `/provider/jobs/${jobId}`
+      });
+    }
     toast.success('Payment secured in escrow');
   };
 
   const markJobInProgress = async (jobId) => {
     await updateJobStatus(jobId, 'in_progress', { started_at: new Date().toISOString() });
+    const { data: job } = await supabase.from('jobs').select('customer_id, title').eq('id', jobId).single();
+    if (job) {
+      await sendNotification(job.customer_id, {
+        type: 'job_update',
+        title: 'Job Has Started',
+        body: `Your provider has started work on "${job.title}".`,
+        icon: 'build_circle', iconBg: 'bg-blue-50', iconColor: 'text-blue-500',
+        ctaPath: `/customer/request/${jobId}`
+      });
+    }
   };
 
   const completeJob = async (jobId) => {
     await updateJobStatus(jobId, 'completed', { completed_at: new Date().toISOString() });
+    // Notify customer to review and release payment
+    const { data: job } = await supabase.from('jobs').select('customer_id, worker_id, title').eq('id', jobId).single();
+    if (job) {
+      await sendNotification(job.customer_id, {
+        type: 'job_update',
+        title: 'Job Marked Complete',
+        body: `Your provider has completed "${job.title}". Review and release payment.`,
+        icon: 'task_alt', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]',
+        ctaPath: `/customer/confirm/${jobId}`
+      });
+    }
   };
 
   const releasePayment = async (jobId) => {
     await updateJobStatus(jobId, 'payment_released');
-    // Actual payout triggered by Edge function via updateJobStatus hook above
+    // Notify provider their funds are on the way
+    const { data: job } = await supabase.from('jobs').select('worker_id, title, agreed_price, final_budget').eq('id', jobId).single();
+    if (job?.worker_id) {
+      const amount = job.agreed_price || job.final_budget;
+      await sendNotification(job.worker_id, {
+        type: 'payment',
+        title: 'Payment Released!',
+        body: `₦${Number(amount || 0).toLocaleString()} for "${job.title}" has been released to your account.`,
+        icon: 'account_balance_wallet', iconBg: 'bg-green-50', iconColor: 'text-[#10B981]'
+      });
+    }
     toast.success('Payment released to provider');
+  };
+
+  // ── Negotiation / Messaging ──────────────────────────
+
+  const fetchMessages = async (jobId) => {
+    const { data, error } = await supabase
+      .from('job_messages')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: true });
+    
+    if (!error) setMessages(data);
+    return data || [];
+  };
+
+  const sendMessage = async (jobId, content, type = 'text', metadata = {}) => {
+    if (!currentUser) return;
+    const { error } = await supabase
+      .from('job_messages')
+      .insert([{
+        job_id: jobId,
+        sender_id: currentUser.id,
+        message: content,
+        type,
+        metadata
+      }]);
+    
+    if (error) {
+      console.error('sendMessage failed:', error);
+      toast.error('Failed to send message');
+    }
   };
 
   // ── Squad / Edge Function Stubs (Phase 1) ───────────────
@@ -590,6 +736,8 @@ export function DataProvider({ children }) {
     submitReview, markNotificationRead, markAllNotificationsRead,
     createServicePost, getServicePosts, getAllServicePosts, createSupportTicket,
     submitVerification, updateVerificationStatus, updateUserStatus,
+    // Messaging
+    messages, fetchMessages, sendMessage,
     // New Edge Function Stubs:
     processPayment, submitKYC, releaseEarnings
   };
