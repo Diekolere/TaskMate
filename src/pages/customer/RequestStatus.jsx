@@ -10,6 +10,7 @@ import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 
 import { getPriceRange, getFairnessLabel, getMatchScore, getSmartPriceLabel } from '../../lib/aiData';
+import { MOCK_PROVIDERS } from '../../lib/mocks';
 
 /* ── Naira SVG icon ─────────────────────────────────────── */
 const NairaSVG = ({ className = 'w-4 h-4' }) => (

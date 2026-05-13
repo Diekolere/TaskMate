@@ -389,11 +389,6 @@ export function DataProvider({ children }) {
   const createServicePost = async (postData) => {
     if (!currentUser) return;
 
-    if (IS_SIMULATED) {
-      toast.success('Post created (simulated)');
-      return 'mock-post-id';
-    }
-
     try {
       let imageUrls = [];
       if (postData.imageFiles?.length > 0) {
