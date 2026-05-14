@@ -28,8 +28,8 @@ const MyJobs = () => {
     const { currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState('active');
 
-    // Jobs where the deal is sealed — negotiating/open/provider_accepted stay on Requests page
-    const MY_JOBS_STATUSES = ['payment_secured', 'in_progress', 'Completed', 'Canceled', 'payment_released'];
+    // Jobs where the deal is sealed or in progress — includes negotiation phase as it's an active engagement
+    const MY_JOBS_STATUSES = ['provider_accepted', 'negotiating', 'awaiting_payment', 'payment_secured', 'in_progress', 'Completed', 'Canceled', 'payment_released'];
     const myJobs = allJobs.filter(j =>
         j.providerId === currentUser?.uid &&
         MY_JOBS_STATUSES.includes(j.status)

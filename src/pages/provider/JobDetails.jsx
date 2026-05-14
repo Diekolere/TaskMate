@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
@@ -9,6 +9,16 @@ import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 const COMMISSION = 0.10;
 const AUTO_RELEASE_HOURS = 48;
+
+const NairaSVG = ({ className = 'w-4 h-4' }) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+        strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M6 4v16M18 4v16" />
+        <path d="M6 4l12 16" />
+        <line x1="4" y1="9" x2="20" y2="9" />
+        <line x1="4" y1="15" x2="20" y2="15" />
+    </svg>
+);
 
 // ── Status config ────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -43,16 +53,327 @@ const buildTimeline = (status) => {
 };
 
 // ── Progress options for in_progress ────────────────────────────
-// "On the way" removed — OTP entry already confirms provider is on-site
 const PROGRESS_OPTS = [
     { key: 'started',  label: 'Work started',    icon: 'construction' },
     { key: 'paused',   label: 'Paused — sourcing parts', icon: 'pause_circle' },
     { key: 'resumed',  label: 'Work resumed',    icon: 'play_circle' },
 ];
 
+function ProviderNegotiationDrawer({ job, onClose }) {
+    const { currentUser } = useAuth();
+    const { messages: allMessages, fetchMessages, sendMessage, finalizeAgreement } = useData();
+    const messagesEndRef = useRef(null);
+
+    const [input, setInput] = useState('');
+    const [showPriceInput, setShowPriceInput] = useState(false);
+    const [priceOffer, setPriceOffer] = useState('');
+    const [showFinalizeInput, setShowFinalizeInput] = useState(false);
+    const [finalizePrice, setFinalizePrice] = useState('');
+    const [agreed, setAgreed] = useState(false);
+    const [finalized, setFinalized] = useState(false);
+    const [rejected, setRejected] = useState(false);
+
+    const seen = new Set();
+    const messages = allMessages
+        .filter(message => message.job_id === job.id)
+        .filter((message) => {
+            const key = message.id || `${message.sender_id}-${message.created_at}-${message.message}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+    useEffect(() => {
+        fetchMessages(job.id);
+    }, [job.id, fetchMessages]);
+
+    useEffect(() => {
+        const intervalId = window.setInterval(() => {
+            fetchMessages(job.id);
+        }, 5000);
+
+        return () => window.clearInterval(intervalId);
+    }, [job.id, fetchMessages]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    const formatTime = (value) => {
+        try {
+            return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch {
+            return 'Now';
+        }
+    };
+
+    const sendText = async () => {
+        const text = input.trim();
+        if (!text) return;
+        await sendMessage(job.id, text, 'text');
+        setInput('');
+    };
+
+    const sendProposal = async () => {
+        const amount = Number(priceOffer);
+        if (!amount) return;
+        await sendMessage(job.id, `I propose ₦${amount.toLocaleString()} for this job.`, 'price_proposal', { price: amount });
+        setPriceOffer('');
+        setShowPriceInput(false);
+    };
+
+    const handleAccept = async (price) => {
+        const agreedPrice = Number(price);
+        if (!agreedPrice) return;
+        setAgreed(true);
+        await finalizeAgreement(job.id, agreedPrice);
+        await sendMessage(job.id, `Price agreed at ₦${agreedPrice.toLocaleString()}. Proceed to payment.`, 'system');
+        toast.success(`Deal agreed at ₦${agreedPrice.toLocaleString()}.`);
+    };
+
+    const submitFinalize = async () => {
+        const amount = Number(finalizePrice);
+        if (!amount) return;
+        setShowFinalizeInput(false);
+        setFinalizePrice('');
+        await sendMessage(job.id, `Provider sent a finalise request at ₦${amount.toLocaleString()}.`, 'finalize_request', { finalizePrice: amount });
+    };
+
+    const confirmFinalize = async (price) => {
+        const agreedPrice = Number(price);
+        if (!agreedPrice) return;
+        setFinalized(true);
+        await finalizeAgreement(job.id, agreedPrice);
+        await sendMessage(job.id, `Job finalised at ₦${agreedPrice.toLocaleString()}. Awaiting customer payment.`, 'system');
+        toast.success(`Finalised at ₦${agreedPrice.toLocaleString()}.`);
+    };
+
+    const declineFinalize = async () => {
+        await sendMessage(job.id, 'Provider declined the finalise request. Negotiation continues.', 'system');
+    };
+
+    const handleReject = async () => {
+        setRejected(true);
+        await sendMessage(job.id, 'Provider rejected the current offer.', 'system');
+    };
+
+    return (
+        <>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/30 z-[140]"
+                onClick={onClose}
+            />
+
+            <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                className="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-white shadow-2xl z-[150] flex flex-col"
+            >
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3 shrink-0">
+                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+                        <span className="material-icons text-gray-500 text-xl">arrow_back</span>
+                    </button>
+                    <div className="w-9 h-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center shrink-0">
+                        {job.customerPhoto
+                            ? <img src={job.customerPhoto} alt={job.customerName || 'Customer'} className="w-full h-full object-cover" />
+                            : <span className="material-icons text-gray-400 text-xl">person</span>
+                        }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900 text-sm leading-tight truncate">{job.customerName || 'Customer'}</p>
+                        <p className={`text-xs font-semibold ${finalized ? 'text-[#10B981]' : rejected ? 'text-red-500' : 'text-[#10B981]'}`}>
+                            {finalized ? 'Finalised' : rejected ? 'Rejected' : 'Online · Negotiating'}
+                        </p>
+                    </div>
+                    {job.customerPhone && (
+                        <a href={`tel:${job.customerPhone}`} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+                            <span className="material-icons text-gray-500 text-xl">call</span>
+                        </a>
+                    )}
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
+                    {messages.length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-gray-400">
+                            <span className="material-icons-outlined text-4xl mb-2 opacity-30">chat_bubble_outline</span>
+                            <p className="text-sm font-medium">No messages yet. Start the negotiation.</p>
+                        </div>
+                    )}
+
+                    {messages.map((message, index) => {
+                        const isMe = message.sender_id === currentUser?.id;
+                        const isSystem = message.type === 'system';
+                        const price = Number(message.metadata?.price || message.metadata?.proposed_price || message.metadata?.budget || message.price || 0);
+                        const isProposal = message.type === 'price_proposal' || message.type === 'budget_proposal';
+                        const finalizeRequestPrice = Number(message.metadata?.finalizePrice || message.metadata?.price || message.price || 0);
+                        const isFinalizeRequest = message.type === 'finalize_request' || finalizeRequestPrice > 0;
+
+                        return (
+                            <div key={`${message.id || 'message'}-${message.created_at || index}`} className={`flex ${isMe ? 'justify-end' : isSystem ? 'justify-center' : 'justify-start'}`}>
+                                {isSystem ? (
+                                    <span className="bg-gray-100 text-gray-500 text-[11px] font-semibold px-4 py-2 rounded-full max-w-[85%] text-center leading-relaxed">
+                                        {message.message}
+                                    </span>
+                                ) : !isMe && isFinalizeRequest ? (
+                                    <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3.5 max-w-[85%]">
+                                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide mb-1.5">Finalise Request</p>
+                                        <p className="text-sm text-gray-800 mb-3">{message.message}</p>
+                                        {!finalized && (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => confirmFinalize(finalizeRequestPrice)}
+                                                    className="flex-1 bg-[#10B981] text-white text-xs font-bold py-2 rounded-xl hover:bg-[#059669] transition-colors"
+                                                >
+                                                    Yes, Confirm
+                                                </button>
+                                                <button
+                                                    onClick={declineFinalize}
+                                                    className="flex-1 bg-white text-gray-600 border border-gray-200 text-xs font-bold py-2 rounded-xl hover:bg-gray-50 transition-colors"
+                                                >
+                                                    No, Continue
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className={`max-w-[78%] flex flex-col gap-1 ${isMe ? 'items-end' : 'items-start'}`}>
+                                        {isProposal ? (
+                                            <div className={`rounded-2xl px-4 py-3.5 w-full ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-900 rounded-bl-sm'}`}>
+                                                <p className="text-[9px] font-bold uppercase tracking-wider opacity-50 mb-1">Price Proposal</p>
+                                                <p className="text-xl font-black mb-0.5">₦{price.toLocaleString()}</p>
+                                                <p className="text-xs opacity-60">{message.message}</p>
+                                                {!isMe && !agreed && !finalized && !rejected && (
+                                                    <div className="flex gap-2 mt-3">
+                                                        <button
+                                                            onClick={() => handleAccept(price)}
+                                                            className="flex-1 bg-[#10B981] text-white text-xs font-bold py-2 rounded-xl hover:bg-[#059669] transition-colors"
+                                                        >
+                                                            Accept
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setShowPriceInput(true);
+                                                                setShowFinalizeInput(false);
+                                                            }}
+                                                            className="flex-1 bg-white text-gray-700 border border-gray-200 text-xs font-bold py-2 rounded-xl hover:bg-gray-50 transition-colors"
+                                                        >
+                                                            Counter
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
+                                                {message.message}
+                                            </div>
+                                        )}
+                                        <span className="text-[10px] text-gray-400 px-1">{formatTime(message.created_at)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                    <div ref={messagesEndRef} />
+                </div>
+
+                <AnimatePresence>
+                    {(showPriceInput || showFinalizeInput) && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 8 }}
+                            className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center gap-2 shrink-0"
+                        >
+                            <span className="text-gray-400 shrink-0"><NairaSVG className="w-4 h-4" /></span>
+                            <input
+                                type="number"
+                                autoFocus
+                                value={showFinalizeInput ? finalizePrice : priceOffer}
+                                onChange={(e) => showFinalizeInput ? setFinalizePrice(e.target.value) : setPriceOffer(e.target.value)}
+                                placeholder={showFinalizeInput ? 'Finalise at...' : 'Your counter offer'}
+                                className="flex-1 pl-1 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] bg-white"
+                            />
+                            <button
+                                onClick={showFinalizeInput ? submitFinalize : sendProposal}
+                                className="h-10 px-4 bg-[#0F172A] text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition-colors"
+                            >
+                                Send
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowPriceInput(false);
+                                    setShowFinalizeInput(false);
+                                }}
+                                className="h-10 w-10 flex items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:bg-gray-100 transition-colors"
+                            >
+                                <span className="material-icons text-lg">close</span>
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {!finalized && !rejected && (
+                    <div className="flex shrink-0 border-t border-gray-100 overflow-hidden">
+                        <button
+                            onClick={() => {
+                                setShowFinalizeInput(true);
+                                setShowPriceInput(false);
+                            }}
+                            className="flex-1 py-3 text-sm font-bold text-emerald-600 bg-emerald-500/[0.07] hover:bg-emerald-500/[0.14] transition-colors"
+                        >
+                            Finalise
+                        </button>
+                        <div className="w-px bg-gray-200 shrink-0" />
+                        <button
+                            onClick={handleReject}
+                            className="flex-1 py-3 text-sm font-bold text-red-500 bg-red-500/[0.07] hover:bg-red-500/[0.14] transition-colors"
+                        >
+                            Reject
+                        </button>
+                    </div>
+                )}
+
+                <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2 bg-white shrink-0">
+                    <button
+                        onClick={() => {
+                            setShowPriceInput(v => !v);
+                            setShowFinalizeInput(false);
+                        }}
+                        className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-[#10B981]"
+                        title="Counter offer"
+                    >
+                        <NairaSVG className="w-[18px] h-[18px]" />
+                    </button>
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && sendText()}
+                        placeholder="Message..."
+                        className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm outline-none text-gray-800 placeholder-gray-400"
+                    />
+                    <button
+                        onClick={sendText}
+                        disabled={!input.trim()}
+                        className="w-9 h-9 flex items-center justify-center rounded-full bg-[#0F172A] disabled:opacity-30 text-white hover:bg-slate-700 transition-colors shrink-0"
+                    >
+                        <span className="material-icons text-[18px]">send</span>
+                    </button>
+                </div>
+            </motion.div>
+        </>
+    );
+}
+
 export default function JobDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const routeLocation = useLocation();
     const { currentUser } = useAuth();
     const { jobs, completeJob, updateJobStatus } = useData();
 
@@ -62,12 +383,20 @@ export default function JobDetails() {
     const [progressOpen, setProgressOpen] = useState(false);
     const [completing, setCompleting] = useState(false);
     const [confirmComplete, setConfirmComplete] = useState(false);
+    const [showNegotiation, setShowNegotiation] = useState(false);
 
     useEffect(() => {
         const found = jobs.find(j => j.id === id);
         setJob(found || null);
         setLoading(false);
     }, [id, jobs]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(routeLocation.search);
+        if (params.get('negotiate') === 'true' || routeLocation.pathname.startsWith('/provider/negotiation/')) {
+            setShowNegotiation(true);
+        }
+    }, [routeLocation.pathname, routeLocation.search]);
 
     const agreedPrice = job?.agreedPrice || job?.budget_estimate || job?.budget || 0;
     const commission  = Math.round(agreedPrice * COMMISSION);
@@ -141,6 +470,13 @@ export default function JobDetails() {
     const images    = job.images || job.photos || [];
     const location  = typeof job.location === 'string' ? job.location : job.location?.address || job.location_name || 'Not specified';
 
+    const closeNegotiation = () => {
+        setShowNegotiation(false);
+        if (routeLocation.pathname.startsWith('/provider/negotiation/') || routeLocation.search.includes('negotiate=true')) {
+            navigate(`/provider/jobs/${id}`, { replace: true });
+        }
+    };
+
     return (
         <div className="min-h-screen bg-white flex font-sans">
             <ProviderSidebar />
@@ -152,82 +488,53 @@ export default function JobDetails() {
                     <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
 
                         {/* ── Header ───────────────────────────────── */}
-                        <div>
+                        <div className="max-w-3xl">
                             <Link to="/provider/jobs" className="inline-flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-[#10B981] transition-colors mb-3">
                                 <span className="material-icons text-sm">arrow_back</span>
                                 My Jobs
                             </Link>
 
-                            <div className="flex items-start gap-3">
+                            <div className="flex items-start gap-4">
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <h1 className="text-[20px] sm:text-[24px] font-extrabold text-gray-900 tracking-tight">
+                                    <div className="flex items-center gap-3 flex-wrap">
+                                        <h1 className="text-[26px] sm:text-[32px] font-black text-gray-900 tracking-tight leading-tight">
                                             {job.title || job.serviceType || 'Job'}
                                         </h1>
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
                                             <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                                             {cfg.label}
                                         </span>
+                                        {job.urgency === 'high' && (
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg">
+                                                <span className="material-icons text-[13px]">bolt</span> Urgent
+                                            </span>
+                                        )}
                                     </div>
-                                    <p className="text-xs text-gray-400 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
-                                        {job.category || 'Service'} · {location}
-                                    </p>
+                                    <div className="flex items-center gap-2 text-xs font-bold text-gray-400 mt-2 uppercase tracking-widest">
+                                        <span>{job.category || 'Service'}</span>
+                                        <span className="text-gray-200">·</span>
+                                        <span className="flex items-center gap-1">
+                                            <span className="material-icons-outlined text-sm">location_on</span>
+                                            {location}
+                                        </span>
+                                    </div>
+                                    {job.description && (
+                                        <p className="text-sm text-gray-500 mt-4 leading-relaxed max-w-2xl font-medium">
+                                            {job.description}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
                         {/* ── Main grid ────────────────────────────── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
                             {/* Left — 2 cols */}
-                            <div className="lg:col-span-2 space-y-5">
+                            <div className="lg:col-span-2 space-y-6">
 
-                                {/* Description */}
-                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Job Description</p>
-                                    <p className="text-sm text-gray-700 leading-relaxed">
-                                        {job.description || 'No description provided.'}
-                                    </p>
-                                    {job.urgency === 'high' && (
-                                        <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
-                                            <span className="material-icons text-[13px]">bolt</span> Urgent
-                                        </span>
-                                    )}
-                                </div>
-
-                                {/* Images */}
-                                {images.length > 0 && (
-                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Job Photos</p>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {images.map((src, i) => (
-                                                <button key={i} onClick={() => setLightbox(i)}
-                                                    className="aspect-square rounded-xl overflow-hidden bg-gray-100 relative group">
-                                                    <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                                        <span className="material-icons-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity text-2xl">zoom_in</span>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Location */}
-                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Location</p>
-                                    <div className="flex items-start gap-2">
-                                        <span className="material-icons-outlined text-[#10B981] text-lg shrink-0 mt-0.5">location_on</span>
-                                        <p className="text-sm text-gray-700">{location}</p>
-                                    </div>
-                                    <div className="mt-3 h-32 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center text-gray-300 gap-2">
-                                        <span className="material-icons-outlined text-2xl">map</span>
-                                        <span className="text-xs">Map preview</span>
-                                    </div>
-                                </div>
-
-                                {/* Action area */}
-                                <div className="space-y-3">
+                                {/* Action area — Prominent at the top of main column */}
+                                <div className="space-y-4">
                                     {/* payment_secured → Enter Start Code */}
                                     {job.status === 'payment_secured' && (
                                         <Link
@@ -327,6 +634,45 @@ export default function JobDetails() {
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Images */}
+                                {images.length > 0 && (
+                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Job Photos</p>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {images.map((src, i) => (
+                                                <button key={i} onClick={() => setLightbox(i)}
+                                                    className="aspect-square rounded-xl overflow-hidden bg-gray-100 relative group">
+                                                    <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                                        <span className="material-icons-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity text-2xl">zoom_in</span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Timeline moved to main column for better balance */}
+                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-5">Job Progress & History</p>
+                                    <div className="relative pl-6 border-l-2 border-gray-100 space-y-6">
+                                        {timeline.map((step, i) => (
+                                            <div key={step.key} className="relative">
+                                                <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-4 border-white ${
+                                                    step.active ? 'bg-[#10B981] shadow-[0_0_0_4px_rgba(16,185,129,0.2)]' :
+                                                    step.done   ? 'bg-[#10B981]' : 'bg-gray-200'
+                                                }`} />
+                                                <div>
+                                                    <p className={`text-sm font-bold ${step.active ? 'text-[#10B981]' : step.done ? 'text-gray-900' : 'text-gray-300'}`}>
+                                                        {step.label}
+                                                    </p>
+                                                    {step.active && <p className="text-[11px] text-gray-400 mt-0.5 font-medium">This is the current stage of the job.</p>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Right — 1 col */}
@@ -335,36 +681,46 @@ export default function JobDetails() {
                                 {/* Customer card */}
                                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Customer</p>
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden ring-2 ring-[#10B981]/20 flex items-center justify-center shrink-0">
+                                    <div className="flex items-center gap-3 mb-5">
+                                        <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden ring-2 ring-[#10B981]/20 flex items-center justify-center shrink-0">
                                             {job.customerPhoto
                                                 ? <img src={job.customerPhoto} alt={job.customerName} className="w-full h-full object-cover" />
                                                 : <span className="material-icons-outlined text-xl text-gray-400">person</span>
                                             }
                                         </div>
-                                        <div>
-                                            <p className="text-[14px] font-bold text-gray-900 flex items-center gap-1">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[15px] font-bold text-gray-900 flex items-center gap-1">
                                                 {job.customerName || 'Customer'}
                                                 <span className="material-icons-outlined text-blue-500 text-sm">verified</span>
                                             </p>
-                                            <p className="text-xs text-gray-400">{job.customerLocation || location}</p>
+                                            <p className="text-xs text-gray-400 leading-relaxed">{job.customerLocation || location}</p>
                                         </div>
                                     </div>
-                                    {job.customerPhone ? (
-                                        <a href={`tel:${job.customerPhone}`}
-                                            className="w-full py-2.5 rounded-xl bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20 hover:bg-[#10B981]/20 transition-colors flex items-center justify-center gap-2 font-semibold text-sm">
-                                            <span className="material-icons-outlined text-base">call</span>
-                                            Call Customer
-                                        </a>
-                                    ) : (
-                                        <a
-                                            href={`tel:${job.customerPhone || ''}`}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        <button
+                                            onClick={() => setShowNegotiation(true)}
                                             className="w-full py-2.5 rounded-xl bg-[#10B981] hover:bg-[#059669] text-white font-semibold flex items-center justify-center gap-2 text-sm transition-colors shadow-sm shadow-[#10B981]/20"
                                         >
-                                            <span className="material-icons-outlined text-base">call</span>
-                                            Call Customer
-                                        </a>
-                                    )}
+                                            <span className="material-icons-outlined text-base">chat</span>
+                                            Message
+                                        </button>
+                                        {job.customerPhone ? (
+                                            <a href={`tel:${job.customerPhone}`}
+                                                className="w-full py-2.5 rounded-xl bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20 hover:bg-[#10B981]/20 transition-colors flex items-center justify-center gap-2 font-semibold text-sm">
+                                                <span className="material-icons-outlined text-base">call</span>
+                                                Call Customer
+                                            </a>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                disabled
+                                                className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-400 border border-gray-200 flex items-center justify-center gap-2 font-semibold text-sm cursor-not-allowed"
+                                            >
+                                                <span className="material-icons-outlined text-base">call</span>
+                                                Call Customer
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Financials */}
@@ -388,30 +744,20 @@ export default function JobDetails() {
                                         Released to your bank after customer confirms completion.
                                     </p>
                                 </div>
-
-                                {/* Timeline */}
-                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-4">Job Progress</p>
-                                    <div className="relative pl-5 border-l-2 border-gray-100 space-y-5">
-                                        {timeline.map((step, i) => (
-                                            <div key={step.key} className="relative">
-                                                <div className={`absolute -left-[22px] top-1 w-4 h-4 rounded-full border-4 border-white ${
-                                                    step.active ? 'bg-[#10B981] shadow-[0_0_0_3px_rgba(16,185,129,0.2)]' :
-                                                    step.done   ? 'bg-[#10B981]' : 'bg-gray-200'
-                                                }`} />
-                                                <p className={`text-[13px] font-bold ${step.active ? 'text-[#10B981]' : step.done ? 'text-gray-900' : 'text-gray-300'}`}>
-                                                    {step.label}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
                             </div>
                         </div>
                     </div>
                 </main>
             </div>
+
+            <AnimatePresence>
+                {showNegotiation && (
+                    <ProviderNegotiationDrawer
+                        job={job}
+                        onClose={closeNegotiation}
+                    />
+                )}
+            </AnimatePresence>
 
             <ProviderMobileNavBar />
 
