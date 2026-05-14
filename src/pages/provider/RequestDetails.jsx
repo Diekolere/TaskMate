@@ -278,7 +278,7 @@ function NegotiatePanel({ request, onClose, onFinalized }) {
 const RequestDetails = () => {
     const { id } = useParams();
     const { currentUser } = useAuth();
-    const { jobs, acceptJob, isSimulated } = useData();
+    const { jobs, acceptJob, updateJobStatus } = useData();
     const navigate = useNavigate();
     const location = useLocation();
     
@@ -304,17 +304,13 @@ const RequestDetails = () => {
         if (!id) return;
         const found = jobs.find(j => j.id === id);
         if (found) { setRequest(found); setLoading(false); return; }
-        setTimeout(() => {
-            const retry = jobs.find(j => j.id === id);
-            setRequest(retry || {
-                id, title: 'Fix Kitchen Sink Leak', category: 'Plumbing',
-                status: 'Open', description: 'The pipe under the kitchen sink is leaking heavily. Water is pooling under the cabinet and needs urgent attention.',
-                location: 'Lekki Phase 1, Lagos', customerName: 'Adaeze Okafor',
-                budget_estimate: 12000, urgency: 'high', createdAt: new Date(),
-                images: [],
+        // Not yet in context — fetch directly from DB
+        import('../../lib/supabase').then(({ supabase }) => {
+            supabase.from('jobs').select('*').eq('id', id).single().then(({ data }) => {
+                setRequest(data || null);
+                setLoading(false);
             });
-            setLoading(false);
-        }, 600);
+        });
     }, [id, jobs]);
 
     const isRestricted = (currentUser?.commissionBalance || 0) > DEBT_LIMIT;
@@ -322,7 +318,7 @@ const RequestDetails = () => {
     const handleAccept = async () => {
         if (isRestricted) { toast.error(`Clear your ₦${DEBT_LIMIT.toLocaleString()} commission balance first.`); return; }
         try {
-            if (!isSimulated) await acceptJob(id);
+            await acceptJob(id);
             setAccepted(true);
             toast.success('Job accepted! Open the chat to negotiate.');
         } catch { toast.error('Failed to accept job'); }
@@ -331,10 +327,12 @@ const RequestDetails = () => {
     const handleDecline = async () => {
         if (!rejectReason) { toast.error('Please select a reason'); return; }
         if (rejectReason === 'Other' && !customReason) { toast.error('Please add a note'); return; }
-        if (isSimulated) await new Promise(r => setTimeout(r, 600));
-        toast.success('Request declined');
+        try {
+            await updateJobStatus(id, 'cancelled');
+            toast.success('Request declined');
             setShowRejectModal(false);
-        navigate('/provider/requests');
+            navigate('/provider/requests');
+        } catch { toast.error('Failed to decline request'); }
     };
     
     if (loading) return (
