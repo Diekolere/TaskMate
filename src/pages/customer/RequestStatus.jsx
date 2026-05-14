@@ -251,7 +251,7 @@ const RequestStatus = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const { requests, getProviders, isSimulated, releasePayment } = useData();
+    const { requests, getProviders, releasePayment } = useData();
     const [request, setRequest] = useState(null);
     const [interestedProviders, setInterestedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -260,7 +260,7 @@ const RequestStatus = () => {
 
     useEffect(() => {
         if (!id) return;
-        if (requests.length === 0 && !isSimulated) { setLoading(true); return; }
+        if (requests.length === 0) { setLoading(true); return; }
 
         const found = requests.find(r => r.id === id);
         const req = found || {
@@ -293,7 +293,7 @@ const RequestStatus = () => {
         }).catch(() => setInterestedProviders([]));
 
         setLoading(false);
-    }, [id, requests, getProviders, isSimulated]);
+    }, [id, requests, getProviders]);
 
     if (loading) return (
             <div className="flex min-h-screen items-center justify-center bg-white">
