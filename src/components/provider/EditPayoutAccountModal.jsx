@@ -113,7 +113,7 @@ function SquadBadge() {
 }
 
 export default function EditPayoutAccountModal({ open, onClose, onSaved }) {
-    const { currentUser, updateUserProfile } = useAuth();
+    const { currentUser, updateUserProfile, updateProviderProfile } = useAuth();
     const [bankName, setBankName] = useState('');
     const [accountNumber, setAccountNumber] = useState('');
     const [accountName, setAccountName] = useState('');
@@ -156,7 +156,11 @@ export default function EditPayoutAccountModal({ open, onClose, onSaved }) {
         }
         setSaving(true);
         try {
-            await updateUserProfile({ bankName, accountNumber, accountName });
+            await updateProviderProfile({ 
+                bank_name: bankName, 
+                account_number: accountNumber, 
+                account_name: accountName 
+            });
             toast.success('Payout account updated');
             onSaved?.();
             onClose?.();
