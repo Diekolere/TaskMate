@@ -300,8 +300,32 @@ export function DataProvider({ children }) {
         .single();
 
       if (error) throw error;
-      toast.success('Request posted!');
       
+      // Send notifications
+      if (rType === 'private' && requestData.providerId) {
+          // Notify Provider
+          await sendNotification(requestData.providerId, {
+              type: 'booking',
+              title: 'New Private Booking!',
+              body: `${currentUser.full_name || 'A customer'} invited you to: ${requestData.title}`,
+              icon: 'person_add',
+              iconBg: 'bg-emerald-100',
+              iconColor: 'text-emerald-600',
+              ctaPath: `/provider/requests/${data.id}`
+          });
+      }
+
+      // Notify Customer (Confirmation)
+      await sendNotification(currentUser.id, {
+          type: 'system',
+          title: 'Request Posted',
+          body: `Your request "${requestData.title}" is now live.`,
+          icon: 'check_circle',
+          iconBg: 'bg-blue-100',
+          iconColor: 'text-blue-600',
+          ctaPath: '/customer/requests'
+      });
+
       // Trigger matching/auto-match-job edge function async if it's a public request
       if (rType === 'public') {
           supabase.functions.invoke('matching', { body: { action: 'auto-match', jobId: data.id }})
