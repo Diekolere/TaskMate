@@ -193,7 +193,12 @@ export function AuthProvider({ children }) {
 
       if (error) throw error;
 
-      setCurrentUser(prev => ({ ...prev, ...data }));
+      setCurrentUser(prev => {
+        const next = { ...prev, ...data };
+        if (data.full_name) next.displayName = data.full_name;
+        if (data.avatar_url) next.photoURL = data.avatar_url;
+        return next;
+      });
       toast.success('Profile updated');
     } catch (error) {
       console.error('Profile update error:', error);
@@ -214,10 +219,20 @@ export function AuthProvider({ children }) {
 
       if (error) throw error;
 
-      setCurrentUser(prev => ({
-        ...prev,
-        provider_profiles: { ...prev.provider_profiles, ...data }
-      }));
+      setCurrentUser(prev => {
+        const updatedProviderProfiles = { ...prev.provider_profiles, ...data };
+        return {
+          ...prev,
+          provider_profiles: updatedProviderProfiles,
+          // Sync flattened fields for immediate UI updates
+          kycCompleted: updatedProviderProfiles.kyc_completed,
+          bvnVerified: updatedProviderProfiles.bvn_verified,
+          bankName: updatedProviderProfiles.bank_name,
+          accountNumber: updatedProviderProfiles.account_number,
+          accountName: updatedProviderProfiles.account_name,
+          isVerified: updatedProviderProfiles.verification_status === 'verified',
+        };
+      });
       toast.success('Provider profile updated');
     } catch (error) {
       console.error('Provider profile update error:', error);
