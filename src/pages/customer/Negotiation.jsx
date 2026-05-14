@@ -67,6 +67,16 @@ const Negotiation = () => {
         if (id) fetchMessages(id);
     }, [id, fetchMessages]);
 
+    useEffect(() => {
+        if (!id) return undefined;
+
+        const intervalId = window.setInterval(() => {
+            fetchMessages(id);
+        }, 5000);
+
+        return () => window.clearInterval(intervalId);
+    }, [id, fetchMessages]);
+
     // Scroll to bottom on new message
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -103,7 +113,7 @@ const Negotiation = () => {
                     icon: 'chat',
                     iconBg: 'bg-blue-100',
                     iconColor: 'text-blue-600',
-                    ctaPath: `/provider/negotiate/${id}`,
+                    ctaPath: `/provider/jobs/${id}?negotiate=true`,
                 });
             }
         } finally {
@@ -126,7 +136,7 @@ const Negotiation = () => {
                 icon: 'payments',
                 iconBg: 'bg-purple-100',
                 iconColor: 'text-purple-600',
-                ctaPath: `/provider/negotiate/${id}`,
+                ctaPath: `/provider/jobs/${id}?negotiate=true`,
             });
         }
     }, [proposedBudget, sendLiveMessage, id, job, currentUser, sendNotification]);
@@ -268,7 +278,7 @@ const Negotiation = () => {
                                                     className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'}`}
                                                 >
                                                     <div className={`max-w-[85%] sm:max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl ${msg.isMe ? 'bg-[#10B981] text-white' : 'bg-gray-100 text-gray-900'}`}>
-                                                        {msg.type === 'budget_proposal' && (
+                                                        {(msg.type === 'budget_proposal' || msg.type === 'price_proposal') && (
                                                             <p className="text-xs font-bold opacity-70 mb-0.5 uppercase tracking-wide">💰 Budget Proposal</p>
                                                         )}
                                                         <p className="text-sm">{msg.message}</p>
