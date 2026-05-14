@@ -20,7 +20,6 @@ import ServiceReview from './pages/customer/ServiceReview';
 import Settings from './pages/customer/Settings';
 import SavedProviders from './pages/customer/SavedProviders';
 import MyRequests from './pages/customer/MyRequests';
-import Negotiation from './pages/customer/Negotiation';
 import Payment from './pages/customer/Payment';
 
 // Provider Pages
@@ -39,7 +38,6 @@ import ProviderSettings from './pages/provider/Settings';
 import ChangePassword from './pages/provider/ChangePassword';
 import CreateServicePost from './pages/provider/CreateServicePost';
 import Support from './pages/provider/Support';
-import ProviderNegotiation from './pages/provider/Negotiation';
 import Privacy from './pages/public/Privacy';
 import Terms from './pages/public/Terms';
 
@@ -85,7 +83,6 @@ function AnimatedRoutes() {
         <Route path="/customer/browse" element={<ProtectedRoute allowedRoles={['customer']}><BrowseProviders /></ProtectedRoute>} />
         <Route path="/customer/requests" element={<ProtectedRoute allowedRoles={['customer']}><MyRequests /></ProtectedRoute>} />
         <Route path="/customer/request-status/:id" element={<ProtectedRoute allowedRoles={['customer']}><RequestStatus /></ProtectedRoute>} />
-        <Route path="/customer/negotiation/:id" element={<ProtectedRoute allowedRoles={['customer']}><Negotiation /></ProtectedRoute>} />
         <Route path="/customer/payment/:requestId" element={<ProtectedRoute allowedRoles={['customer']}><PaymentCheckout /></ProtectedRoute>} />
         <Route path="/customer/provider/:id" element={<ProtectedRoute allowedRoles={['customer']}><ProviderProfile /></ProtectedRoute>} />
         <Route path="/customer/service-review" element={<ProtectedRoute allowedRoles={['customer']}><Navigate to="/customer/dashboard" replace /></ProtectedRoute>} />
@@ -108,7 +105,7 @@ function AnimatedRoutes() {
         <Route path="/provider/requests/:id" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><RequestDetails /></KYCGate></ProtectedRoute>} />
         <Route path="/provider/jobs" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><MyJobs /></KYCGate></ProtectedRoute>} />
         <Route path="/provider/jobs/:id" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><JobDetails /></KYCGate></ProtectedRoute>} />
-        <Route path="/provider/negotiation/:id" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><ProviderNegotiation /></KYCGate></ProtectedRoute>} />
+        <Route path="/provider/negotiation/:id" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><JobDetails /></KYCGate></ProtectedRoute>} />
         <Route path="/provider/earnings" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><Earnings /></KYCGate></ProtectedRoute>} />
         <Route path="/provider/profile" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><MyProfile /></KYCGate></ProtectedRoute>} />
         <Route path="/provider/settings" element={<ProtectedRoute allowedRoles={['provider']}><ProviderSettings /></ProtectedRoute>} />

@@ -17,7 +17,7 @@ const Sidebar = () => {
     const customerNav = [
         { icon: 'home', label: 'Feed', href: '/customer/dashboard' },
         { icon: 'explore', label: 'Explore Providers', href: '/customer/browse' },
-        { icon: 'assignment', label: 'Requests & Jobs', href: '/customer/requests' }, 
+        { icon: 'assignment', label: 'Requests', href: '/customer/requests' }, 
         { icon: 'favorite_border', label: 'Saved', href: '/customer/saved' },
         { icon: 'settings', label: 'Settings', href: '/customer/settings' },
     ];
