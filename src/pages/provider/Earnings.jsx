@@ -6,6 +6,9 @@ import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import EditPayoutAccountModal from '../../components/provider/EditPayoutAccountModal';
 import { supabase } from '../../lib/supabase';
+import EarningsChart from '../../components/provider/EarningsChart';
+import EarningsChartModal from '../../components/provider/EarningsChartModal';
+import TransactionDrawer from '../../components/provider/TransactionDrawer';
 
 function BankBuildingIllustration({ className }) {
     return (
@@ -27,74 +30,77 @@ const Earnings = () => {
     const [walletBalance, setWalletBalance] = useState(0);
     const [payoutModalOpen, setPayoutModalOpen] = useState(false);
     const [payoutVersion, setPayoutVersion] = useState(0);
+    const [ledger, setLedger] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showChartModal, setShowChartModal] = useState(false);
+    const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
 
     useEffect(() => {
         if (currentUser) {
             setCommissionBalance(currentUser.commissionBalance || 0);
-            // Fetch wallet_balance from provider_profiles table
-            fetchWalletBalance();
+            fetchWalletData();
         }
     }, [currentUser]);
 
-    const fetchWalletBalance = async () => {
+    const fetchWalletData = async () => {
+        setLoading(true);
         try {
             if (!currentUser?.id) return;
-            const { data, error } = await supabase
+            
+            // 1. Fetch wallet balance
+            const { data: profile, error: profileError } = await supabase
                 .from('provider_profiles')
                 .select('wallet_balance')
                 .eq('id', currentUser.id)
                 .single();
             
-            if (error) {
-                console.error('Error fetching wallet balance:', error);
-                return;
-            }
+            if (!profileError) setWalletBalance(profile?.wallet_balance || 0);
+
+            // 2. Fetch ledger history
+            const { data: ledgerData, error: ledgerError } = await supabase
+                .from('wallet_ledger')
+                .select('*')
+                .eq('provider_id', currentUser.id)
+                .order('created_at', { ascending: false });
             
-            setWalletBalance(data?.wallet_balance || 0);
+            if (!ledgerError) setLedger(ledgerData || []);
+
         } catch (error) {
             console.error('Wallet fetch error:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
-    const { transactions, weeklyData, totalEarnings, monthlyEarnings, maxVal } = useMemo(() => {
-        if (!currentUser) return { transactions: [], weeklyData: Array(7).fill(0), totalEarnings: 0, monthlyEarnings: 0, maxVal: 1000 };
+    const { weeklyData, totalEarnings, monthlyEarnings, maxVal } = useMemo(() => {
+        if (!currentUser) return { weeklyData: Array(7).fill(0), totalEarnings: 0, monthlyEarnings: 0, maxVal: 1000 };
 
-        const userId = currentUser.uid || currentUser.id;
-        const completed = jobs.filter(job =>
-            (job.providerId === userId || job.provider_id === userId) &&
-            (job.status === 'Completed' || job.status === 'Paid')
-        );
-
+        const credits = ledger.filter(item => item.entry_type === 'credit');
         const now = new Date();
-        const monthlyEarnings = completed.reduce((acc, job) => {
-            let d = job.completedAt instanceof Date ? job.completedAt : (job.completedAt ? new Date(job.completedAt) : null);
-            if (!d && job.updatedAt) d = job.updatedAt instanceof Date ? job.updatedAt : new Date(job.updatedAt);
-            if (d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-                return acc + (Number(job.finalAmount) || Number(job.budget) || 0);
+        
+        const monthlyEarnings = credits.reduce((acc, item) => {
+            const d = new Date(item.created_at);
+            if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+                return acc + Number(item.amount);
             }
             return acc;
         }, 0);
 
-        const allTimeEarnings = completed.reduce((acc, job) => acc + (Number(job.finalAmount) || Number(job.budget) || 0), 0);
+        const allTimeEarnings = credits.reduce((acc, item) => acc + Number(item.amount), 0);
 
         const weekData = Array(7).fill(0);
-        completed.forEach(job => {
-            let d = job.completedAt instanceof Date ? job.completedAt : (job.completedAt ? new Date(job.completedAt) : null);
-            if (!d && job.updatedAt) d = job.updatedAt instanceof Date ? job.updatedAt : new Date(job.updatedAt);
-            if (d) weekData[d.getDay()] += (Number(job.finalAmount) || Number(job.budget) || 0);
+        credits.forEach(item => {
+            const d = new Date(item.created_at);
+            // Only count if within the current week
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay());
+            if (d >= startOfWeek) {
+                weekData[d.getDay()] += Number(item.amount);
+            }
         });
 
-        const txs = completed.map(job => ({
-            id: job.id,
-            type: 'credit',
-            description: `Job: ${job.serviceType || job.title}`,
-            date: job.completedAt instanceof Date ? job.completedAt.toLocaleDateString() : (job.completedAt ? new Date(job.completedAt).toLocaleDateString() : 'Recently'),
-            amount: `₦${(Number(job.finalAmount) || Number(job.budget) || 0).toLocaleString()}`,
-            status: 'Completed',
-        })).sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        return { transactions: txs, weeklyData: weekData, totalEarnings: allTimeEarnings, monthlyEarnings, maxVal: Math.max(...weekData, 1000) };
-    }, [jobs, currentUser]);
+        return { weeklyData: weekData, totalEarnings: allTimeEarnings, monthlyEarnings, maxVal: Math.max(...weekData, 1000) };
+    }, [ledger, currentUser]);
 
     const commissionPct = Math.min((commissionBalance / 5000) * 100, 100);
 
@@ -154,26 +160,25 @@ const Earnings = () => {
                                 </div>
                             </div>
 
-                            {/* Weekly Chart */}
-                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                                <div>
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Weekly Trend</p>
-                                    <h2 className="text-2xl font-bold text-gray-900">
-                                        {weeklyData.reduce((a, b) => a + b, 0).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })}
-                                    </h2>
+                            {/* Weekly Chart - Clickable */}
+                            <button 
+                                onClick={() => setShowChartModal(true)}
+                                className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between text-left hover:border-[#10B981]/50 transition-all active:scale-[0.98] group"
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Weekly Trend</p>
+                                    <span className="material-icons-outlined text-gray-300 group-hover:text-[#10B981] transition-colors text-lg">zoom_in</span>
                                 </div>
-                                <div className="flex items-end justify-between h-20 gap-1.5 mt-4">
-                                    {weeklyData.map((val, i) => (
-                                        <div key={i} className="flex flex-col items-center gap-1 flex-1">
-                                            <div
-                                                className="w-full bg-[#10B981]/15 hover:bg-[#10B981]/30 rounded-t transition-colors"
-                                                style={{ height: `${Math.max((val / (maxVal || 1)) * 100, 4)}%` }}
-                                            />
-                                            <span className="text-[9px] text-gray-400 font-semibold">{'SMTWTFS'[i]}</span>
-                                        </div>
-                                    ))}
+                                <div className="h-32 mt-auto relative w-full -mx-5 px-0">
+                                    <EarningsChart 
+                                        data={weeklyData} 
+                                        height={120} 
+                                        showXAxis={true} 
+                                        showYAxis={false} 
+                                        showDots={true} 
+                                    />
                                 </div>
-                            </div>
+                            </button>
                         </div>
 
                         {/* Transaction History (2/3) + payout account (1/3) */}
@@ -181,24 +186,39 @@ const Earnings = () => {
                             <div className="min-w-0 lg:col-span-2 bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
                                 <div className="p-5 border-b border-gray-100 flex items-center justify-between">
                                     <h3 className="font-bold text-gray-900">Transaction History</h3>
-                                    <button type="button" className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">View All</button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setShowHistoryDrawer(true)}
+                                        className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                                    >
+                                        View All
+                                    </button>
                                 </div>
                                 <div className="divide-y divide-gray-50">
-                                    {transactions.length > 0 ? (
-                                        transactions.map((trx) => (
-                                            <div key={trx.id} className="px-5 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
+                                    {ledger.length > 0 ? (
+                                        ledger.map((item) => (
+                                            <div key={item.id} className="px-5 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-9 h-9 rounded-full bg-[#10B981]/10 text-[#10B981] flex items-center justify-center shrink-0">
-                                                        <span className="material-icons-outlined text-base">check_circle</span>
+                                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                                                        item.entry_type === 'credit' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
+                                                    }`}>
+                                                        <span className="material-icons-outlined text-base">
+                                                            {item.entry_type === 'credit' ? 'add' : 'remove'}
+                                                        </span>
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-sm font-bold text-gray-900 truncate">{trx.description}</p>
-                                                        <p className="text-xs text-gray-400">{trx.date} · #{trx.id.substring(0, 8)}</p>
+                                                        <p className="text-sm font-bold text-gray-900 truncate">{item.description}</p>
+                                                        <p className="text-xs text-gray-400">
+                                                            {new Date(item.created_at).toLocaleDateString()} · #{item.id.substring(0, 8)}
+                                                        </p>
                                                     </div>
                                                 </div>
                                                 <div className="text-right shrink-0 ml-4">
-                                                    <p className="text-sm font-bold text-gray-900">{trx.amount}</p>
-                                                    <p className="text-xs text-[#10B981] font-semibold capitalize">{trx.status}</p>
+                                                    <p className={`text-sm font-bold ${
+                                                        item.entry_type === 'credit' ? 'text-emerald-600' : 'text-red-600'
+                                                    }`}>
+                                                        {item.entry_type === 'credit' ? '+' : '-'} ₦{Number(item.amount).toLocaleString()}
+                                                    </p>
                                                 </div>
                                             </div>
                                         ))
@@ -295,6 +315,20 @@ const Earnings = () => {
             />
 
             <ProviderMobileNavBar />
+
+            {/* ── Modular UI Components (Portals) ── */}
+            <EarningsChartModal 
+                isOpen={showChartModal} 
+                onClose={() => setShowChartModal(false)} 
+                weeklyData={weeklyData} 
+                maxVal={maxVal} 
+            />
+
+            <TransactionDrawer 
+                isOpen={showHistoryDrawer} 
+                onClose={() => setShowHistoryDrawer(false)} 
+                ledger={ledger} 
+            />
         </div>
     );
 };
