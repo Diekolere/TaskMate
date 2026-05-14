@@ -10,7 +10,7 @@ import TopNavbar from '../../components/layout/TopNavbar';
 const ProviderProfile = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { savedProviderIds, toggleSavedProvider, getProviders } = useData();
+    const { savedProviderIds, toggleSavedProvider, getProviders, getServicePosts } = useData();
     const [activeTab, setActiveTab] = useState('details');
     const [expandedPost, setExpandedPost] = useState(null);
     const [provider, setProvider] = useState(null);
@@ -50,7 +50,20 @@ const ProviderProfile = () => {
                         yearsOfExperience: data.years_experience || data.yearsOfExperience || 'N/A',
                         category: data.category || 'Service Provider',
                         reviews: data.reviews || [], 
-                        servicePosts: data.servicePosts || []
+                        servicePosts: [] // Will be fetched separately
+                    });
+
+                    getServicePosts(data.id || data.uid).then(posts => {
+                        setProvider(prev => ({
+                            ...prev,
+                            servicePosts: posts.map(p => ({
+                                ...p,
+                                title: p.category || 'Service Post',
+                                description: p.caption,
+                                image: p.images?.[0] || '',
+                                createdAt: p.created_at
+                            }))
+                        }));
                     });
                 }
             } catch (error) {

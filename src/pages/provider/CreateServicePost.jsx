@@ -5,12 +5,14 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import { uploadFile, generateFilePath } from '../../lib/supabase';
 
 const CreateServicePost = () => {
     const navigate = useNavigate();
     const routerLocation = useLocation();
-    const { currentUser, updateUserProfile } = useAuth();
+    const { currentUser } = useAuth();
+    const { createServicePost, updateServicePost } = useData();
     const fileInputRef = useRef(null);
     const [category, setCategory] = useState('');
     const [locationField, setLocationField] = useState('');
@@ -86,38 +88,20 @@ const CreateServicePost = () => {
             const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
             const title = category.trim() || 'Service update';
             const description = content.trim();
-            const existing = currentUser?.servicePosts || [];
+
+            const postPayload = {
+                category: category.trim(),
+                location: locationField.trim(),
+                caption: description,
+                images: finalImageUrl ? [finalImageUrl] : [],
+                tags: tags
+            };
 
             if (editingId != null) {
-                const updated = existing.map(p =>
-                    p.id === editingId
-                        ? {
-                            ...p,
-                            title,
-                            description,
-                            image: finalImageUrl || p.image || '',
-                            tags,
-                            category: category.trim() || p.category || '',
-                            location: locationField.trim() || p.location || '',
-                        }
-                        : p
-                );
-                await updateUserProfile({ servicePosts: updated });
+                await updateServicePost(editingId, postPayload);
                 toast.success('Post updated');
             } else {
-                const newPost = {
-                    id: Date.now(),
-                    title,
-                    description,
-                    image: finalImageUrl || '',
-                    rating: 0,
-                    reviews: 0,
-                    tags,
-                    category: category.trim(),
-                    location: locationField.trim(),
-                    createdAt: new Date().toISOString(),
-                };
-                await updateUserProfile({ servicePosts: [newPost, ...existing] });
+                await createServicePost(postPayload);
                 toast.success('Post published');
             }
             navigate('/provider/profile?tab=services');
