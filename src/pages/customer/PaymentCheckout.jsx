@@ -6,18 +6,9 @@ import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useData } from '../../context/DataContext';
+import { supabase } from '../../lib/supabase';
 
 const COMMISSION_RATE = 0.1;
-
-/* Simulate Squad virtual-account creation */
-const generateVirtualAccount = (amount, ref) => ({
-    bank: 'Wema Bank',
-    accountNumber: `780${String(Math.floor(100000 + Math.random() * 900000))}`,
-    accountName: `TASKMATE / ${ref.toUpperCase()}`,
-    amount,
-    reference: `TM-${ref.slice(0, 6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
-    expiresIn: 30, // minutes
-});
 
 /* Simulate Squad payment-verification call */
 const verifySquadPayment = (reference) =>
@@ -51,13 +42,50 @@ const PaymentCheckout = () => {
         };
         setRequest(resolved);
 
-        const amount = Number(stateAgreedPrice || resolved.agreedPrice || resolved.proposed_price || resolved.budget_estimate || 11000);
+        // Fetch provider's static VA from database
+        const fetchProviderVA = async () => {
+            try {
+                // Get the job to find provider_id
+                const { data: job } = await supabase
+                    .from('jobs')
+                    .select('worker_id')
+                    .eq('id', requestId)
+                    .single();
 
-        // Simulate Squad API call to create virtual account (~1.4s)
-        setTimeout(() => {
-            setVAccount(generateVirtualAccount(amount, resolved.id));
-            setGenerating(false);
-        }, 1400);
+                if (!job?.worker_id) {
+                    throw new Error('Provider not assigned to this job');
+                }
+
+                // Fetch the provider's VA
+                const { data: va, error: vaError } = await supabase
+                    .from('virtual_accounts')
+                    .select('*')
+                    .eq('provider_id', job.worker_id)
+                    .single();
+
+                if (vaError || !va) {
+                    throw new Error('Virtual account not found for provider');
+                }
+
+                const amount = Number(stateAgreedPrice || resolved.agreedPrice || resolved.proposed_price || resolved.budget_estimate || 11000);
+
+                setVAccount({
+                    bank: va.beneficiary_bank_name || 'GTBank',
+                    accountNumber: va.virtual_account_number,
+                    accountName: va.account_name,
+                    amount,
+                    reference: job.worker_id, // Use provider_id as reference for payment tracking
+                    expiresIn: null, // Static VA doesn't expire
+                });
+                setGenerating(false);
+            } catch (error) {
+                console.error('Error fetching VA:', error);
+                toast.error('Could not load payment details. Please try again.');
+                setGenerating(false);
+            }
+        };
+
+        fetchProviderVA();
     }, [requestId, requests, stateAgreedPrice, stateProvider]);
 
     const amount = Number(stateAgreedPrice || request?.agreedPrice || request?.proposed_price || request?.budget_estimate || 11000);
@@ -231,10 +259,10 @@ const PaymentCheckout = () => {
                                                     </div>
 
                                                     {/* Expiry notice */}
-                                                    <div className="mx-5 mb-5 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-                                                        <span className="material-icons text-amber-500 text-base shrink-0">timer</span>
-                                                        <p className="text-xs text-amber-700 font-medium">
-                                                            Valid for <span className="font-bold">30 minutes</span>. Transfer the <span className="font-bold">exact amount</span> shown above.
+                                                    <div className="mx-5 mb-5 flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                                                        <span className="material-icons text-blue-500 text-base shrink-0">info</span>
+                                                        <p className="text-xs text-blue-700 font-medium">
+                                                            This account is <span className="font-bold">permanent</span> and belongs to the provider. Transfer the <span className="font-bold">exact amount</span> shown above.
                                                         </p>
                                                     </div>
                                                 </div>

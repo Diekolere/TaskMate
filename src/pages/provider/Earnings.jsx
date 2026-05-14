@@ -5,6 +5,7 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import EditPayoutAccountModal from '../../components/provider/EditPayoutAccountModal';
+import { supabase } from '../../lib/supabase';
 
 function BankBuildingIllustration({ className }) {
     return (
@@ -23,12 +24,37 @@ const Earnings = () => {
     const { jobs } = useData();
     const { currentUser } = useAuth();
     const [commissionBalance, setCommissionBalance] = useState(0);
+    const [walletBalance, setWalletBalance] = useState(0);
     const [payoutModalOpen, setPayoutModalOpen] = useState(false);
     const [payoutVersion, setPayoutVersion] = useState(0);
 
     useEffect(() => {
-        if (currentUser) setCommissionBalance(currentUser.commissionBalance || 0);
+        if (currentUser) {
+            setCommissionBalance(currentUser.commissionBalance || 0);
+            // Fetch wallet_balance from provider_profiles table
+            fetchWalletBalance();
+        }
     }, [currentUser]);
+
+    const fetchWalletBalance = async () => {
+        try {
+            if (!currentUser?.id) return;
+            const { data, error } = await supabase
+                .from('provider_profiles')
+                .select('wallet_balance')
+                .eq('id', currentUser.id)
+                .single();
+            
+            if (error) {
+                console.error('Error fetching wallet balance:', error);
+                return;
+            }
+            
+            setWalletBalance(data?.wallet_balance || 0);
+        } catch (error) {
+            console.error('Wallet fetch error:', error);
+        }
+    };
 
     const { transactions, weeklyData, totalEarnings, monthlyEarnings, maxVal } = useMemo(() => {
         if (!currentUser) return { transactions: [], weeklyData: Array(7).fill(0), totalEarnings: 0, monthlyEarnings: 0, maxVal: 1000 };
@@ -94,19 +120,20 @@ const Earnings = () => {
                         {/* Summary Cards */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
 
-                            {/* Outstanding Commission */}
+                            {/* Available Wallet Balance (Squad Platform Wallet) */}
                             <div className="bg-[#0F172A] text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-4 opacity-5">
-                                    <span className="material-icons-outlined text-9xl">account_balance_wallet</span>
+                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                    <span className="material-icons-outlined text-9xl">wallet</span>
                                 </div>
                                 <div className="relative z-10">
-                                    <p className="text-xs font-semibold uppercase tracking-wider opacity-60 mb-1">Outstanding Commission</p>
+                                    <p className="text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Available Balance</p>
                                     <h2 className="text-3xl font-bold mb-5">
-                                        {(commissionBalance || 0).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })}
+                                        {(walletBalance || 0).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })}
                                     </h2>
-                                    <button className="w-full py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
-                                        Pay Commission
-                                        <span className="material-icons-outlined text-base">payments</span>
+                                    <p className="text-xs opacity-70 font-medium mb-4">From customer payments via your VA</p>
+                                    <button className="w-full py-2.5 bg-[#1E40AF] hover:bg-[#1e3a8a] text-white font-semibold rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+                                        Withdraw
+                                        <span className="material-icons-outlined text-base">arrow_outward</span>
                                     </button>
                                 </div>
                             </div>
@@ -149,33 +176,11 @@ const Earnings = () => {
                             </div>
                         </div>
 
-                        {/* Commission Limit Bar */}
-                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 className="font-bold text-gray-900">Commission Debt Limit</h3>
-                                    <p className="text-sm text-gray-500 mt-0.5">Account restricted when this limit is exceeded</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-bold text-gray-900">₦{commissionBalance.toLocaleString()} / ₦5,000</p>
-                                    <p className={`text-xs font-semibold mt-0.5 ${commissionPct > 80 ? 'text-red-500' : 'text-[#10B981]'}`}>
-                                        {commissionPct.toFixed(0)}% used
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="w-full bg-gray-100 rounded-full h-2.5">
-                                <div
-                                    className={`h-2.5 rounded-full transition-all ${commissionPct > 80 ? 'bg-red-500' : 'bg-[#10B981]'}`}
-                                    style={{ width: `${commissionPct}%` }}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Commission history (2/3) + payout account (1/3) */}
+                        {/* Transaction History (2/3) + payout account (1/3) */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start">
                             <div className="min-w-0 lg:col-span-2 bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
                                 <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-                                    <h3 className="font-bold text-gray-900">Commission History</h3>
+                                    <h3 className="font-bold text-gray-900">Transaction History</h3>
                                     <button type="button" className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">View All</button>
                                 </div>
                                 <div className="divide-y divide-gray-50">
