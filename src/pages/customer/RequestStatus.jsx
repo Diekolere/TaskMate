@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 
-import { getPriceRange, getFairnessLabel, getMatchScore, getSmartPriceLabel } from '../../lib/aiData';
+import { getPriceRange, getFairnessLabel, getSmartPriceLabel } from '../../lib/aiData';
 
 /* ── Naira SVG icon ─────────────────────────────────────── */
 const NairaSVG = ({ className = 'w-4 h-4' }) => (
@@ -24,7 +24,8 @@ const NairaSVG = ({ className = 'w-4 h-4' }) => (
 
 /* ─── Negotiate slide-over panel ───────────────────────── */
 function NegotiatePanel({ provider, requestId, category, onClose, onFinalized }) {
-    const { messages: allMessages, fetchMessages, sendMessage, finalizeAgreement, currentUser } = useData();
+    const { messages: allMessages, fetchMessages, sendMessage, finalizeAgreement } = useData();
+    const { currentUser } = useAuth();
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
 
@@ -365,8 +366,6 @@ const RequestStatus = () => {
 
     const normalizedStatus = String(request.status || '').toLowerCase();
     const releaseEnabled = normalizedStatus === 'completed';
-    const isPrivateRequest = String(request.request_type || request.visibility || '').toLowerCase() === 'private';
-
     const STATUS_LABEL = { open: 'Open', interested: 'Providers Interested', negotiating: 'Negotiating', awaiting_payment: 'Awaiting Payment', payment_secured: 'Payment Secured', in_progress: 'In Progress', payment_released: 'Payment Released', completed: 'Completed' };
     const STATUS_COLOR = { open: 'bg-blue-50 text-blue-700 border-blue-100', interested: 'bg-amber-50 text-amber-700 border-amber-100', negotiating: 'bg-purple-50 text-purple-700 border-purple-100', awaiting_payment: 'bg-orange-50 text-orange-700 border-orange-100', payment_secured: 'bg-green-50 text-green-700 border-green-100', in_progress: 'bg-blue-50 text-blue-700 border-blue-100', completed: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
 
@@ -506,191 +505,7 @@ const RequestStatus = () => {
                             })()}
                             </div>
 
-                        {/* Live Progress Timeline — Overhauled for Premium Look */}
-                        {request.timeline && request.timeline.length > 0 && (
-                            <div className="mb-10 bg-white border border-gray-100 rounded-2xl shadow-sm p-6 md:p-8">
-                                <div className="flex items-center justify-between mb-8">
-                                    <h2 className="text-[15px] font-bold text-gray-900 flex items-center gap-2">
-                                        <span className="material-icons-outlined text-[#10B981] text-xl">insights</span>
-                                        Live Job Journey
-                                    </h2>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 px-2 py-1 rounded-md">Real-time updates</span>
-                                </div>
-                                
-                                <div className="space-y-0 relative">
-                                    {/* The connecting vertical line */}
-                                    <div className="absolute left-[13px] top-2 bottom-2 w-0.5 bg-gray-100 z-0" />
-                                    
-                                    {request.timeline.map((event, idx) => {
-                                        const isLast = idx === request.timeline.length - 1;
-                                        
-                                        // Robust date parsing
-                                        let dateDisplay = 'Just now';
-                                        try {
-                                            if (event.timestamp) {
-                                                const d = typeof event.timestamp === 'string' ? new Date(event.timestamp) : new Date(event.timestamp.seconds * 1000);
-                                                dateDisplay = format(d, 'MMM dd, h:mm a');
-                                            }
-                                        } catch (e) { console.error('Date error:', e); }
 
-                                        // Icon mapping based on label keywords
-                                        const getIcon = (label) => {
-                                            const l = label.toLowerCase();
-                                            if (l.includes('posted')) return 'publish';
-                                            if (l.includes('accepted')) return 'handshake';
-                                            if (l.includes('negotiating') || l.includes('agreed')) return 'chat';
-                                            if (l.includes('payment')) return 'payments';
-                                            if (l.includes('started')) return 'play_circle';
-                                            if (l.includes('completed')) return 'verified';
-                                            return event.icon || 'check_circle';
-                                        };
-                                        
-                                        return (
-                                            <div key={event.id || idx} className="relative pl-10 pb-8 last:pb-0 group">
-                                                {/* Step indicator */}
-                                                <div className={`absolute left-0 top-0 w-7 h-7 rounded-full flex items-center justify-center border-4 border-white z-10 transition-all duration-300 ${
-                                                    isLast 
-                                                        ? 'bg-[#10B981] text-white ring-4 ring-green-50 shadow-sm' 
-                                                        : 'bg-emerald-500/10 text-emerald-600'
-                                                }`}>
-                                                    {isLast ? (
-                                                        <span className="relative flex h-2.5 w-2.5">
-                                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                                                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
-                                                        </span>
-                                                    ) : (
-                                                        <span className="material-icons text-[12px]">{getIcon(event.label)}</span>
-                                                    )}
-                                                </div>
-                                                
-                                                <div className="transition-all duration-300">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className={`text-[14px] font-bold tracking-tight ${isLast ? 'text-gray-900' : 'text-gray-500'}`}>
-                                                            {event.label}
-                                                        </p>
-                                                        {isLast && (
-                                                            <span className="px-2 py-0.5 bg-green-50 text-[#10B981] text-[9px] font-black uppercase rounded-full">Active Step</span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-[11px] font-medium text-gray-400 mt-0.5 flex items-center gap-1">
-                                                        <span className="material-icons-outlined text-[12px]">schedule</span>
-                                                        {dateDisplay}
-                                                    </p>
-                                                    {event.note && (
-                                                        <p className="mt-2 p-3 bg-gray-50 rounded-xl text-xs text-gray-600 border border-gray-100/50 italic">
-                                                            "{event.note}"
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Interested providers — only for public requests OR when no agreement is made yet */}
-                        {!['payment_secured', 'in_progress', 'completed', 'payment_released'].includes(normalizedStatus) && !isPrivateRequest && (
-                            <>
-                                {/* Section label */}
-                                <div className="mb-6">
-                                    <h2 className="text-[15px] font-bold text-gray-900 mb-0.5">
-                                        {finalizedDeal
-                                            ? 'Deal agreed'
-                                            : interestedProviders.length > 0
-                                                ? `${interestedProviders.length} provider${interestedProviders.length !== 1 ? 's' : ''} interested`
-                                                : 'Interested Providers'}
-                                    </h2>
-                                    <p className="text-xs text-gray-400">
-                                        {finalizedDeal
-                                            ? `Finalised with ${finalizedDeal.provider.full_name} at ₦${Number(finalizedDeal.price).toLocaleString()} — proceed to payment above`
-                                            : 'Tap Negotiate to chat and agree on a price'}
-                                    </p>
-                                </div>
-
-                                {interestedProviders.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                                        <div className="w-12 h-12 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
-                                            <span className="material-icons-outlined text-2xl text-gray-300">people</span>
-                                        </div>
-                                        <p className="text-sm font-semibold text-gray-500">No providers yet</p>
-                                        <p className="text-xs text-gray-400 mt-1">Providers nearby will be notified of your request</p>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        {interestedProviders.map((provider, idx) => (
-                                            <motion.div
-                                                key={provider.id}
-                                                initial={{ opacity: 0, y: 8 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: idx * 0.04 }}
-                                                className={`flex items-center gap-4 py-5 ${idx !== 0 ? 'border-t border-gray-100' : ''}`}
-                                            >
-                                                {/* Avatar */}
-                                                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
-                                                    {provider.avatar_url
-                                                        ? <img src={provider.avatar_url} alt={provider.full_name} className="w-full h-full object-cover" />
-                                                        : <span className="material-icons text-gray-400 text-xl">person</span>}
-                                                </div>
-
-                                                {/* Info */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                                                        <span className="font-bold text-gray-900 text-[15px] truncate">
-                                                            {provider.full_name || provider.displayName}
-                                                        </span>
-                                                        {provider.verified && (
-                                                            <span className="material-icons text-[#10B981] text-sm shrink-0">verified</span>
-                                                        )}
-                                                        <span className="flex items-center gap-0.5 bg-green-50 px-1.5 py-0.5 rounded-md border border-green-100 shrink-0">
-                                                            <span className="material-icons-outlined text-[11px] text-[#10B981]">bolt</span>
-                                                            <span className="text-[10px] font-bold text-[#10B981]">{getMatchScore(provider, request.category)}% match</span>
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-400">
-                                                        <span className="truncate">{provider.category || 'General Service'}</span>
-                                                        <span className="hidden sm:inline text-gray-200">·</span>
-                                                        <span className="hidden sm:inline truncate">{provider.location || 'Lagos, Nigeria'}</span>
-                                                        {(provider.provider_profiles?.average_rating || provider.rating) && (
-                                                            <span className="flex items-center gap-0.5">
-                                                                <span className="material-icons text-yellow-400 text-xs">star</span>
-                                                                <span className="font-semibold text-gray-500">
-                                                                    {(provider.provider_profiles?.average_rating || provider.rating)?.toFixed(1)}
-                                                                </span>
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Proposed price */}
-                                                <div className="shrink-0 text-right">
-                                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-1">Proposed</p>
-                                                    <p className="text-base font-black text-[#10B981]">
-                                                        ₦{Number(provider.proposed_price || 0).toLocaleString()}
-                                                    </p>
-                                                </div>
-
-                                                {/* Action */}
-                                                {finalizedDeal?.provider?.id === provider.id ? (
-                                                    <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#10B981]/10 text-[#10B981] text-xs font-bold border border-[#10B981]/20">
-                                                        <span className="material-icons text-sm">check_circle</span>
-                                                        <span className="hidden sm:inline">Agreed</span>
-                                                    </span>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => !finalizedDeal && setNegotiatingWith(provider)}
-                                                        disabled={!!finalizedDeal}
-                                                        className="shrink-0 h-9 px-4 rounded-xl bg-[#0F172A] hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors flex items-center gap-1.5">
-                                                        <span className="material-icons text-base">chat</span>
-                                                        <span className="hidden sm:inline">Negotiate</span>
-                                                    </button>
-                                                )}
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                )}
-                            </>
-                        )}
                     </div>
                 </div>
                 <MobileNavBar />
