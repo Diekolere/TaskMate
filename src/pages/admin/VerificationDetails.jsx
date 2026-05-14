@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 const VerificationDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { verifications, loading: dataLoading } = useData();
+    const { verifications, loading: dataLoading, updateVerificationStatus } = useData();
     const [verification, setVerification] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -25,7 +25,7 @@ const VerificationDetails = () => {
     }, [id, verifications, dataLoading, navigate]);
 
     const handleApprove = async () => {
-        toast.success("Provider approved! (Simulated)");
+        await updateVerificationStatus(id, 'approved');
         setVerification(prev => ({ ...prev, status: 'approved' }));
         setTimeout(() => navigate('/admin/verifications'), 1500);
     };
@@ -38,8 +38,8 @@ const VerificationDetails = () => {
             return;
         }
 
-        toast.success("Provider rejected (Simulated)");
-        setVerification(prev => ({ ...prev, status: 'rejected', rejectionReason: reason.trim() }));
+        await updateVerificationStatus(id, 'rejected', reason.trim());
+        setVerification(prev => ({ ...prev, status: 'rejected', admin_notes: reason.trim() }));
         setTimeout(() => navigate('/admin/verifications'), 1500);
     };
 
