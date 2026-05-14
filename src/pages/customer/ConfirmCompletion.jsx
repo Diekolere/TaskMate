@@ -103,7 +103,7 @@ const ConfirmCompletion = () => {
 
     const handleRelease = () => {
         setPhase('released');
-        toast.success('Payment released to provider!');
+        // toast.success removed - redundant with full screen state
         setTimeout(() => navigate('/customer/dashboard'), 3000);
     };
 
@@ -115,7 +115,7 @@ const ConfirmCompletion = () => {
                 await uploadFile('job-images', path, evidenceFile);
             }
             // Actually call a dispute API here if it existed
-            toast.success('Dispute submitted. Our team will review within 24 hours.');
+            // toast.success removed - redundant with full screen state
         } catch (err) {
             console.error('Evidence upload error:', err);
             toast.error('Dispute submitted, but evidence upload failed.');

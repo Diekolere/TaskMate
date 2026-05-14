@@ -11,90 +11,6 @@ const generateOTP = (id = '') => {
     return String((hash % 9000) + 1000);
 };
 
-// Static demo + simulation entries (real provider-driven completes go in `tm_customer_notifs`)
-const buildCustomerStaticNotifs = (navigate) => [
-    {
-        id: 'n-demo-provider-complete',
-        type: 'job_complete',
-        unread: true,
-        icon: 'task_alt',
-        iconBg: 'bg-[#10B981]/10',
-        iconColor: 'text-[#10B981]',
-        title: 'Ibrahim Musa marked job as complete',
-        body: 'Release payment or settle a dispute within 48 hours.',
-        time: 'Demo',
-        action: {
-            label: 'Review & release',
-            onClick: () => navigate('/customer/confirm/job-paid-01'),
-        },
-    },
-    {
-        id: 'n1', type: 'job', unread: true,
-        icon: 'handshake', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]',
-        title: 'Offer accepted',
-        body: 'Ibrahim Musa accepted your negotiated price of ₦11,000.',
-        time: '5 mins ago',
-        action: null,
-    },
-    {
-        id: 'n2', type: 'payment', unread: true,
-        icon: 'payments', iconBg: 'bg-blue-50', iconColor: 'text-blue-500',
-        title: 'Payment confirmed',
-        body: 'Your payment of ₦11,000 has been received and is held in escrow.',
-        time: '1 hour ago',
-        action: null,
-    },
-    {
-        id: 'n3', type: 'system', unread: false,
-        icon: 'info', iconBg: 'bg-gray-100', iconColor: 'text-gray-500',
-        title: 'Profile saved',
-        body: 'Your profile changes have been saved successfully.',
-        time: '2 days ago',
-        action: null,
-    },
-];
-
-const PROVIDER_NOTIFS = (navigate, openOTPModal) => [
-    {
-        id: 'pn1', type: 'job_ready', unread: true,
-        icon: 'key', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]',
-        title: 'Customer is ready',
-        body: 'Diekolere Olaitan has paid and is waiting for you. Enter the start code to begin.',
-        time: 'Just now',
-        action: {
-            label: 'Enter Start Code',
-            onClick: () => openOTPModal('demo-001'),
-        },
-    },
-    {
-        id: 'pn2', type: 'negotiation', unread: true,
-        icon: 'forum', iconBg: 'bg-violet-50', iconColor: 'text-violet-500',
-        title: 'Counter offer received',
-        body: 'A customer countered your quote of ₦15,000 with ₦12,500 for the plumbing job.',
-        time: '22 mins ago',
-        action: {
-            label: 'View Negotiation',
-            onClick: () => navigate('/provider/requests/job-2'),
-        },
-    },
-    {
-        id: 'pn3', type: 'payment', unread: false,
-        icon: 'account_balance_wallet', iconBg: 'bg-blue-50', iconColor: 'text-blue-500',
-        title: 'Payout sent',
-        body: '₦13,500 has been sent to your Zenith Bank account ending in 4421.',
-        time: '3 hours ago',
-        action: null,
-    },
-    {
-        id: 'pn4', type: 'system', unread: false,
-        icon: 'verified', iconBg: 'bg-amber-50', iconColor: 'text-amber-500',
-        title: 'KYC under review',
-        body: 'Your identity documents are being reviewed. This usually takes 24–48 hours.',
-        time: '1 day ago',
-        action: null,
-    },
-];
-
 // ── OTP Entry Mini-modal ─────────────────────────────────────────
 function OTPModal({ jobId, onClose }) {
     const navigate = useNavigate();
@@ -345,7 +261,7 @@ export default function NotificationPanel({ open, onClose }) {
                                                             className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0F172A] hover:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all shadow-sm"
                                                         >
                                                             <span className="material-icons text-[12px]">arrow_forward</span>
-                                                            View
+                                                            {notif.cta_label || 'View'}
                                                         </button>
                                                     )}
                                                 </div>

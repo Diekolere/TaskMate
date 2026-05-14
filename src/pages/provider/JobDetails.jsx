@@ -128,7 +128,6 @@ function ProviderNegotiationDrawer({ job, onClose }) {
         setAgreed(true);
         await finalizeAgreement(job.id, agreedPrice);
         await sendMessage(job.id, `Price agreed at ₦${agreedPrice.toLocaleString()}. Proceed to payment.`, 'system');
-        toast.success(`Deal agreed at ₦${agreedPrice.toLocaleString()}.`);
     };
 
     const submitFinalize = async () => {
@@ -145,7 +144,6 @@ function ProviderNegotiationDrawer({ job, onClose }) {
         setFinalized(true);
         await finalizeAgreement(job.id, agreedPrice);
         await sendMessage(job.id, `Job finalised at ₦${agreedPrice.toLocaleString()}. Awaiting customer payment.`, 'system');
-        toast.success(`Finalised at ₦${agreedPrice.toLocaleString()}.`);
     };
 
     const declineFinalize = async () => {
@@ -416,7 +414,6 @@ export default function JobDetails() {
             const updatedTimeline = [...currentTimeline, newEvent];
             await updateJobStatus(id, job.status, { timeline: updatedTimeline });
             setJob(prev => ({ ...prev, timeline: updatedTimeline }));
-            toast.success(`Status: ${opt.label}`, { description: 'Customer has been notified.' });
         } catch (error) {
             toast.error('Failed to update progress');
         }
@@ -443,7 +440,6 @@ export default function JobDetails() {
             });
             localStorage.setItem('tm_customer_notifs', JSON.stringify(existing));
             window.dispatchEvent(new CustomEvent('tm-customer-notifs'));
-            toast.success('Job marked complete!', { description: 'Customer has been notified to confirm or raise a dispute.' });
             setJob(j => ({ ...j, status: 'completed' }));
         } catch {
             toast.error('Failed to update job status.');

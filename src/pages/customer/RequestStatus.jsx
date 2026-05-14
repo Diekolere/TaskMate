@@ -80,7 +80,7 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
             setInput('');
             // Immediately refresh messages after sending
             await fetchMessages(requestId);
-            toast.success('Message sent!');
+            // toast.success removed
         } catch (error) {
             console.error('Failed to send message:', error);
             toast.error('Failed to send message. Please try again.');
@@ -97,7 +97,6 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
         setAgreed(true);
         await finalizeAgreement(requestId, price);
         await sendMessage(requestId, `✓ Price agreed at ₦${Number(price).toLocaleString()}. Proceed to payment.`, 'system');
-        toast.success(`Deal agreed at ₦${Number(price).toLocaleString()} — proceed to payment.`);
     };
 
     /* Finalise flow */
@@ -113,7 +112,6 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
         setFinalized(true);
         await finalizeAgreement(requestId, price);
         await sendMessage(requestId, `✓ Job finalised at ₦${Number(price).toLocaleString()}. Tap "Proceed to Payment" to secure the booking.`, 'system');
-        toast.success(`Deal agreed at ₦${Number(price).toLocaleString()}`);
         setTimeout(() => onFinalized?.(price), 1200);
     };
 
@@ -395,7 +393,6 @@ const RequestStatus = () => {
     const handleRelease = async () => {
         try {
             await releasePayment(id);
-            toast.success('Payment released to provider successfully!');
             setRequest(prev => ({ ...prev, status: 'payment_released' }));
         } catch { toast.error('Failed to release payment.'); }
     };

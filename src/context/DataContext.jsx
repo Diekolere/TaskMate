@@ -413,7 +413,6 @@ export function DataProvider({ children }) {
         ctaLabel: 'Start Negotiating'
       });
     }
-    toast.success('Job accepted! Customer has been notified.');
   };
 
   const startNegotiation = async (jobId) => {
@@ -450,7 +449,6 @@ export function DataProvider({ children }) {
         ctaLabel: 'Start Work'
       });
     }
-    toast.success('Payment secured in escrow');
   };
 
   const markJobInProgress = async (jobId) => {
@@ -496,7 +494,6 @@ export function DataProvider({ children }) {
         icon: 'account_balance_wallet', iconBg: 'bg-green-50', iconColor: 'text-[#10B981]'
       });
     }
-    toast.success('Payment released to provider');
   };
 
   // ── Negotiation / Messaging ──────────────────────────
