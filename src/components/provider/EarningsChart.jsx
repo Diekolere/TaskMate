@@ -35,7 +35,7 @@ const EarningsChart = ({
     }));
 
     return (
-        <div style={{ width: '100%', height: height }}>
+        <div className="w-full" style={{ height: height, minHeight: height, minWidth: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
                     <defs>

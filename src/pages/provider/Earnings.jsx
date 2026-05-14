@@ -5,6 +5,7 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import EditPayoutAccountModal from '../../components/provider/EditPayoutAccountModal';
+import WithdrawalModal from '../../components/provider/WithdrawalModal';
 import { supabase } from '../../lib/supabase';
 import EarningsChart from '../../components/provider/EarningsChart';
 import EarningsChartModal from '../../components/provider/EarningsChartModal';
@@ -34,6 +35,7 @@ const Earnings = () => {
     const [loading, setLoading] = useState(true);
     const [showChartModal, setShowChartModal] = useState(false);
     const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
+    const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
 
     useEffect(() => {
         if (currentUser) {
@@ -107,10 +109,11 @@ const Earnings = () => {
     const payoutAccount = useMemo(() => {
         if (!currentUser) return null;
         const bankName = currentUser.bankName?.trim();
+        const bankCode = currentUser.bankCode?.trim();
         const accountNumber = currentUser.accountNumber?.trim();
         const accountName = currentUser.accountName?.trim();
         if (!bankName && !accountNumber && !accountName) return null;
-        return { bankName, accountNumber, accountName };
+        return { bankName, bankCode, accountNumber, accountName };
     }, [currentUser, payoutVersion]);
 
     return (
@@ -137,7 +140,10 @@ const Earnings = () => {
                                         {(walletBalance || 0).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })}
                                     </h2>
                                     <p className="text-xs opacity-70 font-medium mb-4">From customer payments via your VA</p>
-                                    <button className="w-full py-2.5 bg-[#1E40AF] hover:bg-[#1e3a8a] text-white font-semibold rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+                                    <button 
+                                        onClick={() => setShowWithdrawalModal(true)}
+                                        className="w-full py-2.5 bg-[#1E40AF] hover:bg-[#1e3a8a] text-white font-semibold rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+                                    >
                                         Withdraw
                                         <span className="material-icons-outlined text-base">arrow_outward</span>
                                     </button>
@@ -328,6 +334,14 @@ const Earnings = () => {
                 isOpen={showHistoryDrawer} 
                 onClose={() => setShowHistoryDrawer(false)} 
                 ledger={ledger} 
+            />
+
+            <WithdrawalModal
+                isOpen={showWithdrawalModal}
+                onClose={() => setShowWithdrawalModal(false)}
+                currentBalance={walletBalance}
+                payoutAccount={payoutAccount}
+                onPayoutComplete={fetchWalletData}
             />
         </div>
     );
