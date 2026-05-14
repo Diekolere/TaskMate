@@ -173,9 +173,22 @@ export function DataProvider({ children }) {
     const msgChannel = supabase
       .channel('messages:user')
       .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'job_messages'
+        event: 'INSERT', schema: 'public', table: 'negotiations'
       }, (payload) => {
-        setMessages(prev => [...prev, payload.new]);
+        const newMsg = {
+          ...payload.new,
+          type: payload.new.message_type || 'text',
+          metadata: payload.new.price != null ? {
+            price: payload.new.price,
+            proposed_price: payload.new.price,
+            budget: payload.new.price,
+            finalizePrice: payload.new.message_type === 'finalize_request' ? payload.new.price : undefined
+          } : {}
+        };
+        setMessages(prev => {
+          if (prev.some(m => m.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
       })
       .subscribe();
 
@@ -222,14 +235,18 @@ export function DataProvider({ children }) {
 
   // ── Actions ─────────────────────────────────────────────
 
-  // Central helper to insert a notification into Supabase (triggers Realtime to all listening UIs)
+  // Central helper to send a notification via Edge Function (bypasses RLS issues)
   const sendNotification = async (userId, { type = 'system', title, body, icon = 'info', iconBg = 'bg-gray-100', iconColor = 'text-gray-400', ctaPath = null } = {}) => {
     if (!userId || !title) return;
     try {
-      await supabase.from('notifications').insert([{
-        user_id: userId, type, title, body, icon, icon_bg: iconBg, icon_color: iconColor, cta_path: ctaPath
-      }]);
-    } catch (e) { console.error('sendNotification failed:', e); }
+      const { data, error } = await supabase.functions.invoke('notifications', {
+        body: { action: 'send', userId, title, body, type, icon, iconBg, iconColor, ctaPath }
+      });
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('sendNotification failed:', err);
+    }
   };
 
   const createRequest = async (requestData) => {
@@ -362,18 +379,18 @@ export function DataProvider({ children }) {
   const acceptJob = async (jobId) => {
     await updateJobStatus(jobId, 'provider_accepted', { worker_id: currentUser.id });
     
-    // Find the job to get customer ID for notification
+    // Notify customer with a direct "Start Negotiating" deep link
     const { data: job } = await supabase.from('jobs').select('customer_id, title').eq('id', jobId).single();
     if (job) {
       await sendNotification(job.customer_id, {
         type: 'job_update',
-        title: 'Provider Accepted Your Request',
-        body: `A provider has accepted "${job.title}". Proceed to negotiate terms.`,
+        title: '🎉 Provider Accepted Your Request!',
+        body: `A provider has accepted "${job.title}". Tap to open the negotiation chat and agree on a price.`,
         icon: 'handshake', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]',
-        ctaPath: `/customer/request/${jobId}`
+        ctaPath: `/customer/request-status/${jobId}?negotiate=true`
       });
     }
-    toast.success('Job accepted!');
+    toast.success('Job accepted! Customer has been notified.');
   };
 
   const startNegotiation = async (jobId) => {
@@ -459,29 +476,116 @@ export function DataProvider({ children }) {
   // ── Negotiation / Messaging ──────────────────────────
 
   const fetchMessages = async (jobId) => {
-    const { data, error } = await supabase
-      .from('job_messages')
-      .select('*')
-      .eq('job_id', jobId)
-      .order('created_at', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('negotiations')
+        .select('*')
+        .eq('job_id', jobId)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      
+      // Transform data to match component expectations
+      const transformedMessages = data.map(msg => ({
+        ...msg,
+        type: msg.message_type, // Map message_type → type for UI
+        id: msg.id,
+        sender_id: msg.sender_id,
+        job_id: msg.job_id,
+        message: msg.message,
+        created_at: msg.created_at,
+        metadata: msg.price != null ? {
+          price: msg.price,
+          proposed_price: msg.price,
+          budget: msg.price,
+          finalizePrice: msg.message_type === 'finalize_request' ? msg.price : undefined
+        } : {}
+      }));
+      
+      setMessages(transformedMessages);
+      return transformedMessages;
+    } catch (error) {
+      console.error('fetchMessages failed:', error);
+      return [];
+    }
+  };
+  
+  // Subscribe to realtime messages for a job
+  const subscribeToMessages = (jobId) => {
+    if (!jobId) return;
     
-    if (!error) setMessages(data);
-    return data || [];
+    const channel = supabase
+      .channel(`negotiations_${jobId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'negotiations', filter: `job_id=eq.${jobId}` },
+        (payload) => {
+          const newMsg = {
+            ...payload.new,
+            type: payload.new.message_type || 'text',
+            metadata: payload.new.price != null ? {
+              price: payload.new.price,
+              proposed_price: payload.new.price,
+              budget: payload.new.price,
+              finalizePrice: payload.new.message_type === 'finalize_request' ? payload.new.price : undefined
+            } : {}
+          };
+          setMessages(prev => {
+            if (prev.some(m => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`Subscribed to messages for job ${jobId}`);
+        }
+      });
+    
+    return channel;
   };
 
   const sendMessage = async (jobId, content, type = 'text', metadata = {}) => {
     if (!currentUser) return;
-    const { error } = await supabase
-      .from('job_messages')
-      .insert([{
-        job_id: jobId,
-        sender_id: currentUser.id,
-        message: content,
-        type,
-        metadata
-      }]);
-    
-    if (error) {
+    try {
+      const isPriceProposal = type === 'price_proposal' || type === 'budget_proposal';
+      const isFinalizeRequest = type === 'finalize_request' || metadata.finalizePrice != null;
+      const messageType = isFinalizeRequest ? 'finalize_request' : (isPriceProposal ? 'price_proposal' : (type === 'system' ? 'system' : 'text'));
+      const price = metadata.finalizePrice ?? metadata.price ?? metadata.budget ?? null;
+      
+      const { error } = await supabase
+        .from('negotiations')
+        .insert([{
+          job_id: jobId,
+          sender_id: currentUser.id,
+          message: content,
+          message_type: messageType,
+          price: price
+        }]);
+      
+      if (error) throw error;
+      
+      // Notify the other party
+      const { data: job } = await supabase.from('jobs').select('customer_id, worker_id, title').eq('id', jobId).single();
+      if (job) {
+          const isCustomer = currentUser.id === job.customer_id;
+          const receiverId = isCustomer ? job.worker_id : job.customer_id;
+          
+          if (receiverId) {
+              await sendNotification(receiverId, {
+                  type: 'message',
+                  title: `Message: ${job.title}`,
+                  body: content.length > 60 ? content.substring(0, 60) + '...' : content,
+                  icon: 'forum',
+                  iconBg: isCustomer ? 'bg-blue-100' : 'bg-emerald-100',
+                  iconColor: isCustomer ? 'text-blue-600' : 'text-emerald-600',
+                  ctaPath: isCustomer 
+                      ? `/provider/jobs/${jobId}?negotiate=true` 
+                      : `/customer/request-status/${jobId}?negotiate=true`
+              });
+          }
+      }
+    } catch (error) {
       console.error('sendMessage failed:', error);
       toast.error('Failed to send message');
     }
@@ -662,8 +766,12 @@ export function DataProvider({ children }) {
       }
 
       const { data, error } = await supabase.from('service_posts').insert([{
-        provider_id: currentUser.id, caption: postData.caption,
-        images: imageUrls, tags: postData.tags || [], category: postData.category
+        provider_id: currentUser.id, 
+        caption: postData.caption,
+        images: imageUrls.length > 0 ? imageUrls : (postData.images || []), 
+        tags: postData.tags || [], 
+        category: postData.category,
+        location: postData.location
       }]).select().single();
 
       if (error) throw error;
@@ -672,6 +780,48 @@ export function DataProvider({ children }) {
     } catch (error) {
       console.error('Create post error:', error);
       toast.error('Failed to create post');
+      throw error;
+    }
+  };
+
+  const updateServicePost = async (postId, postData) => {
+    if (!currentUser) return;
+    try {
+      const { error } = await supabase
+        .from('service_posts')
+        .update({
+          caption: postData.caption,
+          images: postData.images,
+          tags: postData.tags,
+          category: postData.category,
+          location: postData.location
+        })
+        .eq('id', postId)
+        .eq('provider_id', currentUser.id);
+
+      if (error) throw error;
+      toast.success('Post updated!');
+    } catch (error) {
+      console.error('Update post error:', error);
+      toast.error('Failed to update post');
+      throw error;
+    }
+  };
+
+  const deleteServicePost = async (postId) => {
+    if (!currentUser) return;
+    try {
+      const { error } = await supabase
+        .from('service_posts')
+        .delete()
+        .eq('id', postId)
+        .eq('provider_id', currentUser.id);
+
+      if (error) throw error;
+      toast.success('Post deleted!');
+    } catch (error) {
+      console.error('Delete post error:', error);
+      toast.error('Failed to delete post');
       throw error;
     }
   };
@@ -783,15 +933,14 @@ export function DataProvider({ children }) {
     finalizeAgreement, securePayment, markJobInProgress, completeJob,
     releasePayment, getProviders, savedProviderIds, toggleSavedProvider,
     submitReview, markNotificationRead, markAllNotificationsRead,
-    createServicePost, getServicePosts, getAllServicePosts, createSupportTicket,
+    createServicePost, updateServicePost, deleteServicePost, getServicePosts, getAllServicePosts, createSupportTicket,
     submitVerification, updateVerificationStatus, updateUserStatus,
     // Messaging
-    messages, fetchMessages, sendMessage,
+    messages, fetchMessages, sendMessage, subscribeToMessages,
     // Notifications (exposed for components to send directly)
     sendNotification,
     // Production Operations:
     processPayment, submitKYC, verifyBankAccount, releaseEarnings,
-    isSimulated: false
   };
 
   return (

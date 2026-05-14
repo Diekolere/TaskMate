@@ -32,7 +32,7 @@ const ProviderDashboard = () => {
     const st = (v) => String(v || '').toLowerCase().replace(/\s+/g, '_');
 
     const completedJobs = jobs.filter(j =>
-        (j.providerId === currentUser?.id || j.provider_id === currentUser?.id) &&
+        (j.providerId === (currentUser?.id || currentUser?.uid)) &&
         ['completed', 'payment_released'].includes(st(j.status))
     );
 
@@ -46,12 +46,12 @@ const ProviderDashboard = () => {
 
     const nearbyRequests = jobs.filter(j =>
         st(j.status) === 'open' ||
-        (st(j.status) === 'pending' && (j.providerId === currentUser?.id || j.provider_id === currentUser?.id))
+        (st(j.status) === 'pending' && (j.providerId === (currentUser?.id || currentUser?.uid)))
     );
 
     const schedule = jobs.filter(j =>
-        ['scheduled', 'in_progress'].includes(st(j.status)) &&
-        (j.providerId === currentUser?.id || j.provider_id === currentUser?.id)
+        ['provider_accepted', 'negotiating', 'awaiting_payment', 'payment_secured', 'scheduled', 'in_progress'].includes(st(j.status)) &&
+        (j.providerId === (currentUser?.id || currentUser?.uid))
     );
 
 
