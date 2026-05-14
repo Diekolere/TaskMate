@@ -29,6 +29,7 @@ const PaymentCheckout = () => {
     const [verifying, setVerifying] = useState(false);    // verifying transfer
     const [step, setStep] = useState('account');          // 'account' | 'verifying' | 'success'
     const [copied, setCopied] = useState(null);           // which field was copied
+    const [fetchError, setFetchError] = useState(null);   // fetch error message
 
     useEffect(() => {
         const req = requests.find(r => r.id === requestId);
@@ -46,11 +47,15 @@ const PaymentCheckout = () => {
         const fetchProviderVA = async () => {
             try {
                 // Get the job to find provider_id
-                const { data: job } = await supabase
+                const { data: job, error: jobError } = await supabase
                     .from('jobs')
                     .select('worker_id')
                     .eq('id', requestId)
                     .single();
+
+                if (jobError) {
+                    throw new Error(`Job error: ${jobError.message}`);
+                }
 
                 if (!job?.worker_id) {
                     throw new Error('Provider not assigned to this job');
@@ -61,26 +66,76 @@ const PaymentCheckout = () => {
                     .from('virtual_accounts')
                     .select('*')
                     .eq('provider_id', job.worker_id)
-                    .single();
+                    .maybeSingle();
 
-                if (vaError || !va) {
-                    throw new Error('Virtual account not found for provider');
+                if (vaError) {
+                    console.error('VA Fetch Error:', vaError);
+                    throw new Error(`VA error: ${vaError.message}`);
                 }
 
-                const amount = Number(stateAgreedPrice || resolved.agreedPrice || resolved.proposed_price || resolved.budget_estimate || 11000);
+                if (!va) {
+                    console.log('VA not found, attempting to create one via Edge Function...');
+                    // Get provider details to create VA
+                    const { data: provider } = await supabase
+                        .from('profiles')
+                        .select('email, full_name, phone_number')
+                        .eq('id', job.worker_id)
+                        .single();
 
-                setVAccount({
-                    bank: va.beneficiary_bank_name || 'GTBank',
-                    accountNumber: va.virtual_account_number,
-                    accountName: va.account_name,
-                    amount,
-                    reference: job.worker_id, // Use provider_id as reference for payment tracking
-                    expiresIn: null, // Static VA doesn't expire
-                });
+                    if (!provider) {
+                        throw new Error('Could not find provider profile details');
+                    }
+
+                    const names = (provider.full_name || 'Provider').split(' ');
+                    const firstName = names[0];
+                    const lastName = names.slice(1).join(' ') || 'TaskMate';
+
+                    const { data: createData, error: createError } = await supabase.functions.invoke('squad', {
+                        body: {
+                            action: 'create-static-virtual-account',
+                            providerId: job.worker_id,
+                            providerEmail: provider.email,
+                            providerFirstName: firstName,
+                            providerLastName: lastName,
+                            providerPhone: provider.phone_number
+                        }
+                    });
+
+                    if (createError || !createData?.success) {
+                        console.error('VA Creation Error:', createError || createData);
+                        throw new Error(createData?.error || 'Failed to create virtual account for provider');
+                    }
+
+                    // Calculate amount
+                    const amount = Number(stateAgreedPrice || resolved.agreedPrice || resolved.proposed_price || resolved.budget_estimate || 11000);
+
+                    // VA was created, use the returned data
+                    setVAccount({
+                        bank: createData.data.beneficiary_bank_name || 'GTBank',
+                        accountNumber: createData.data.virtual_account_number,
+                        accountName: createData.data.account_name || 'TaskMate Platform',
+                        amount,
+                        expiresIn: null,
+                    });
+                } else {
+                    // Calculate amount
+                    const amount = Number(stateAgreedPrice || resolved.agreedPrice || resolved.proposed_price || resolved.budget_estimate || 11000);
+
+                    // VA already exists
+                    setVAccount({
+                        bank: va.beneficiary_bank_name || 'GTBank',
+                        accountNumber: va.virtual_account_number,
+                        accountName: va.account_name || 'TaskMate Platform',
+                        amount,
+                        expiresIn: null,
+                    });
+                }
+                setFetchError(null);
                 setGenerating(false);
             } catch (error) {
                 console.error('Error fetching VA:', error);
-                toast.error('Could not load payment details. Please try again.');
+                setFetchError(error.message);
+                toast.error(error.message || 'Could not load payment details.');
                 setGenerating(false);
             }
         };
@@ -219,7 +274,18 @@ const PaymentCheckout = () => {
                                                     </div>
                                                     <p className="text-sm text-gray-400 font-medium">Generating your payment account…</p>
                                                 </div>
-                                            ) : (
+                                            ) : fetchError ? (
+                                                <div className="rounded-2xl border border-red-200 bg-red-50 p-6 flex flex-col items-center gap-3">
+                                                    <span className="material-icons text-red-500 text-4xl">error_outline</span>
+                                                    <div className="text-center">
+                                                        <p className="text-sm font-bold text-red-900 mb-1">Could not load payment details</p>
+                                                        <p className="text-xs text-red-700 mb-4">{fetchError}</p>
+                                                        <button onClick={() => window.location.reload()} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors">
+                                                            Retry
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : vAccount ? (
                                                 <div className="rounded-2xl border border-gray-100 overflow-hidden">
                                                     {/* Squad header */}
                                                         <div className="bg-[#0F172A] px-6 py-5 flex items-center justify-between">
@@ -235,11 +301,10 @@ const PaymentCheckout = () => {
                                                     {/* Account details — 1 per row */}
                                                     <div className="p-5 space-y-0">
                                                         {[
-                                                            { label: 'Bank', value: vAccount.bank },
-                                                            { label: 'Account Number', value: vAccount.accountNumber, copyable: true, copyVal: vAccount.accountNumber },
-                                                            { label: 'Account Name', value: vAccount.accountName },
-                                                            { label: 'Amount', value: `₦${Number(vAccount.amount).toLocaleString()}`, copyable: true, copyVal: String(vAccount.amount) },
-                                                            { label: 'Reference', value: vAccount.reference, copyable: true, copyVal: vAccount.reference },
+                                                            { label: 'Bank', value: vAccount?.bank },
+                                                            { label: 'Account Number', value: vAccount?.accountNumber, copyable: true, copyVal: vAccount?.accountNumber },
+                                                            { label: 'Account Name', value: vAccount?.accountName },
+                                                            { label: 'Amount', value: `₦${Number(vAccount?.amount).toLocaleString()}`, copyable: true, copyVal: String(vAccount?.amount) },
                                                         ].map((row, i, arr) => (
                                                             <div key={row.label}
                                                                 className={`flex items-center justify-between py-3.5 ${i !== arr.length - 1 ? 'border-b border-gray-100' : ''}`}>
@@ -266,6 +331,14 @@ const PaymentCheckout = () => {
                                                         </p>
                                                     </div>
                                                 </div>
+                                            ) : (
+                                                <div className="rounded-2xl border border-gray-100 p-12 flex flex-col items-center gap-4">
+                                                    <div className="relative w-10 h-10">
+                                                        <div className="absolute inset-0 rounded-full border-[3px] border-gray-100" />
+                                                        <div className="absolute inset-0 rounded-full border-[3px] border-[#10B981] border-t-transparent animate-spin" />
+                                                    </div>
+                                                    <p className="text-sm text-gray-400 font-medium">Loading payment details…</p>
+                                                </div>
                                             )}
 
                                             {/* Certify button */}
@@ -273,10 +346,12 @@ const PaymentCheckout = () => {
                                                 <button onClick={handleCertify} disabled={verifying}
                                                     className="w-full py-4 bg-[#10B981] hover:bg-[#059669] disabled:opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-[#10B981]/20 flex items-center justify-center gap-2">
                                                     <span className="material-icons text-base">verified</span>
-                                                    I've transferred ₦{amount.toLocaleString()}
+                                                    Confirm Transfer
                                                 </button>
                                             )}
-                                            <p className="text-center text-xs text-gray-500">
+
+                                            {/* Help text */}
+                                            <p className="text-xs text-gray-400 text-center">
                                                 After transferring, tap the button above — we'll verify with Squad automatically.
                                             </p>
                                         </div>
