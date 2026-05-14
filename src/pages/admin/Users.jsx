@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 
 const Users = () => {
-    const { users, loading } = useData();
+    const { users, loading, updateUserStatus } = useData();
     const [providers, setProviders] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [activeTab, setActiveTab] = useState('Providers');
@@ -27,9 +27,8 @@ const Users = () => {
     }, [users]);
 
     const toggleStatus = async (id, currentStatus) => {
-        const newStatus = currentStatus === 'Active' ? 'Suspended' : 'Active';
-        toast.success(`User status updated to ${newStatus} (Simulated)`);
-        // In a real app, we'd call a context method to update Supabase
+        const isActive = currentStatus !== 'Active';
+        await updateUserStatus(id, isActive);
     };
 
     if (loading) {

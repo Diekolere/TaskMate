@@ -2,30 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
 import { useData } from '../../context/DataContext';
+import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 
 const UserDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { users, requests, loading: dataLoading } = useData();
+    const { users, requests, loading: dataLoading, updateUserStatus } = useData();
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [clearingDebt, setClearingDebt] = useState(false);
 
     const handleToggleSuspension = async () => {
         const isCurrentlySuspended = user.status === 'Suspended';
-        toast.success(`User successfully ${isCurrentlySuspended ? 'reactivated' : 'suspended'} (Simulated)`);
+        await updateUserStatus(user.id, isCurrentlySuspended);
         setUser(prev => ({ ...prev, status: isCurrentlySuspended ? 'Active' : 'Suspended' }));
     };
 
     const handleClearDebt = async () => {
         if (!confirm("Are you sure you want to clear this provider's commission debt?")) return;
         setClearingDebt(true);
-        setTimeout(() => {
+        try {
+            const { error } = await supabase.from('profiles').update({ commissionBalance: 0 }).eq('id', id);
+            if (error) throw error;
             setUser(prev => ({ ...prev, commissionBalance: 0 }));
-            toast.success("Debt cleared successfully (Simulated)");
+            toast.success("Debt cleared successfully");
+        } catch (e) {
+            toast.error("Failed to clear debt");
+        } finally {
             setClearingDebt(false);
-        }, 800);
+        }
     };
 
     useEffect(() => {
