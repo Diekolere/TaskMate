@@ -19,12 +19,13 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
     const isProvider = currentUser?.role === 'provider';
     const unreadCount = notifications.filter(n => !n.is_read).length;
 
-    // Simulate push notification for providers after 4 seconds
+    /* ARCHIVED: Simulated push notification for providers after 4 seconds
     useEffect(() => {
         if (!isProvider || pushDismissed) return;
         const t = setTimeout(() => setPushVisible(true), 4000);
         return () => clearTimeout(t);
     }, [isProvider, pushDismissed]);
+    */
 
     // Close profile dropdown on outside click
     useEffect(() => {
@@ -223,7 +224,7 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                 </div>
             </div>
 
-            {/* Provider push notification toast (simulated) */}
+            {/* Provider push notification toast (simulated) - ARCHIVED for future reuse
             <AnimatePresence>
                 {isProvider && pushVisible && !pushDismissed && (
                     <motion.div
@@ -234,7 +235,6 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                         transition={{ type: 'spring', damping: 22, stiffness: 280 }}
                         className="fixed top-16 sm:top-20 right-2 sm:right-4 z-[108] w-[calc(100vw-1rem)] sm:w-80 max-w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
                     >
-                        {/* Green accent strip */}
                         <div className="h-1 bg-gradient-to-r from-[#10B981] to-[#059669]" />
                         <div className="p-4 flex gap-3">
                             <div className="w-10 h-10 bg-[#10B981]/10 rounded-xl flex items-center justify-center shrink-0">
@@ -270,6 +270,7 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
+            */}
 
             {/* Full notification panel (slide from right) */}
             <NotificationPanel open={panelOpen} onClose={() => setPanelOpen(false)} />
