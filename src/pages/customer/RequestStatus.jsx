@@ -45,7 +45,17 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
 
     useEffect(() => {
         if (requestId) fetchMessages(requestId);
-    }, [requestId]);
+    }, [requestId, fetchMessages]);
+
+    useEffect(() => {
+        if (!requestId) return undefined;
+
+        const intervalId = window.setInterval(() => {
+            fetchMessages(requestId);
+        }, 5000);
+
+        return () => window.clearInterval(intervalId);
+    }, [requestId, fetchMessages]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -289,30 +299,24 @@ const RequestStatus = () => {
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
-        if (params.get('negotiate') === 'true' && interestedProviders.length > 0) {
+        if (params.get('negotiate') === 'true' && interestedProviders.length > 0 && !negotiatingWith) {
             setNegotiatingWith(interestedProviders[0]);
         }
-    }, [location.search, interestedProviders]);
+    }, [location.search, interestedProviders, negotiatingWith]);
 
     useEffect(() => {
         if (!id) return;
         if (requests.length === 0) { setLoading(true); return; }
 
         const found = requests.find(r => r.id === id);
-        const req = found || {
-            id,
-            title: 'Fix Bathroom Plumbing',
-            category: 'Plumbing',
-            status: 'negotiating',
-            description: 'Pipes under the bathroom sink are leaking and need urgent attention.',
-            location: 'Lekki Phase 1, Lagos',
-            budget_estimate: 12000,
-            agreedPrice: 11000,
-            urgency: 'high',
-            createdAt: new Date(),
-        };
+        const req = found || null;
 
-            setRequest(req);
+        if (!req) {
+            setLoading(false);
+            return;
+        }
+
+        setRequest(req);
             
         getProviders('All').then(allProviders => {
             // If the job already has an assigned worker, find them
@@ -389,7 +393,7 @@ const RequestStatus = () => {
 
                         {/* Page header */}
                         <div className="mb-10 pb-8 border-b border-gray-100">
-                            {/* Category + date + location row — wraps as single unit */}
+                            {/* Category + date + location row */}
                             <div className="flex flex-wrap items-center gap-1.5 mb-3">
                                 {request.category && (
                                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">{request.category}</span>
@@ -416,7 +420,7 @@ const RequestStatus = () => {
                                     <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70 shrink-0" />
                                     {STATUS_LABEL[normalizedStatus] || request.status}
                                 </span>
-                                </div>
+                            </div>
 
                             {/* CTA row — only after negotiation is finalised */}
                             {(finalizedDeal || releaseEnabled) && (
@@ -439,26 +443,26 @@ const RequestStatus = () => {
                                 </div>
                             )}
 
-                            {/* Job flow shortcuts — start code & completion */}
+                            {/* Job flow shortcuts */}
                             {(normalizedStatus === 'payment_secured' || normalizedStatus === 'completed') && (
-                                <div className="mt-5 flex flex-wrap items-center gap-2 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                                    <span className="text-xs font-semibold text-gray-500 mr-1">Quick actions:</span>
+                                <div className="mt-8 py-4 flex flex-wrap items-center gap-3 border-t border-gray-50">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mr-2">Actions</span>
                                     {normalizedStatus === 'payment_secured' && (
                                         <Link
                                             to={`/customer/job-otp/${id}`}
-                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#10B981] bg-white border border-[#10B981]/30 px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors"
+                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#10B981] hover:text-[#059669] transition-colors"
                                         >
-                                            <span className="material-icons-outlined text-[14px]">vpn_key</span>
-                                            Job start code
+                                            <span className="material-icons-outlined text-[18px]">vpn_key</span>
+                                            Get Job start code
                                         </Link>
                                     )}
                                     {normalizedStatus === 'completed' && (
                                         <Link
                                             to={`/customer/confirm/${id}`}
-                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F172A] bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F172A] hover:text-slate-600 transition-colors"
                                         >
-                                            <span className="material-icons-outlined text-[14px]">task_alt</span>
-                                            Confirm completion or dispute
+                                            <span className="material-icons-outlined text-[18px]">task_alt</span>
+                                            Confirm completion
                                         </Link>
                                     )}
                                 </div>
@@ -466,12 +470,14 @@ const RequestStatus = () => {
 
                             {/* 🎉 Provider Accepted — Start Negotiating CTA */}
                             {normalizedStatus === 'provider_accepted' && (
-                                <div className="mt-5 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex flex-col sm:flex-row sm:items-center gap-3">
-                                    <div className="flex items-center gap-3 flex-1">
-                                        <span className="material-icons text-[#10B981] text-2xl">handshake</span>
+                                <div className="mt-8 py-6 border-y border-emerald-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                                            <span className="material-icons text-emerald-500 text-xl">handshake</span>
+                                        </div>
                                         <div>
-                                            <p className="font-bold text-emerald-800 text-sm">Your provider has accepted the request!</p>
-                                            <p className="text-xs text-emerald-600 mt-0.5">Open the negotiation chat to discuss details and agree on a price.</p>
+                                            <p className="font-bold text-gray-900 text-sm">Provider Accepted!</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">Start negotiating to agree on a price and secure the booking.</p>
                                         </div>
                                     </div>
                                     <button
@@ -479,7 +485,7 @@ const RequestStatus = () => {
                                             if (interestedProviders[0]) setNegotiatingWith(interestedProviders[0]);
                                             else toast.error("Provider details not loaded yet.");
                                         }}
-                                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#10B981] hover:bg-[#059669] text-white font-bold rounded-xl text-sm transition-colors shrink-0 shadow-sm shadow-green-500/20"
+                                        className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#10B981] hover:bg-[#059669] text-white font-bold rounded-xl text-sm transition-all shadow-sm shadow-[#10B981]/20 shrink-0"
                                     >
                                         <span className="material-icons text-base">chat</span>
                                         Start Negotiating
@@ -494,17 +500,83 @@ const RequestStatus = () => {
                             {/* AI Price Estimator */}
                             {request.category && (() => {
                                 const range = getPriceRange(request.category);
-                                const label = getSmartPriceLabel(request.title, request.description, request.category);
                                 return (
-                                    <div className="mt-4 inline-flex flex-wrap items-center gap-1.5 sm:gap-2 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl px-3.5 py-2">
-                                        <span className="material-icons-outlined text-[16px]">auto_graph</span>
-                                        <span className="text-[12px] font-bold whitespace-nowrap">Market rate:</span>
-                                        <span className="text-[12px] font-semibold whitespace-nowrap">₦{range.min.toLocaleString()} – ₦{range.max.toLocaleString()}</span>
+                                    <div className="mt-6 flex flex-wrap items-center gap-3 text-gray-400">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="material-icons-outlined text-[18px]">auto_graph</span>
+                                            <span className="text-[11px] font-bold uppercase tracking-widest">Market rate</span>
+                                        </div>
+                                        <div className="h-4 w-px bg-gray-100" />
+                                        <span className="text-sm font-black text-gray-900 tracking-tight">₦{range.min.toLocaleString()} – ₦{range.max.toLocaleString()}</span>
                                     </div>
                                 );
                             })()}
-                            </div>
+                        </div>
 
+                        {/* ── Interested / Recommended Providers ──────────────── */}
+                        <div className="mt-2">
+                            {interestedProviders.length > 0 ? (
+                                <div>
+                                    <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-4 flex items-center gap-2">
+                                        {request.worker_id ? 'Your Provider' : 'Interested Providers'}
+                                    </h3>
+                                    <div className="divide-y divide-gray-100">
+                                        {interestedProviders.map(p => (
+                                            <div key={p.id} className="py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 first:pt-2">
+                                                <div className="flex items-start gap-4">
+                                                    <div className="w-14 h-14 rounded-full bg-gray-50 overflow-hidden shrink-0 border border-gray-100">
+                                                        {p.avatar_url ? <img src={p.avatar_url} alt={p.full_name} className="w-full h-full object-cover" /> : <span className="material-icons text-gray-400 text-2xl flex items-center justify-center h-full">person</span>}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-bold text-gray-900 text-base">{p.full_name}</p>
+                                                            {p.isVerified && <span className="material-icons text-blue-500 text-[16px]">verified</span>}
+                                                        </div>
+                                                        <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{p.bio || 'Professional service provider'}</p>
+                                                        <div className="flex items-center gap-3 mt-2.5">
+                                                            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
+                                                                <span className="material-icons text-[14px] text-amber-400">star</span>
+                                                                {p.rating || '5.0'}
+                                                            </div>
+                                                            <div className="w-1 h-1 rounded-full bg-gray-200" />
+                                                            <span className="text-[11px] font-black text-emerald-600 uppercase tracking-tight">₦{p.proposed_price?.toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button 
+                                                        onClick={() => setNegotiatingWith(p)}
+                                                        className="px-6 py-2.5 rounded-xl bg-[#0F172A] text-white text-xs font-bold hover:bg-slate-700 transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                    >
+                                                        <span className="material-icons text-base">chat</span>
+                                                        {normalizedStatus === 'open' ? 'Chat' : 'Negotiate'}
+                                                    </button>
+                                                    <Link 
+                                                        to={`/customer/provider/${p.id}`}
+                                                        className="w-10 h-10 rounded-xl border border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all flex items-center justify-center"
+                                                        title="View Profile"
+                                                    >
+                                                        <span className="material-icons-outlined text-[18px]">account_circle</span>
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : normalizedStatus === 'open' && (
+                                <div className="text-center py-20">
+                                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-5">
+                                        <span className="material-icons text-gray-300">hourglass_top</span>
+                                    </div>
+                                    <h3 className="text-sm font-bold text-gray-900 tracking-tight">Finding the best matches...</h3>
+                                    <p className="text-xs text-gray-400 mt-1 max-w-[240px] mx-auto leading-relaxed">Top-rated providers in your area are being notified. You'll see them here shortly.</p>
+                                    <Link to="/customer/browse" className="inline-flex items-center gap-1.5 text-[#10B981] font-bold text-xs mt-8 hover:underline uppercase tracking-widest">
+                                        Browse manually
+                                        <span className="material-icons text-sm">arrow_forward</span>
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
 
                     </div>
                 </div>

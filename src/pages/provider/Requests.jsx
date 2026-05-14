@@ -18,9 +18,9 @@ const InboundRequests = () => {
         const s = String(j.status || '').toLowerCase();
         const type = String(j.request_type || j.visibility || (j.providerId ? 'private' : 'public')).toLowerCase();
         const isPublicOpen = type === 'public' && s === 'open';
-        // Only show private requests that are still PENDING (not accepted yet)
-        const isPrivateForMe = type === 'private' && (j.providerId === currentUser?.uid || j.worker_id === currentUser?.uid) && s === 'pending';
-        return isPublicOpen || isPrivateForMe;
+        // Only show private requests that are still PENDING. Once they are accepted/negotiating, they move to My Jobs.
+        const isPrivatePending = type === 'private' && j.providerId === (currentUser?.id || currentUser?.uid) && s === 'pending';
+        return isPublicOpen || isPrivatePending;
     });
 
     const upcomingCount = requests.filter(r => !!r.scheduledDate).length;

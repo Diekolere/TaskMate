@@ -6,10 +6,12 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import { uploadFile, generateFilePath } from '../../lib/supabase';
 
 const Profile = () => {
   const { currentUser, updateUserProfile } = useAuth();
+  const { getServicePosts, deleteServicePost: deleteServicePostDb } = useData();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('details'); 
@@ -25,6 +27,7 @@ const Profile = () => {
         rating: 0, jobsCompleted: 0, memberSince: '', successRate: 0,
         avatar: '', banner: null, reviews: [], servicesList: [], skills: [], servicePosts: [],
     });
+  const [servicePosts, setServicePosts] = useState([]);
 
   useEffect(() => {
     if (currentUser) {
@@ -47,58 +50,19 @@ const Profile = () => {
                 reviews: currentUser.reviews || [],
                 servicesList: currentUser.services || [],
                 skills: currentUser.skills || [],
-                servicePosts: currentUser.servicePosts || [
-                    {
-                        id: 1,
-                        title: 'Smart Home Installation',
-                        description: 'Complete setup of smart lighting, security cameras, and intelligent thermostats for...',
-                        image: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=400&h=300&fit=crop',
-                        rating: 5.0,
-                        reviews: 42,
-                        category: 'Electrical',
-                        location: 'Lagos',
-                        tags: ['Smart Home'],
-                        createdAt: new Date().toISOString(),
-                    },
-                    {
-                        id: 2,
-                        title: 'Emergency Diagnostic',
-                        description: 'Rapid response troubleshooting for power outages, circuit trips, and electrical...',
-                        image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?ixlib=rb-4.1.0&auto=format&fit=crop&w=800&q=85',
-                        rating: 4.8,
-                        reviews: 89,
-                        category: 'Electrical',
-                        location: 'Ikeja',
-                        tags: ['Diagnostics'],
-                        createdAt: new Date().toISOString(),
-                    },
-                    {
-                        id: 3,
-                        title: 'Outdoor lighting upgrade',
-                        description: 'LED pathway and security lighting with app control — clean install and weather-sealed fixtures.',
-                        image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.1.0&auto=format&fit=crop&w=800&q=85',
-                        rating: 4.9,
-                        reviews: 18,
-                        category: 'Electrical',
-                        location: 'Victoria Island',
-                        tags: ['Lighting', 'Outdoor'],
-                        createdAt: new Date().toISOString(),
-                    },
-                    {
-                        id: 4,
-                        title: 'Panel upgrade & safety audit',
-                        description: 'Replaced outdated breaker panel, grounded circuits, and documented full safety checklist for the homeowner.',
-                        image: 'https://images.unsplash.com/photo-1558089689-024942fdb82b?ixlib=rb-4.1.0&auto=format&fit=crop&w=800&q=85',
-                        rating: 5.0,
-                        reviews: 31,
-                        category: 'Electrical',
-                        location: 'Surulere',
-                        tags: ['Safety', 'Panel'],
-                        createdAt: new Date().toISOString(),
-                    },
-                ],
+                servicePosts: [], // Will be fetched separately
             });
-    }
+            
+            getServicePosts(currentUser.id).then(posts => {
+                setServicePosts(posts.map(p => ({
+                    ...p,
+                    title: p.category || 'Service Post',
+                    description: p.caption,
+                    image: p.images?.[0] || '',
+                    createdAt: p.created_at
+                })));
+            });
+        }
   }, [currentUser]);
 
     useEffect(() => {
@@ -193,25 +157,16 @@ const Profile = () => {
     const postMenuId = (post, idx) => (post?.id != null ? `id:${post.id}` : `idx:${idx}`);
 
     const postIndexInList = (post) =>
-        profile.servicePosts.findIndex(p =>
+        servicePosts.findIndex(p =>
             (post?.id != null && p?.id != null && p.id === post.id) || (post?.id == null && p === post));
 
-    const deleteServicePost = async (post, idxHint) => {
-        const next = profile.servicePosts.filter((p, i) => {
-            if (post?.id != null) return p.id !== post.id;
-            return idxHint >= 0 ? i !== idxHint : p !== post;
-        });
+    const deleteServicePost = async (post) => {
+        if (!confirm('Are you sure you want to delete this post?')) return;
         try {
-            await updateUserProfile({ servicePosts: next });
-            setProfile(prev => ({ ...prev, servicePosts: next }));
+            await deleteServicePostDb(post.id);
+            setServicePosts(prev => prev.filter(p => p.id !== post.id));
             setPostMenuOpenId(null);
-            setExpandedPost(prev => {
-                if (!prev) return null;
-                if (post?.id != null && prev.id === post.id) return null;
-                if (post?.id == null && prev === post) return null;
-                return prev;
-            });
-            toast.success('Post deleted');
+            setExpandedPost(null);
         } catch {
             toast.error('Could not delete post');
         }
@@ -494,9 +449,9 @@ const Profile = () => {
                                         </Link>
 
                                         {/* Portrait image grid — 4 columns on md+ (taller than wide); tap opens feed-style detail */}
-                                        {profile.servicePosts && profile.servicePosts.length > 0 ? (
+                                        {servicePosts && servicePosts.length > 0 ? (
                                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                                                {profile.servicePosts.map((post, idx) => {
+                                                {servicePosts.map((post, idx) => {
                                                     const menuId = postMenuId(post, idx);
                                                     const isSameExpanded = expandedPost && (
                                                         (post.id != null && expandedPost.id === post.id) ||

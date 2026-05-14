@@ -292,13 +292,13 @@ const RequestDetails = () => {
     const [customReason, setCustomReason] = useState('');
     const [lightboxImg, setLightboxImg] = useState(null);
 
-    // Auto-open chat if navigated here with openChat flag (e.g. from JobDetails)
+    // Keep provider negotiation in one place: the live drawer on JobDetails.
     useEffect(() => {
         if (location.state?.openChat) {
             setAccepted(true);
-            setNegotiating(true);
+            navigate(`/provider/jobs/${id}?negotiate=true`, { replace: true });
         }
-    }, [location.state]);
+    }, [id, location.state, navigate]);
 
     useEffect(() => {
         if (!id) return;
@@ -505,7 +505,7 @@ const RequestDetails = () => {
                             {/* Open negotiation if accepted */}
                             {accepted && !finalizedPrice && (
                                 <div className="mt-5">
-                                    <button onClick={() => setNegotiating(true)}
+                                    <button onClick={() => navigate(`/provider/jobs/${id}?negotiate=true`)}
                                         className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-5 py-2 rounded-xl transition-all shadow-sm shadow-green-500/20">
                                         <span className="material-icons text-base">chat</span>
                                         Open Negotiation Chat
@@ -593,15 +593,6 @@ const RequestDetails = () => {
 
             <ProviderMobileNavBar />
 
-            <AnimatePresence>
-                {negotiating && (
-                    <NegotiatePanel
-                        request={request}
-                        onClose={() => setNegotiating(false)}
-                        onFinalized={(price) => { setFinalizedPrice(price); setNegotiating(false); }}
-                    />
-                )}
-            </AnimatePresence>
         </div>
     );
 };
