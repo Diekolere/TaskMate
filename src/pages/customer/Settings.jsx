@@ -4,10 +4,12 @@ import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { toast, Toaster } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { uploadFile, generateFilePath } from '../../lib/supabase';
+import { useData } from '../../context/DataContext';
+import { supabase, uploadFile, generateFilePath } from '../../lib/supabase';
 
 const Settings = () => {
     const { currentUser, updateUserProfile } = useAuth();
+    const { createSupportTicket } = useData();
     const [activeTab, setActiveTab] = useState('Profile');
     const [isLoading, setIsLoading] = useState(false);
     const fileInputRef = useRef(null);
@@ -96,15 +98,14 @@ const Settings = () => {
 
         setIsLoading(true);
         try {
-            // Simulated update
-            setTimeout(() => {
-                toast.success("Password updated successfully");
-                setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                setIsLoading(false);
-            }, 1000);
+            const { error } = await supabase.auth.updateUser({ password: securityForm.newPassword });
+            if (error) throw error;
+            toast.success('Password updated successfully');
+            setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
         } catch (error) {
-            console.error("Error updating password:", error);
-            toast.error("Failed to update password");
+            console.error('Error updating password:', error);
+            toast.error('Failed to update password: ' + error.message);
+        } finally {
             setIsLoading(false);
         }
     };
@@ -118,15 +119,12 @@ const Settings = () => {
         
         setIsLoading(true);
         try {
-            // Simulated support ticket creation
-            setTimeout(() => {
-                toast.success("Message sent to support team");
-                setSupportForm({ subject: '', message: '' });
-                setIsLoading(false);
-            }, 1000);
+            await createSupportTicket(supportForm.subject, supportForm.message, supportForm.category || 'general');
+            setSupportForm({ subject: '', message: '', category: 'general' });
         } catch (error) {
-            console.error("Error sending support message:", error);
-            toast.error("Failed to send message. Please try again.");
+            console.error('Error sending support message:', error);
+            toast.error('Failed to send message. Please try again.');
+        } finally {
             setIsLoading(false);
         }
     };
