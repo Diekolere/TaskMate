@@ -383,7 +383,6 @@ function PostRequestForm({ onClose, isModal }) {
             } else {
                 data.timeline = [{ title: 'Request Posted', description: 'Your request has been submitted.', time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}), date: new Date().toDateString(), status: 'completed' }];
                 await createRequest(data);
-                toast.success('Request posted!');
             }
             onClose ? onClose() : navigate('/customer/requests');
         } catch (err) {

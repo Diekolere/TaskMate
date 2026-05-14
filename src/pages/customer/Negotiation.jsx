@@ -145,7 +145,6 @@ const Negotiation = () => {
         if (!finalBudget || isNaN(finalBudget)) { toast.error('Enter the agreed budget'); return; }
         try {
             await finalizeAgreement(id, Number(finalBudget));
-            toast.success('Agreement finalized! Proceed to payment.');
             navigate(`/customer/payment/${id}`);
         } catch { toast.error('Failed to finalize agreement'); }
         setShowAcceptModal(false);

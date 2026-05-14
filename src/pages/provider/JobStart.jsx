@@ -42,7 +42,6 @@ const JobStart = () => {
 
         if (entered === correctOTP) {
             setStatus('success');
-            toast.success('Job started! Good luck.');
             setTimeout(() => navigate('/provider/jobs'), 2500);
         } else {
             setStatus('error');

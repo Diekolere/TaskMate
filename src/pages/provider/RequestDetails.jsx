@@ -320,7 +320,6 @@ const RequestDetails = () => {
         try {
             await acceptJob(id);
             setAccepted(true);
-            toast.success('Job accepted! Open the chat to negotiate.');
         } catch { toast.error('Failed to accept job'); }
     };
 
@@ -329,7 +328,6 @@ const RequestDetails = () => {
         if (rejectReason === 'Other' && !customReason) { toast.error('Please add a note'); return; }
         try {
             await updateJobStatus(id, 'cancelled');
-            toast.success('Request declined');
             setShowRejectModal(false);
             navigate('/provider/requests');
         } catch { toast.error('Failed to decline request'); }

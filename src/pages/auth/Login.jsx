@@ -28,7 +28,6 @@ const Login = () => {
     setLoading(true);
     try {
       await login(formData.email, formData.password, selectedRole);
-      toast.success('Welcome back!');
       if (selectedRole === 'provider') navigate('/provider/dashboard', { replace: true });
       else navigate('/dashboard', { replace: true });
     } catch (err) {
