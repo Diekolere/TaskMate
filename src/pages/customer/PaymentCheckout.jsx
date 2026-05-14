@@ -155,15 +155,47 @@ const PaymentCheckout = () => {
     };
 
     const handleCertify = async () => {
-        setStep('verifying');
+        if (!vAccount?.accountNumber) {
+            console.error('handleCertify aborted: No account number in state');
+            toast.error('Payment details not fully loaded');
+            return;
+        }
+        
         setVerifying(true);
         try {
-            await verifySquadPayment(vAccount.reference);
+            console.log('STEP 1: Initiating Sandbox Simulation for VA:', vAccount.accountNumber, 'Amount:', vAccount.amount);
+            
+            const { data, error } = await supabase.functions.invoke('squad', {
+                body: {
+                    action: 'simulate-va-payment',
+                    virtual_account_number: vAccount.accountNumber,
+                    amount: vAccount.amount
+                }
+            });
+
+            console.log('STEP 2: Edge Function response received:', { data, error });
+
+            if (error) {
+                console.error('STEP 3: Supabase Function Error:', error);
+                throw new Error('Edge Function failed to respond');
+            }
+
+            if (!data?.success) {
+                console.error('STEP 3: Squad API Logic Error:', data);
+                throw new Error(data?.message || 'Simulation failed at Squad API level');
+            }
+
+            console.log('STEP 4: Simulation successful! Waiting for webhook...');
             setStep('success');
-            toast.success('Payment verified — funds secured in escrow!');
-            setTimeout(() => navigate(`/customer/job-otp/${requestId || 'demo-001'}`), 2000);
-        } catch {
-            toast.error('Payment not detected. Please try again.');
+            toast.success('Simulation Successful! Webhook should fire shortly.');
+            
+            setTimeout(() => {
+                navigate(`/customer/job-otp/${requestId || 'demo-001'}`);
+            }, 3000);
+
+        } catch (error) {
+            console.error('CRITICAL: handleCertify caught error:', error);
+            toast.error(error.message || 'Verification failed');
             setStep('account');
         } finally {
             setVerifying(false);
