@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 /**
  * Image moderation hook.
  * Converts a File to base64 and sends it to the `ai` Edge Function
- * with action: 'check-sensitivity'. Falls back to passing if the
+ * with action: 'check-image-sensitivity'. Falls back to passing if the
  * Edge Function is unavailable (e.g. GEMINI_API_KEY not yet set).
  */
 export default function useImageModeration() {
