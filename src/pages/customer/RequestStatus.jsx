@@ -75,8 +75,16 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
 
     const send = async (text, extra = {}) => {
         if (!text.trim()) return;
-        await sendMessage(requestId, text, extra.isPriceProposal ? 'price_proposal' : 'text', extra);
-        setInput('');
+        try {
+            await sendMessage(requestId, text, extra.isPriceProposal ? 'price_proposal' : 'text', extra);
+            setInput('');
+            // Immediately refresh messages after sending
+            await fetchMessages(requestId);
+            toast.success('Message sent!');
+        } catch (error) {
+            console.error('Failed to send message:', error);
+            toast.error('Failed to send message. Please try again.');
+        }
     };
 
     const sendPrice = () => {
@@ -129,11 +137,11 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
 
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3 shrink-0">
-                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors flex-shrink-0 z-10" type="button">
                         <span className="material-icons text-gray-500 text-xl">arrow_back</span>
                     </button>
                     <Link to={`/customer/provider/${provider.id}`} className="w-9 h-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center shrink-0 hover:ring-2 hover:ring-[#10B981]/40 transition-all">
-                        {provider.avatar_url ? <img src={provider.avatar_url} alt={provider.full_name} className="w-full h-full object-cover" /> : <span className="material-icons text-gray-400 text-xl">person</span>}
+                        {provider.photoURL || provider.avatar_url ? <img src={provider.photoURL || provider.avatar_url} alt={provider.full_name || provider.displayName} className="w-full h-full object-cover" /> : <span className="material-icons text-gray-400 text-xl">person</span>}
                     </Link>
                     <div className="flex-1 min-w-0">
                         <Link to={`/customer/provider/${provider.id}`} className="font-bold text-gray-900 text-sm leading-tight truncate hover:text-[#10B981] transition-colors block">
@@ -143,7 +151,7 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
                             {finalized ? 'Finalised ✓' : rejected ? 'Rejected' : 'Online · Negotiating'}
                         </p>
                     </div>
-                    <a href={`tel:${provider.phone_number}`} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+                    <a href={`tel:${provider.phone_number}`} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors flex-shrink-0">
                         <span className="material-icons text-gray-500 text-xl">call</span>
                     </a>
                 </div>
@@ -319,31 +327,42 @@ const RequestStatus = () => {
         setRequest(req);
             
         getProviders('All').then(allProviders => {
-            // If the job already has an assigned worker, find them
+            let providers = [];
+
+            // If the job already has an assigned worker, add them first
             if (req.worker_id) {
                 const assigned = allProviders.find(p => p.id === req.worker_id);
                 if (assigned) {
-                    setInterestedProviders([{
+                    providers.push({
                         ...assigned,
                         proposed_price: req.agreedPrice || req.budget_estimate,
                         message: "I'm working on your request.",
                         verified: assigned.isVerified,
-                    }]);
-                    return;
+                        isAccepted: true, // Mark as accepted
+                    });
                 }
             }
 
-            // Otherwise, filter providers that match the job category (potential matches)
-            const matches = allProviders.filter(p => 
+            // First try: fetch providers with matching category
+            let matches = allProviders.filter(p => 
+                p.id !== req.worker_id && // Don't duplicate the assigned provider
                 p.trade_category?.some(t => t.toLowerCase() === req.category?.toLowerCase())
             );
+
+            // Fallback: if no category matches, show any available providers
+            if (matches.length === 0) {
+                matches = allProviders.filter(p => p.id !== req.worker_id);
+            }
             
-            setInterestedProviders(matches.slice(0, 3).map(p => ({
+            const otherProviders = matches.slice(0, 3).map(p => ({
                 ...p,
                 proposed_price: req.agreedPrice || req.budget_estimate,
                 message: "I'm interested and would like to discuss the details.",
                 verified: p.isVerified,
-            })));
+                isAccepted: false,
+            }));
+
+            setInterestedProviders([...providers, ...otherProviders]);
         }).catch(() => setInterestedProviders([]));
 
         setLoading(false);
@@ -521,7 +540,7 @@ const RequestStatus = () => {
                                         {request.worker_id ? 'Your Provider' : 'Interested Providers'}
                                     </h3>
                                     <div className="divide-y divide-gray-100">
-                                        {interestedProviders.map(p => (
+                                        {interestedProviders.map((p, idx) => (
                                             <div key={p.id} className="py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 first:pt-2">
                                                 <div className="flex items-start gap-4">
                                                     <div className="w-14 h-14 rounded-full bg-gray-50 overflow-hidden shrink-0 border border-gray-100">
@@ -531,6 +550,10 @@ const RequestStatus = () => {
                                                         <div className="flex items-center gap-2">
                                                             <p className="font-bold text-gray-900 text-base">{p.full_name}</p>
                                                             {p.isVerified && <span className="material-icons text-blue-500 text-[16px]">verified</span>}
+                                                            {/* Show "Accepted" badge for accepted provider */}
+                                                            {p.isAccepted && (
+                                                                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 uppercase tracking-tight">✓ Accepted</span>
+                                                            )}
                                                         </div>
                                                         <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{p.bio || 'Professional service provider'}</p>
                                                         <div className="flex items-center gap-3 mt-2.5">
@@ -545,8 +568,14 @@ const RequestStatus = () => {
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <button 
-                                                        onClick={() => setNegotiatingWith(p)}
-                                                        className="px-6 py-2.5 rounded-xl bg-[#0F172A] text-white text-xs font-bold hover:bg-slate-700 transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                        onClick={() => !request.worker_id && setNegotiatingWith(p)}
+                                                        disabled={request.worker_id && !p.isAccepted}
+                                                        className={`px-6 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all ${
+                                                            request.worker_id && !p.isAccepted 
+                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50' 
+                                                                : 'bg-[#0F172A] text-white hover:bg-slate-700'
+                                                        }`}
+                                                        title={request.worker_id && !p.isAccepted ? 'Another provider already accepted' : ''}
                                                     >
                                                         <span className="material-icons text-base">chat</span>
                                                         {normalizedStatus === 'open' ? 'Chat' : 'Negotiate'}
@@ -590,10 +619,22 @@ const RequestStatus = () => {
                         provider={negotiatingWith}
                         requestId={id}
                         category={request?.category}
-                        onClose={() => setNegotiatingWith(null)}
+                        onClose={() => {
+                            setNegotiatingWith(null);
+                            // Remove ?negotiate=true from URL to prevent auto-reopening
+                            const params = new URLSearchParams(location.search);
+                            params.delete('negotiate');
+                            const newSearch = params.toString() ? `?${params.toString()}` : '';
+                            window.history.replaceState(null, '', newSearch || location.pathname);
+                        }}
                         onFinalized={(price) => {
                             setFinalizedDeal({ price, provider: negotiatingWith });
                             setNegotiatingWith(null);
+                            // Remove ?negotiate=true from URL
+                            const params = new URLSearchParams(location.search);
+                            params.delete('negotiate');
+                            const newSearch = params.toString() ? `?${params.toString()}` : '';
+                            window.history.replaceState(null, '', newSearch || location.pathname);
                         }}
                     />
                 )}
