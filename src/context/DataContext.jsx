@@ -464,7 +464,7 @@ export function DataProvider({ children }) {
     }
   };
 
-  // ── Squad / Edge Function Stubs (Phase 1) ───────────────
+  // ── Financial & Identity Operations ─────────────────────
 
   const processPayment = async (jobId, amount) => {
     if (!currentUser) return;
@@ -482,35 +482,47 @@ export function DataProvider({ children }) {
     }
   };
 
+  const verifyBankAccount = async (bankCode, accountNumber) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('squad', {
+        body: { action: 'account-lookup', bankCode, accountNumber }
+      });
+      console.log('Bank Lookup Result:', data);
+      if (error || !data.success) throw new Error(data?.message || 'Verification failed');
+      return data.data; // { account_name, account_number }
+    } catch (err) {
+      console.error('Bank lookup error:', err);
+      throw err;
+    }
+  };
+
   const submitKYC = async (kycData) => {
     if (!currentUser) return;
     try {
-      const { data, error } = await supabase.functions.invoke('squad', {
+      const { data, error } = await supabase.functions.invoke('dojah', {
         body: { 
-          action: 'verify-kyc', 
+          action: kycData.selfie_image ? 'verify-with-selfie' : (kycData.selfieUrl ? 'liveness-check' : 'verify-identity'), 
           providerId: currentUser.id, 
-          bvn: kycData.bvn,
-          idPhotoUrl: kycData.idPhotoUrl || null,
-          selfieUrl: kycData.selfieUrl || null
+          type: kycData.type || 'bvn',
+          value: kycData.value,
+          selfie_image: kycData.selfie_image,
+          selfieUrl: kycData.selfieUrl,
+          idUrl: kycData.idUrl
         }
       });
-      if (error) throw error;
+      console.log('KYC Result:', data);
+      if (error) {
+          console.error('Edge Function Error:', error);
+          throw error;
+      }
       
-      // Check the response for verification status
-      if (data?.verified) {
+      if (data?.entity) {
         toast.success('Identity verified successfully!');
-      } else if (data?.status === 'pending_review') {
-        toast.info('Your verification is under review.');
-      } else if (kycData.partial) {
-        // Partial check (BVN only step) — don't show final status
-        return data;
-      } else {
-        throw new Error(data?.status === 'rejected' ? 'Face match failed. Please try again.' : 'Verification could not be completed.');
       }
       return data;
     } catch (err) {
-      console.error('KYC Verification failed:', err);
-      toast.error(err.message || 'Failed to verify KYC.');
+      console.error('KYC failed:', err);
+      toast.error('Identity verification failed.');
       throw err;
     }
   };
@@ -752,8 +764,9 @@ export function DataProvider({ children }) {
     submitVerification, updateVerificationStatus, updateUserStatus,
     // Messaging
     messages, fetchMessages, sendMessage,
-    // New Edge Function Stubs:
-    processPayment, submitKYC, releaseEarnings
+    // Production Operations:
+    processPayment, submitKYC, verifyBankAccount, releaseEarnings,
+    isSimulated: false
   };
 
   return (
