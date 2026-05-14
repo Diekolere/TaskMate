@@ -42,7 +42,6 @@ const ProviderInviteFriends = () => {
     const handleCopy = () => {
         navigator.clipboard.writeText(inviteLink);
         setCopied(true);
-        toast.success('Invite link copied!');
         setTimeout(() => setCopied(false), 2500);
     };
 

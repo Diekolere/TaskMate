@@ -21,7 +21,6 @@ const InviteFriends = () => {
     const handleCopy = () => {
         navigator.clipboard.writeText(inviteLink);
         setCopied(true);
-        toast.success("Invite link copied to clipboard!");
         setTimeout(() => setCopied(false), 2000);
     };
 

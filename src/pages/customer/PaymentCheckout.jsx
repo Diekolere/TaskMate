@@ -150,7 +150,6 @@ const PaymentCheckout = () => {
     const copy = async (text, label) => {
         await navigator.clipboard.writeText(text);
         setCopied(label);
-        toast.success(`${label} copied`);
         setTimeout(() => setCopied(null), 2000);
     };
 
