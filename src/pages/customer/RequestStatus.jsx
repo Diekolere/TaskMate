@@ -10,7 +10,6 @@ import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 
 import { getPriceRange, getFairnessLabel, getMatchScore, getSmartPriceLabel } from '../../lib/aiData';
-import { MOCK_PROVIDERS } from '../../lib/mocks';
 
 /* ── Naira SVG icon ─────────────────────────────────────── */
 const NairaSVG = ({ className = 'w-4 h-4' }) => (
@@ -279,30 +278,19 @@ const RequestStatus = () => {
 
             setRequest(req);
             
-        const interested = MOCK_PROVIDERS.slice(0, 3).map((p, i) => ({
-            ...p,
-            proposed_price: req.agreedPrice || Math.floor(Number(req.budget_estimate || 10000) * (0.85 + i * 0.1)),
-            message: [
-                "I'm experienced in this and can start immediately!",
-                "Great reviews — can complete this efficiently.",
-                "Professional work guaranteed. Happy to discuss."
-            ][i],
-            verified: true,
-            phone_number: ['+234-801-234-5678', '+234-802-345-6789', '+234-803-456-7890'][i],
-        }));
-
-        if (isSimulated) {
-            setInterestedProviders(interested);
-        } else {
-                getProviders('All').then(allProviders => {
-                setInterestedProviders(allProviders.slice(0, 3).map(p => ({
-                    ...p,
-                    proposed_price: Math.floor(Number(req.budget_estimate || 10000) * (0.85 + Math.random() * 0.3)),
-                    message: "I'm interested and would like to discuss the details.",
-                    verified: p.provider_profiles?.verification_status === 'verified',
-                })));
-            }).catch(() => setInterestedProviders(interested));
-        }
+        getProviders('All').then(allProviders => {
+            // Filter providers that match the job category
+            const matches = allProviders.filter(p => 
+                p.trade_category?.some(t => t.toLowerCase() === req.category?.toLowerCase())
+            );
+            
+            setInterestedProviders(matches.slice(0, 3).map(p => ({
+                ...p,
+                proposed_price: req.agreedPrice || req.budget_estimate,
+                message: "I'm interested and would like to discuss the details.",
+                verified: p.isVerified,
+            })));
+        }).catch(() => setInterestedProviders([]));
 
         setLoading(false);
     }, [id, requests, getProviders, isSimulated]);

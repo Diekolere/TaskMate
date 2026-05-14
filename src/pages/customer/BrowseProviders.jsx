@@ -40,11 +40,10 @@ const BrowseProviders = () => {
             setLoading(true);
             const data = await getProviders('All');
             
-            // Enrich mock data
             const enrichedData = data.map(p => ({
                 ...p,
-                completedJobs: p.completedJobs || Math.floor(Math.random() * 150) + 10,
-                skills: p.preferences || [p.category, 'General Maintenance', 'Diagnostics']
+                completedJobs: p.completed_jobs || 0,
+                skills: p.trade_category || [p.category]
             }));
             
             // Apply category filter if any selected
