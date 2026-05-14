@@ -30,7 +30,7 @@ function ChangeView({ center }) {
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { updateUserProfile, currentUser, isSimulated } = useAuth();
+  const { updateUserProfile, currentUser } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
@@ -145,7 +145,7 @@ const Onboarding = () => {
     try {
         let photoURL = previewUrl;
         
-        if (!isSimulated && formData.photo) {
+        if (formData.photo) {
             try {
                 const path = generateFilePath(currentUser.id, formData.photo.name);
                 photoURL = await uploadFile('avatars', path, formData.photo);
