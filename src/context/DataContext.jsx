@@ -236,11 +236,11 @@ export function DataProvider({ children }) {
   // ── Actions ─────────────────────────────────────────────
 
   // Central helper to send a notification via Edge Function (bypasses RLS issues)
-  const sendNotification = async (userId, { type = 'system', title, body, icon = 'info', iconBg = 'bg-gray-100', iconColor = 'text-gray-400', ctaPath = null } = {}) => {
+  const sendNotification = async (userId, { type = 'system', title, body, icon = 'info', iconBg = 'bg-gray-100', iconColor = 'text-gray-400', ctaPath = null, ctaLabel = null, secondaryLabel = 'Later' } = {}) => {
     if (!userId || !title) return;
     try {
       const { data, error } = await supabase.functions.invoke('notifications', {
-        body: { action: 'send', userId, title, body, type, icon, iconBg, iconColor, ctaPath }
+        body: { action: 'send', userId, title, body, type, icon, iconBg, iconColor, ctaPath, ctaLabel, secondaryLabel }
       });
       if (error) throw error;
       return data;
@@ -409,7 +409,8 @@ export function DataProvider({ children }) {
         title: '🎉 Provider Accepted Your Request!',
         body: `A provider has accepted "${job.title}". Tap to open the negotiation chat and agree on a price.`,
         icon: 'handshake', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]',
-        ctaPath: `/customer/request-status/${jobId}?negotiate=true`
+        ctaPath: `/customer/request-status/${jobId}?negotiate=true`,
+        ctaLabel: 'Start Negotiating'
       });
     }
     toast.success('Job accepted! Customer has been notified.');
@@ -429,7 +430,8 @@ export function DataProvider({ children }) {
         title: 'Deal Agreed — Pay Now',
         body: `Your deal for "${job.title}" is finalized at ₦${Number(finalBudget).toLocaleString()}. Tap to pay.`,
         icon: 'payments', iconBg: 'bg-blue-50', iconColor: 'text-blue-500',
-        ctaPath: `/customer/payment/${jobId}`
+        ctaPath: `/customer/payment/${jobId}`,
+        ctaLabel: 'Pay Now'
       });
     }
   };
@@ -444,7 +446,8 @@ export function DataProvider({ children }) {
         title: 'Payment Secured — Ready to Start',
         body: `The customer has paid for "${job.title}". You can now start the job.`,
         icon: 'account_balance_wallet', iconBg: 'bg-green-50', iconColor: 'text-[#10B981]',
-        ctaPath: `/provider/jobs/${jobId}`
+        ctaPath: `/provider/jobs/${jobId}`,
+        ctaLabel: 'Start Work'
       });
     }
     toast.success('Payment secured in escrow');
@@ -474,7 +477,8 @@ export function DataProvider({ children }) {
         title: 'Job Marked Complete',
         body: `Your provider has completed "${job.title}". Review and release payment.`,
         icon: 'task_alt', iconBg: 'bg-[#10B981]/10', iconColor: 'text-[#10B981]',
-        ctaPath: `/customer/confirm/${jobId}`
+        ctaPath: `/customer/confirm/${jobId}`,
+        ctaLabel: 'Confirm & Release'
       });
     }
   };
@@ -603,7 +607,8 @@ export function DataProvider({ children }) {
                   iconColor: isCustomer ? 'text-blue-600' : 'text-emerald-600',
                   ctaPath: isCustomer 
                       ? `/provider/jobs/${jobId}?negotiate=true` 
-                      : `/customer/request-status/${jobId}?negotiate=true`
+                      : `/customer/request-status/${jobId}?negotiate=true`,
+                  ctaLabel: 'Reply'
               });
           }
       }

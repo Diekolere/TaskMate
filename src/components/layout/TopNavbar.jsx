@@ -14,18 +14,32 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [pushVisible, setPushVisible] = useState(false);
     const [pushDismissed, setPushDismissed] = useState(false);
+    const [activeToast, setActiveToast] = useState(null);
     const profileRef = useRef(null);
+    const prevNotifsLength = useRef(notifications.length);
 
     const isProvider = currentUser?.role === 'provider';
     const unreadCount = notifications.filter(n => !n.is_read).length;
 
-    /* ARCHIVED: Simulated push notification for providers after 4 seconds
+    // Detect new actionable notifications
     useEffect(() => {
-        if (!isProvider || pushDismissed) return;
-        const t = setTimeout(() => setPushVisible(true), 4000);
-        return () => clearTimeout(t);
-    }, [isProvider, pushDismissed]);
-    */
+        if (notifications.length > prevNotifsLength.current) {
+            const latest = notifications[0];
+            // Only show toast if it has a CTA and isn't read
+            if (latest && (latest.cta_path || latest.cta_label) && !latest.is_read) {
+                setActiveToast(latest);
+                setPushVisible(true);
+                setPushDismissed(false);
+                
+                // Auto-dismiss after 8 seconds
+                const timer = setTimeout(() => {
+                    setPushVisible(false);
+                }, 8000);
+                return () => clearTimeout(timer);
+            }
+        }
+        prevNotifsLength.current = notifications.length;
+    }, [notifications]);
 
     // Close profile dropdown on outside click
     useEffect(() => {
@@ -224,25 +238,25 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                 </div>
             </div>
 
-            {/* Provider push notification toast (simulated) - ARCHIVED for future reuse
+            {/* Universal Actionable Toast */}
             <AnimatePresence>
-                {isProvider && pushVisible && !pushDismissed && (
+                {pushVisible && activeToast && !pushDismissed && (
                     <motion.div
-                        key="push-notif"
+                        key="active-toast"
                         initial={{ x: 80, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: 80, opacity: 0 }}
                         transition={{ type: 'spring', damping: 22, stiffness: 280 }}
                         className="fixed top-16 sm:top-20 right-2 sm:right-4 z-[108] w-[calc(100vw-1rem)] sm:w-80 max-w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
                     >
-                        <div className="h-1 bg-gradient-to-r from-[#10B981] to-[#059669]" />
+                        <div className={`h-1 bg-gradient-to-r ${activeToast.icon_color?.includes('emerald') || activeToast.icon_color?.includes('green') ? 'from-[#10B981] to-[#059669]' : 'from-blue-500 to-blue-700'}`} />
                         <div className="p-4 flex gap-3">
-                            <div className="w-10 h-10 bg-[#10B981]/10 rounded-xl flex items-center justify-center shrink-0">
-                                <span className="material-icons text-[#10B981] text-xl">key</span>
+                            <div className={`w-10 h-10 ${activeToast.icon_bg || 'bg-gray-100'} rounded-xl flex items-center justify-center shrink-0`}>
+                                <span className={`material-icons ${activeToast.icon_color || 'text-gray-400'} text-xl`}>{activeToast.icon || 'notifications'}</span>
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2">
-                                    <p className="text-[13px] font-bold text-gray-900 leading-snug">Customer is ready</p>
+                                    <p className="text-[13px] font-bold text-gray-900 leading-snug">{activeToast.title}</p>
                                     <button
                                         onClick={() => { setPushVisible(false); setPushDismissed(true); }}
                                         className="text-gray-300 hover:text-gray-500 transition-colors shrink-0"
@@ -250,19 +264,24 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                                         <span className="material-icons text-base">close</span>
                                     </button>
                                 </div>
-                                <p className="text-[12px] text-gray-500 mt-0.5 leading-snug">Diekolere Olaitan has paid. Enter the start code to begin.</p>
+                                <p className="text-[12px] text-gray-500 mt-0.5 leading-snug line-clamp-2">{activeToast.body}</p>
                                 <div className="flex gap-2 mt-3">
                                     <button
-                                        onClick={() => { setPushVisible(false); setPushDismissed(true); setPanelOpen(true); }}
+                                        onClick={() => { 
+                                            setPushVisible(false); 
+                                            setPushDismissed(true); 
+                                            if (activeToast.cta_path) navigate(activeToast.cta_path);
+                                            markNotificationRead(activeToast.id);
+                                        }}
                                         className="flex-1 py-2 bg-[#0F172A] hover:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
                                     >
-                                        Enter Start Code
+                                        {activeToast.cta_label || 'View Details'}
                                     </button>
                                     <button
-                                        onClick={() => { setPushVisible(false); setPushDismissed(true); }}
+                                        onClick={() => { setPushVisible(false); setPushDismissed(true); markNotificationRead(activeToast.id); }}
                                         className="px-3 py-2 border border-gray-200 text-[11px] font-semibold text-gray-500 rounded-lg hover:bg-gray-50 transition-colors"
                                     >
-                                        Later
+                                        {activeToast.secondary_label || 'Later'}
                                     </button>
                                 </div>
                             </div>
@@ -270,7 +289,6 @@ const TopNavbar = ({ breadcrumbs = [] }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
-            */}
 
             {/* Full notification panel (slide from right) */}
             <NotificationPanel open={panelOpen} onClose={() => setPanelOpen(false)} />
