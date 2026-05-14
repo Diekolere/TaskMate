@@ -7,8 +7,8 @@ import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
+import { supabase, uploadFile, generateFilePath } from '../../lib/supabase';
 import useImageModeration from '../../hooks/useImageModeration';
-import { supabase } from '../../lib/supabase';
 import { enrichDescription } from '../../lib/aiData';
 
 const reverseGeocode = async (lat, lon, retries = 2) => {
@@ -290,7 +290,7 @@ function PostRequestForm({ onClose, isModal }) {
             const updated = [...prev];
             toProcess.forEach((f, pi) => {
                 const idx = slots[pi];
-                updated[idx] = { preview: previews[pi], approved: false, checking: true };
+                updated[idx] = { preview: previews[pi], approved: false, checking: false, file: f };
             });
             return updated;
         });
@@ -350,24 +350,34 @@ function PostRequestForm({ onClose, isModal }) {
         if (!description.trim()) { toast.error('Please describe the task'); return; }
         setLoading(true);
 
-        const imagePreviews = images.filter(i => i.preview).map(i => i.preview);
-        const data = {
-            title: title.trim(), category, description: description.trim(),
-            location: address,
-            coordinates: coordinates || null, // { lat, lng } for geospatial matching
-            urgency: urgency || 'medium',
-            scheduledDate: scheduledDate || null,
-            images: imagePreviews,
-            image: imagePreviews[0] || null,
-            providerId: providerId || null,
-            providerName: providerName || null,
-            request_type: providerId ? 'private' : 'public',
-            visibility: providerId ? 'private' : 'public',
-            status: providerId ? 'pending' : 'open',
-            customerPhone: currentUser?.phoneNumber || null,
-        };
-
         try {
+            // Upload all approved images to storage
+            const uploadPromises = images
+                .filter(img => img.preview && img.approved && img.file)
+                .map(async (img) => {
+                    const path = generateFilePath(currentUser.id, img.file.name);
+                    return await uploadFile('job-images', path, img.file);
+                });
+
+            const publicUrls = await Promise.all(uploadPromises);
+
+            const data = {
+                title: title.trim(), 
+                category, 
+                description: description.trim(),
+                location: address,
+                coordinates: coordinates || null,
+                urgency: urgency || 'medium',
+                scheduledDate: scheduledDate || null,
+                images: publicUrls,
+                image: publicUrls[0] || null,
+                providerId: providerId || null,
+                providerName: providerName || null,
+                request_type: providerId ? 'private' : 'public',
+                visibility: providerId ? 'private' : 'public',
+                status: providerId ? 'pending' : 'open',
+            };
+
             if (editingRequest) {
                 toast.info('Update logic not yet migrated to Supabase.');
             } else {

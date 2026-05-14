@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import Confetti from 'react-confetti';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../context/AuthContext';
+import { uploadFile, generateFilePath } from '../../lib/supabase';
 import { toast } from 'sonner';
 
 // Fix for Leaflet default icon issues in React
@@ -144,11 +145,14 @@ const Onboarding = () => {
     try {
         let photoURL = previewUrl;
         
-        // In simulation mode, we just use the preview URL (blob)
-        // In production, we would upload to Supabase Storage
         if (!isSimulated && formData.photo) {
-            // TODO: Implement Supabase Storage upload
-            toast.info("Supabase storage upload not yet implemented. Using preview URL.");
+            try {
+                const path = generateFilePath(currentUser.id, formData.photo.name);
+                photoURL = await uploadFile('avatars', path, formData.photo);
+            } catch (err) {
+                console.error('Photo upload error:', err);
+                // Continue with existing photoURL or null if upload fails
+            }
         }
 
         await updateUserProfile({

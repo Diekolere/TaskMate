@@ -6,6 +6,7 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import { useAuth } from '../../context/AuthContext';
+import { uploadFile, generateFilePath } from '../../lib/supabase';
 
 const Profile = () => {
   const { currentUser, updateUserProfile } = useAuth();
@@ -153,16 +154,23 @@ const Profile = () => {
   const handleFileChange = async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
-        if (!file.type.startsWith('image/')) { toast.error('Please select an image file'); return; }
-        if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return; }
-        const toastId = toast.loading(`Uploading ${type}…`);
-        setTimeout(async () => {
-            const url = URL.createObjectURL(file);
-            await updateUserProfile(type === 'avatar' ? { photoURL: url } : { banner: url });
-            setProfile(prev => ({ ...prev, [type === 'avatar' ? 'avatar' : 'banner']: url }));
-            toast.success(`${type === 'avatar' ? 'Profile picture' : 'Cover photo'} updated!`, { id: toastId });
-        }, 800);
-    };
+    if (!file.type.startsWith('image/')) { toast.error('Please select an image file'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return; }
+
+    const toastId = toast.loading(`Uploading ${type}…`);
+    try {
+        const bucket = type === 'avatar' ? 'avatars' : 'service-posts'; // banner uses service-posts or generic
+        const path = generateFilePath(currentUser.id, file.name);
+        const publicUrl = await uploadFile(bucket, path, file);
+
+        await updateUserProfile(type === 'avatar' ? { photoURL: publicUrl } : { banner: publicUrl });
+        setProfile(prev => ({ ...prev, [type === 'avatar' ? 'avatar' : 'banner']: publicUrl }));
+        toast.success(`${type === 'avatar' ? 'Profile picture' : 'Cover photo'} updated!`, { id: toastId });
+    } catch (error) {
+        console.error('Upload error:', error);
+        toast.error(`Failed to upload ${type}`, { id: toastId });
+    }
+  };
 
     const avatarSrc = profile.avatar ||
         `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || 'Provider')}&background=f0fdf4&color=15803d&size=200`;

@@ -5,6 +5,7 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import { useAuth } from '../../context/AuthContext';
+import { uploadFile, generateFilePath } from '../../lib/supabase';
 
 const CreateServicePost = () => {
     const navigate = useNavigate();
@@ -16,6 +17,7 @@ const CreateServicePost = () => {
     const [content, setContent] = useState('');
     const [tagsInput, setTagsInput] = useState('');
     const [imagePreview, setImagePreview] = useState('');
+    const [selectedFile, setSelectedFile] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [editingId, setEditingId] = useState(null);
 
@@ -28,6 +30,7 @@ const CreateServicePost = () => {
             setContent(ep.description || '');
             setTagsInput(Array.isArray(ep.tags) ? ep.tags.join(', ') : '');
             setImagePreview(ep.image || '');
+            setSelectedFile(null);
         } else {
             setEditingId(null);
             setCategory('');
@@ -35,6 +38,7 @@ const CreateServicePost = () => {
             setContent('');
             setTagsInput('');
             setImagePreview('');
+            setSelectedFile(null);
         }
     }, [routerLocation.pathname, routerLocation.state?.editPost]);
 
@@ -53,12 +57,14 @@ const CreateServicePost = () => {
             toast.error('Image must be under 5MB');
             return;
         }
+        setSelectedFile(file);
         setImagePreview(URL.createObjectURL(file));
     };
 
     const clearImage = () => {
         if (imagePreview?.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
         setImagePreview('');
+        setSelectedFile(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -69,6 +75,14 @@ const CreateServicePost = () => {
         }
         setSubmitting(true);
         try {
+            let finalImageUrl = imagePreview;
+
+            // Upload if it's a new file (blob)
+            if (selectedFile) {
+                const path = generateFilePath(currentUser.id, selectedFile.name);
+                finalImageUrl = await uploadFile('service-posts', path, selectedFile);
+            }
+
             const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
             const title = category.trim() || 'Service update';
             const description = content.trim();
@@ -81,7 +95,7 @@ const CreateServicePost = () => {
                             ...p,
                             title,
                             description,
-                            image: imagePreview || p.image || '',
+                            image: finalImageUrl || p.image || '',
                             tags,
                             category: category.trim() || p.category || '',
                             location: locationField.trim() || p.location || '',
@@ -95,7 +109,7 @@ const CreateServicePost = () => {
                     id: Date.now(),
                     title,
                     description,
-                    image: imagePreview || '',
+                    image: finalImageUrl || '',
                     rating: 0,
                     reviews: 0,
                     tags,
@@ -107,7 +121,8 @@ const CreateServicePost = () => {
                 toast.success('Post published');
             }
             navigate('/provider/profile?tab=services');
-        } catch {
+        } catch (error) {
+            console.error('Publish error:', error);
             toast.error(editingId != null ? 'Could not update post' : 'Could not publish post');
         } finally {
             setSubmitting(false);

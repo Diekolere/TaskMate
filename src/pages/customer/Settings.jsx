@@ -4,6 +4,7 @@ import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { toast, Toaster } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
+import { uploadFile, generateFilePath } from '../../lib/supabase';
 
 const Settings = () => {
     const { currentUser, updateUserProfile } = useAuth();
@@ -44,17 +45,16 @@ const Settings = () => {
 
         try {
             setIsLoading(true);
-            // Simulated upload
-            setTimeout(async () => {
-                const mockUrl = URL.createObjectURL(file);
-                await updateUserProfile({ photoURL: mockUrl });
-                setProfileForm(prev => ({ ...prev, photoURL: mockUrl }));
-                toast.success("Profile picture updated!");
-                setIsLoading(false);
-            }, 1000);
+            const path = generateFilePath(currentUser.id, file.name);
+            const publicUrl = await uploadFile('avatars', path, file);
+
+            await updateUserProfile({ photoURL: publicUrl });
+            setProfileForm(prev => ({ ...prev, photoURL: publicUrl }));
+            toast.success("Profile picture updated!");
         } catch (error) {
             console.error("Error uploading photo:", error);
             toast.error("Failed to upload photo");
+        } finally {
             setIsLoading(false);
         }
     };
