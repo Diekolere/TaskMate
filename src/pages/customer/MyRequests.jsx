@@ -84,18 +84,20 @@ const MyRequests = () => {
 
     const filteredRequests = activeTab === 'All'
         ? allRequests
-        : activeTab === 'History'
-            ? allRequests.filter(isTerminalHistory)
-            : activeTab === 'Private'
-                ? allRequests.filter(isPrivateForCustomer)
-                : allRequests.filter(r => !isTerminalHistory(r));
+        : activeTab === 'Jobs'
+            ? allRequests.filter(r => r.worker_id || r.providerId)
+            : activeTab === 'History'
+                ? allRequests.filter(isTerminalHistory)
+                : activeTab === 'Private'
+                    ? allRequests.filter(isPrivateForCustomer)
+                    : allRequests.filter(r => !isTerminalHistory(r));
 
     return (
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
             <Sidebar />
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                <TopNavbar breadcrumbs={['Customer', 'My Requests']} />
+                <TopNavbar breadcrumbs={['Customer', 'My Requests & Jobs']} />
                 
                 <main className="flex-1 overflow-y-auto bg-white">
                     <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 pb-24 md:pb-10 space-y-6">
@@ -103,8 +105,8 @@ const MyRequests = () => {
                         {/* Header */}
                         <div className="flex items-end justify-between">
                             <div>
-                                <h1 className="text-[22px] sm:text-[28px] font-extrabold text-gray-900 tracking-tight">My Requests</h1>
-                                <p className="mt-1 text-[13px] font-medium text-gray-400">Track and manage all your service requests.</p>
+                                <h1 className="text-[22px] sm:text-[28px] font-extrabold text-gray-900 tracking-tight">My Requests & Jobs</h1>
+                                <p className="mt-1 text-[13px] font-medium text-gray-400">Track and manage all your service requests and active jobs.</p>
                             </div>
                             <Link
                                 to="/customer/post-request"
@@ -117,7 +119,7 @@ const MyRequests = () => {
 
                         {/* Tabs — underline style */}
                         <div className="flex gap-6 border-b border-gray-100">
-                            {['All', 'Private', 'Active', 'History'].map((tab) => (
+                            {['All', 'Jobs', 'Private', 'Active', 'History'].map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}

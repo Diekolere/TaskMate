@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
+import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 
 const Requests = () => {
@@ -30,9 +31,12 @@ const Requests = () => {
         if (action === 'view') {
             navigate(`/admin/requests/${id}`);
         } else if (action === 'cancel') {
-             if (window.confirm("Are you sure you want to cancel this request?")) {
-                 toast.success("Request cancelled successfully (Simulated)");
-             }
+            if (window.confirm('Are you sure you want to cancel this request?')) {
+                const { error } = await supabase.from('jobs').update({ status: 'cancelled' }).eq('id', id);
+                if (error) { toast.error('Failed to cancel request'); return; }
+                setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'cancelled' } : r));
+                toast.success('Request cancelled successfully');
+            }
         }
     };
 
