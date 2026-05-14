@@ -787,6 +787,8 @@ export function DataProvider({ children }) {
     submitVerification, updateVerificationStatus, updateUserStatus,
     // Messaging
     messages, fetchMessages, sendMessage,
+    // Notifications (exposed for components to send directly)
+    sendNotification,
     // Production Operations:
     processPayment, submitKYC, verifyBankAccount, releaseEarnings,
     isSimulated: false
