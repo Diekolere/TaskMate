@@ -71,24 +71,7 @@ Rules:
             });
 
             if (error || !data?.reply) {
-                // Fallback to local responses if Edge Function fails
-                let fallback = '';
-                const lowerMsg = userMessage.toLowerCase();
-
-                if (lowerMsg.includes('hello') || lowerMsg.includes('hi')) {
-                    fallback = `Hi ${currentUser?.displayName || 'there'}! I can help you find providers, check your request status, or explain how TaskMate works.`;
-                } else if (lowerMsg.includes('request') || lowerMsg.includes('job')) {
-                    const count = requests.length;
-                    fallback = count > 0
-                        ? `You currently have ${count} active request${count > 1 ? 's' : ''}. Your latest is "${requests[0].title}" (${requests[0].status}).`
-                        : "You don't have any active requests yet. Tap 'Post Request' to get started!";
-                } else if (lowerMsg.includes('provider') || lowerMsg.includes('artisan')) {
-                    fallback = "Browse verified providers in the 'Browse' tab. You can filter by category, rating, and proximity.";
-                } else if (lowerMsg.includes('pay') || lowerMsg.includes('price')) {
-                    fallback = "Payments are secured in escrow until you confirm the job is complete. The provider only gets paid after your approval.";
-                } else {
-                    fallback = "I'm here to help with anything about TaskMate — finding artisans, tracking requests, or understanding how our platform works. What do you need?";
-                }
+                const fallback = "I'm currently optimizing my systems and will be back in a moment. You can browse our verified providers or track your active requests in the meantime. Is there anything specific about TaskMate I can explain for you?";
                 setMessages(prev => [...prev, { role: 'model', text: fallback }]);
             } else {
                 setMessages(prev => [...prev, { role: 'model', text: data.reply }]);
