@@ -379,6 +379,28 @@ export function DataProvider({ children }) {
   const acceptJob = async (jobId) => {
     await updateJobStatus(jobId, 'provider_accepted', { worker_id: currentUser.id });
     
+    // Create static virtual account for payment collection (Squad Platform Wallet Model)
+    try {
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/squad`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'create-static-virtual-account',
+          providerId: currentUser.id,
+          providerEmail: currentUser.email,
+          providerFirstName: currentUser.full_name?.split(' ')[0] || 'Provider',
+          providerLastName: currentUser.full_name?.split(' ')[1] || '',
+          providerPhone: currentUser.phone_number || ''
+        })
+      });
+    } catch (vaError) {
+      console.error('VA creation error:', vaError);
+      // Continue anyway - VA creation failing shouldn't block job acceptance
+    }
+    
     // Notify customer with a direct "Start Negotiating" deep link
     const { data: job } = await supabase.from('jobs').select('customer_id, title').eq('id', jobId).single();
     if (job) {
