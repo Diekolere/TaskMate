@@ -186,17 +186,30 @@ export function AuthProvider({ children }) {
     if (!currentUser) return;
 
     try {
+      const updateData = { ...data };
+      
+      // Map frontend camelCase to database snake_case
+      if (updateData.photoURL) {
+        updateData.avatar_url = updateData.photoURL;
+        delete updateData.photoURL;
+      }
+      if (updateData.displayName) {
+        updateData.full_name = updateData.displayName;
+        delete updateData.displayName;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update(data)
+        .update(updateData)
         .eq('id', currentUser.id);
 
       if (error) throw error;
 
       setCurrentUser(prev => {
-        const next = { ...prev, ...data };
-        if (data.full_name) next.displayName = data.full_name;
-        if (data.avatar_url) next.photoURL = data.avatar_url;
+        const next = { ...prev, ...updateData };
+        // Keep camelCase versions in state for UI consistency
+        if (updateData.full_name) next.displayName = updateData.full_name;
+        if (updateData.avatar_url) next.photoURL = updateData.avatar_url;
         return next;
       });
       toast.success('Profile updated');

@@ -288,7 +288,6 @@ export function DataProvider({ children }) {
           urgency: requestData.urgency || 'medium',
           images: imageUrls.length > 0 ? imageUrls : (requestData.images || []),
           customer_id: currentUser.id,
-          customer_name: currentUser.full_name || currentUser.displayName,
           worker_id: requestData.providerId || null,
           request_type: rType,
           visibility: rType,
