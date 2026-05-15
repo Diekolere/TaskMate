@@ -31,6 +31,7 @@ const Earnings = () => {
     const [payoutModalOpen, setPayoutModalOpen] = useState(false);
     const [payoutVersion, setPayoutVersion] = useState(0);
     const [ledger, setLedger] = useState([]);
+    const [fullHistory, setFullHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
     const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
@@ -122,11 +123,11 @@ const Earnings = () => {
             }));
 
             // Merge and sort by date
-            const mergedHistory = [...walletHistory, ...escrowHistory]
-                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                .slice(0, 15);
+            const allTransactions = [...walletHistory, ...escrowHistory]
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-            setLedger(mergedHistory);
+            setFullHistory(allTransactions);
+            setLedger(allTransactions.slice(0, 15));
             
         } catch (error) {
             console.error('Wallet fetch error:', error);
@@ -136,12 +137,12 @@ const Earnings = () => {
     };
 
     const { totalEarnings, monthlyEarnings } = useMemo(() => {
-        if (!currentUser) return { totalEarnings: 0, monthlyEarnings: 0 };
+        if (!currentUser || !fullHistory) return { totalEarnings: 0, monthlyEarnings: 0 };
 
-        const credits = ledger.filter(item => item.entry_type === 'credit');
+        const credits = fullHistory.filter(item => item.entry_type === 'credit' || item.entry_type === 'release');
         const now = new Date();
         
-        const monthlyEarnings = credits.reduce((acc, item) => {
+        const monthly = credits.reduce((acc, item) => {
             const d = new Date(item.created_at);
             if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
                 return acc + Number(item.amount);
@@ -149,21 +150,10 @@ const Earnings = () => {
             return acc;
         }, 0);
 
-        const allTimeEarnings = credits.reduce((acc, item) => acc + Number(item.amount), 0);
+        const allTime = credits.reduce((acc, item) => acc + Number(item.amount), 0);
 
-        const weekData = Array(7).fill(0);
-        credits.forEach(item => {
-            const d = new Date(item.created_at);
-            // Only count if within the current week
-            const startOfWeek = new Date(now);
-            startOfWeek.setDate(now.getDate() - now.getDay());
-            if (d >= startOfWeek) {
-                weekData[d.getDay()] += Number(item.amount);
-            }
-        });
-
-        return { totalEarnings: allTimeEarnings, monthlyEarnings };
-    }, [ledger, currentUser]);
+        return { totalEarnings: allTime, monthlyEarnings: monthly };
+    }, [fullHistory, currentUser]);
 
     const commissionPct = Math.min((commissionBalance / 5000) * 100, 100);
 
@@ -272,13 +262,13 @@ const Earnings = () => {
                                                         'bg-red-100 text-red-600'
                                                     }`}>
                                                         <span className="material-icons-outlined text-base">
-                                                            {item.entry_type === 'credit' || item.entry_type === 'release' ? 'add' : 
-                                                             item.entry_type === 'escrow' ? 'shield' : 'remove'}
+                                                            {item.entry_type === 'credit' || item.entry_type === 'release' ? 'north_east' : 
+                                                             item.entry_type === 'escrow' ? 'shield' : 'south_west'}
                                                         </span>
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-bold text-gray-900 truncate">{item.description}</p>
-                                                        <p className="text-xs text-gray-400">
+                                                        <p className="text-[10px] text-gray-400 mt-0.5">
                                                             {new Date(item.created_at).toLocaleDateString()} · {item.source === 'escrow' ? 'Escrow' : 'Wallet'}
                                                         </p>
                                                     </div>
@@ -289,7 +279,7 @@ const Earnings = () => {
                                                         item.entry_type === 'escrow' ? 'text-blue-600' :
                                                         'text-red-600'
                                                     }`}>
-                                                        {item.entry_type === 'credit' || item.entry_type === 'release' || item.entry_type === 'escrow' ? '+' : '-'} ₦{Math.abs(Number(item.amount)).toLocaleString()}
+                                                        {item.entry_type === 'credit' || item.entry_type === 'release' || item.entry_type === 'escrow' ? '+' : '-'} ₦{Math.abs(Number(item.amount || 0)).toLocaleString()}
                                                     </p>
                                                 </div>
                                             </div>

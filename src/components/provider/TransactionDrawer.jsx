@@ -41,22 +41,27 @@ const TransactionDrawer = ({ isOpen, onClose, ledger = [] }) => {
                                     <div key={item.id} className="p-4 rounded-2xl bg-gray-50/50 border border-gray-100 hover:border-gray-200 transition-all">
                                         <div className="flex justify-between items-start mb-2">
                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                                item.entry_type === 'credit' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
+                                                item.entry_type === 'credit' || item.entry_type === 'release' ? 'bg-emerald-100 text-emerald-600' : 
+                                                item.entry_type === 'escrow' ? 'bg-blue-100 text-blue-600' :
+                                                'bg-red-100 text-red-600'
                                             }`}>
                                                 <span className="material-icons-outlined text-lg">
-                                                    {item.entry_type === 'credit' ? 'north_east' : 'south_west'}
+                                                    {item.entry_type === 'credit' || item.entry_type === 'release' ? 'north_east' : 
+                                                     item.entry_type === 'escrow' ? 'shield' : 'south_west'}
                                                 </span>
                                             </div>
                                             <p className={`font-bold ${
-                                                item.entry_type === 'credit' ? 'text-emerald-600' : 'text-red-600'
+                                                item.entry_type === 'credit' || item.entry_type === 'release' ? 'text-emerald-600' : 
+                                                item.entry_type === 'escrow' ? 'text-blue-600' :
+                                                'text-red-600'
                                             }`}>
-                                                {item.entry_type === 'credit' ? '+' : '-'} ₦{Number(item.amount).toLocaleString()}
+                                                {item.entry_type === 'credit' || item.entry_type === 'release' || item.entry_type === 'escrow' ? '+' : '-'} ₦{Math.abs(Number(item.amount || 0)).toLocaleString()}
                                             </p>
                                         </div>
                                         <div>
                                             <p className="font-bold text-gray-900 text-xs">{item.description}</p>
                                             <p className="text-[10px] text-gray-400 mt-0.5">
-                                                {new Date(item.created_at).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                                                {new Date(item.created_at).toLocaleDateString(undefined, { dateStyle: 'long' })} · {item.source === 'escrow' ? 'Escrow' : 'Wallet'}
                                             </p>
                                             <div className="mt-2 pt-2 border-t border-gray-200/50 flex justify-between text-[9px] uppercase font-bold tracking-wider text-gray-400">
                                                 <span>REF: {item.id.substring(0, 12)}</span>
