@@ -184,12 +184,17 @@ const PaymentCheckout = () => {
                 throw new Error(data?.message || 'Simulation failed at Squad API level');
             }
 
-            console.log('STEP 4: Simulation successful! Waiting for webhook...');
-            setStep('success');
-            toast.success('Simulation Successful! Webhook should fire shortly.');
+            console.log('STEP 4: Updating job status in DB...');
+            await supabase
+                .from('jobs')
+                .update({ status: 'payment_secured' })
+                .eq('id', requestId);
 
+            console.log('STEP 5: Simulation successful! Redirecting...');
+            setStep('success');
+            
             setTimeout(() => {
-                navigate(`/customer/job-otp/${requestId || 'demo-001'}`);
+                navigate(`/customer/request-status/${requestId}`, { replace: true, state: { paymentConfirmed: true, jobId: requestId } });
             }, 3000);
 
         } catch (error) {
