@@ -27,6 +27,7 @@ const Earnings = () => {
     const { currentUser } = useAuth();
     const [commissionBalance, setCommissionBalance] = useState(0);
     const [walletBalance, setWalletBalance] = useState(0);
+    const [escrowBalance, setEscrowBalance] = useState(0);
     const [payoutModalOpen, setPayoutModalOpen] = useState(false);
     const [payoutVersion, setPayoutVersion] = useState(0);
     const [ledger, setLedger] = useState([]);
@@ -62,15 +63,71 @@ const Earnings = () => {
             
             if (!profileError) setWalletBalance(profile?.wallet_balance || 0);
 
-            // 2. Fetch ledger history
-            const { data: ledgerData, error: ledgerError } = await supabase
-                .from('wallet_ledger')
-                .select('*')
+            // 3. Fetch escrow balance (sum of held entries for this provider)
+            const { data: escrowData } = await supabase
+                .from('escrow_ledger')
+                .select('net_amount, job_id, jobs(status)')
                 .eq('provider_id', currentUser.id)
-                .order('created_at', { ascending: false });
-            
-            if (!ledgerError) setLedger(ledgerData || []);
+                .eq('entry_type', 'held');
 
+            if (escrowData) {
+                // Cross-reference: only include jobs that are still 'held' AND not yet completed/released in job status
+                const { data: releasedJobs } = await supabase
+                    .from('escrow_ledger')
+                    .select('job_id')
+                    .eq('provider_id', currentUser.id)
+                    .eq('entry_type', 'released');
+
+                const releasedJobIds = new Set((releasedJobs || []).map(r => r.job_id));
+                const held = escrowData
+                    .filter(e => {
+                        const isReleased = releasedJobIds.has(e.job_id);
+                        const isJobDone = e.jobs?.status === 'completed' || e.jobs?.status === 'payment_released';
+                        return !isReleased && !isJobDone;
+                    })
+                    .reduce((sum, e) => sum + Number(e.net_amount || 0), 0);
+                setEscrowBalance(held);
+            }
+
+            // 2. Fetch history (Merged Wallet Ledger + Escrow Ledger)
+            const [ledgerRes, escrowLedgerRes] = await Promise.all([
+                supabase
+                    .from('wallet_ledger')
+                    .select('*')
+                    .eq('provider_id', currentUser.id)
+                    .order('created_at', { ascending: false })
+                    .limit(20),
+                supabase
+                    .from('escrow_ledger')
+                    .select('*, jobs(title)')
+                    .eq('provider_id', currentUser.id)
+                    .order('created_at', { ascending: false })
+                    .limit(20)
+            ]);
+
+            const walletHistory = (ledgerRes.data || []).map(item => ({
+                ...item,
+                source: 'wallet'
+            }));
+
+            const escrowHistory = (escrowLedgerRes.data || []).map(item => ({
+                ...item,
+                id: item.id,
+                amount: item.gross_amount,
+                description: item.entry_type === 'held' 
+                    ? `Payment Held in Escrow: ${item.jobs?.title || 'Job Payment'}`
+                    : `Escrow Released: ${item.jobs?.title || 'Job Payment'}`,
+                entry_type: item.entry_type === 'held' ? 'escrow' : 'release',
+                source: 'escrow'
+            }));
+
+            // Merge and sort by date
+            const mergedHistory = [...walletHistory, ...escrowHistory]
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(0, 15);
+
+            setLedger(mergedHistory);
+            
         } catch (error) {
             console.error('Wallet fetch error:', error);
         } finally {
@@ -130,42 +187,61 @@ const Earnings = () => {
                 <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
                     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto space-y-6">
 
-                        {/* Summary Cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                        {/* Summary Cards — 3 column grid on desktop */}
+                        {/* Summary Cards — 3 column grid on desktop, unique layout on mobile */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
 
-                            {/* Available Wallet Balance (Squad Platform Wallet) */}
-                            <div className="bg-[#0F172A] text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+                            {/* In Escrow — Hero card on mobile */}
+                            <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-sky-400 to-blue-600 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-4 opacity-10">
-                                    <span className="material-icons-outlined text-9xl">wallet</span>
+                                    <span className="material-icons-outlined text-9xl">shield</span>
                                 </div>
                                 <div className="relative z-10">
-                                    <p className="text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Available Balance</p>
-                                    <h2 className="text-3xl font-bold mb-5">
+                                    <p className="text-xs font-semibold uppercase tracking-wider opacity-90 mb-1">In Escrow</p>
+                                    <h2 className="text-3xl font-bold mb-3">
+                                        {(escrowBalance || 0).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })}
+                                    </h2>
+                                    <div className="flex items-center gap-1.5 bg-black/10 backdrop-blur-sm px-3 py-1.5 rounded-lg w-fit">
+                                        <span className="material-icons-outlined text-white text-sm">lock</span>
+                                        <p className="text-[10px] text-white font-medium leading-none">
+                                            Held until customer releases payment
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Available Wallet Balance */}
+                            <div className="col-span-1 bg-[#0F172A] text-white p-5 sm:p-6 rounded-2xl shadow-lg relative overflow-hidden flex flex-col justify-between">
+                                <div className="absolute top-0 right-0 p-4 opacity-5">
+                                    <span className="material-icons-outlined text-7xl">account_balance_wallet</span>
+                                </div>
+                                <div className="relative z-10">
+                                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Available</p>
+                                    <h2 className="text-xl sm:text-2xl font-bold mb-4">
                                         {(walletBalance || 0).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })}
                                     </h2>
-                                    <p className="text-xs opacity-70 font-medium mb-4">From customer payments via your VA</p>
                                     <button 
                                         onClick={() => setShowWithdrawalModal(true)}
-                                        className="w-full py-2.5 bg-[#1E40AF] hover:bg-[#1e3a8a] text-white font-semibold rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+                                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] sm:text-xs transition-colors flex items-center justify-center gap-1.5"
                                     >
                                         Withdraw
-                                        <span className="material-icons-outlined text-base">arrow_outward</span>
+                                        <span className="material-icons-outlined text-sm">arrow_outward</span>
                                     </button>
                                 </div>
                             </div>
 
                             {/* Total Earnings */}
-                            <div className="bg-[#10B981] text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+                            <div className="col-span-1 bg-[#10B981] text-white p-5 sm:p-6 rounded-2xl shadow-lg relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-4 opacity-10">
-                                    <span className="material-icons-outlined text-9xl">attach_money</span>
+                                    <span className="material-icons-outlined text-7xl">payments</span>
                                 </div>
                                 <div className="relative z-10">
-                                    <p className="text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Total Earnings</p>
-                                    <h2 className="text-3xl font-bold mb-3">
+                                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Total Paid</p>
+                                    <h2 className="text-xl sm:text-2xl font-bold mb-3">
                                         {totalEarnings.toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })}
                                     </h2>
-                                    <p className="text-sm opacity-80 font-medium">
-                                        This month: <span className="font-bold">₦{monthlyEarnings.toLocaleString()}</span>
+                                    <p className="text-[10px] opacity-80 font-medium truncate">
+                                        Month: <span className="font-bold">₦{monthlyEarnings.toLocaleString()}</span>
                                     </p>
                                 </div>
                             </div>
@@ -185,30 +261,35 @@ const Earnings = () => {
                                         View All
                                     </button>
                                 </div>
-                                <div className="divide-y divide-gray-50 max-h-[260px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+                                <div className="divide-y divide-gray-50 max-h-[450px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
                                     {ledger.length > 0 ? (
                                         ledger.map((item) => (
                                             <div key={item.id} className="px-5 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
                                                 <div className="flex items-center gap-3 min-w-0">
                                                     <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                                                        item.entry_type === 'credit' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
+                                                        item.entry_type === 'credit' || item.entry_type === 'release' ? 'bg-emerald-100 text-emerald-600' : 
+                                                        item.entry_type === 'escrow' ? 'bg-blue-100 text-blue-600' :
+                                                        'bg-red-100 text-red-600'
                                                     }`}>
                                                         <span className="material-icons-outlined text-base">
-                                                            {item.entry_type === 'credit' ? 'add' : 'remove'}
+                                                            {item.entry_type === 'credit' || item.entry_type === 'release' ? 'add' : 
+                                                             item.entry_type === 'escrow' ? 'shield' : 'remove'}
                                                         </span>
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-bold text-gray-900 truncate">{item.description}</p>
                                                         <p className="text-xs text-gray-400">
-                                                            {new Date(item.created_at).toLocaleDateString()} · #{item.id.substring(0, 8)}
+                                                            {new Date(item.created_at).toLocaleDateString()} · {item.source === 'escrow' ? 'Escrow' : 'Wallet'}
                                                         </p>
                                                     </div>
                                                 </div>
                                                 <div className="text-right shrink-0 ml-4">
                                                     <p className={`text-sm font-bold ${
-                                                        item.entry_type === 'credit' ? 'text-emerald-600' : 'text-red-600'
+                                                        item.entry_type === 'credit' || item.entry_type === 'release' ? 'text-emerald-600' : 
+                                                        item.entry_type === 'escrow' ? 'text-blue-600' :
+                                                        'text-red-600'
                                                     }`}>
-                                                        {item.entry_type === 'credit' ? '+' : '-'} ₦{Math.abs(Number(item.amount)).toLocaleString()}
+                                                        {item.entry_type === 'credit' || item.entry_type === 'release' || item.entry_type === 'escrow' ? '+' : '-'} ₦{Math.abs(Number(item.amount)).toLocaleString()}
                                                     </p>
                                                 </div>
                                             </div>
