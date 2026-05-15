@@ -12,7 +12,7 @@ const InboundRequests = () => {
     const { currentUser } = useAuth();
     const { jobs } = useData();
     const [search, setSearch] = useState('');
-    const [tab, setTab] = useState('all'); // 'all' | 'upcoming' | 'private'
+    const [tab, setTab] = useState('all'); // 'all' | 'upcoming' | 'private' | 'public'
 
     const requests = jobs.filter(j => {
         const s = String(j.status || '').toLowerCase();
@@ -25,12 +25,14 @@ const InboundRequests = () => {
 
     const upcomingCount = requests.filter(r => !!r.scheduledDate).length;
     const privateCount = requests.filter(r => String(r.request_type || r.visibility || (r.providerId ? 'private' : 'public')).toLowerCase() === 'private').length;
+    const publicCount = requests.filter(r => String(r.request_type || r.visibility || (r.providerId ? 'private' : 'public')).toLowerCase() === 'public').length;
 
     const filtered = requests.filter(r => {
         const type = String(r.request_type || r.visibility || (r.providerId ? 'private' : 'public')).toLowerCase();
         const matchesTab =
             tab === 'upcoming' ? !!r.scheduledDate :
             tab === 'private' ? type === 'private' :
+            tab === 'public' ? type === 'public' :
             true;
         if (!matchesTab) return false;
         if (!search) return true;
@@ -75,6 +77,17 @@ const InboundRequests = () => {
                                 className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px ${tab === 'all' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
                             >
                                 All Requests
+                            </button>
+                            <button
+                                onClick={() => setTab('public')}
+                                className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'public' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
+                            >
+                                Public
+                                {publicCount > 0 && (
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'public' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
+                                        {publicCount}
+                                    </span>
+                                )}
                             </button>
                             <button
                                 onClick={() => setTab('private')}
