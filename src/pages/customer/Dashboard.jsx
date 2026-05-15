@@ -29,6 +29,7 @@ const Dashboard = () => {
     const [likedPosts, setLikedPosts] = useState({});
     const [openMenu, setOpenMenu] = useState(null);
     const [lastTapTime, setLastTapTime] = useState({});
+    const [expandedPosts, setExpandedPosts] = useState({});
 
     React.useEffect(() => {
         const loadFeed = async () => {
@@ -63,12 +64,12 @@ const Dashboard = () => {
 
                 {/* Main Content Area */}
                 <main className="relative z-0 flex-1 overflow-y-auto bg-white">
-                    <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-10 pb-24 md:pb-10 flex flex-col xl:flex-row gap-8 xl:gap-12">
+                    <div className="max-w-[1200px] mx-auto w-full px-0 sm:px-8 py-0 sm:py-10 pb-24 md:pb-10 flex flex-col xl:flex-row gap-0 xl:gap-12">
 
                         {/* Feed Column */}
-                        <div className="flex-1 max-w-3xl">
+                        <div className="flex-1 max-w-[580px]">
                             {/* Header & Search Area */}
-                            <div className="mb-6 sm:mb-10">
+                            <div className="mb-6 sm:mb-10 px-4 sm:px-0 pt-6 sm:pt-0">
                                 <h1 className="text-[24px] sm:text-[32px] font-extrabold tracking-tight text-gray-900 mb-4 sm:mb-6">Discovery Feed</h1>
 
                                 {/* Simple Search Bar */}
@@ -135,7 +136,7 @@ const Dashboard = () => {
                             </div>
 
                             {/* Feed Posts */}
-                            <div className="space-y-4 sm:space-y-8">
+                            <div className="space-y-0 sm:space-y-8">
                                 {loading ? (
                                     <div className="py-20 flex flex-col items-center justify-center text-gray-400">
                                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#10B981] mb-4"></div>
@@ -190,9 +191,9 @@ const Dashboard = () => {
                                         const currentLikeCount = (post.likes_count || 0) + (likedPosts[post.id] ? 1 : 0);
 
                                         return (
-                                            <div key={post.id} className="bg-white border border-gray-200 rounded-lg sm:rounded-xl overflow-hidden hover:border-gray-300 transition-all">
+                                            <div key={post.id} className="bg-white border-y sm:border border-gray-100 sm:border-gray-200 sm:rounded-xl overflow-hidden sm:hover:border-gray-300 transition-all">
                                                 {/* Post Header */}
-                                                <div className="p-3 sm:p-4 flex items-start justify-between gap-2">
+                                                <div className="py-2.5 px-3 sm:py-3 sm:px-4 flex items-start justify-between gap-2">
                                                     <div className="flex gap-2 sm:gap-3 items-center cursor-pointer group min-w-0" onClick={() => navigate(`/customer/provider/${post.provider_id}`)}>
                                                         <div className="relative shrink-0">
                                                             <img src={post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.full_name}&background=random`} alt={post.profiles?.full_name} className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover border border-gray-200 group-hover:border-gray-300 transition-colors" />
@@ -200,7 +201,7 @@ const Dashboard = () => {
                                                         <div className="min-w-0">
                                                             <h3 className="font-bold text-[13px] sm:text-[14px] text-gray-900 group-hover:underline truncate">{post.profiles?.full_name}</h3>
                                                             <p className="text-[11px] text-gray-500 font-medium">
-                                                                {post.category}
+                                                                {post.category} • {formatDistanceToNow(new Date(post.created_at))} ago
                                                                 {post.profiles?.location_name && ` • ${post.profiles.location_name}`}
                                                             </p>
                                                         </div>
@@ -224,11 +225,39 @@ const Dashboard = () => {
                                                     </div>
                                                 </div>
 
+                                                {/* Post Caption & Info (Above Image) */}
+                                                <div className="px-3 sm:px-4 pb-2">
+                                                    <p className="text-[13px] sm:text-[14px] text-gray-900 leading-snug">
+                                                        <span className="text-gray-800">
+                                                            {post.caption?.length > 120 && !expandedPosts[post.id] 
+                                                                ? `${post.caption.slice(0, 120)}...` 
+                                                                : post.caption}
+                                                        </span>
+                                                        {post.caption?.length > 120 && !expandedPosts[post.id] && (
+                                                            <button 
+                                                                onClick={() => setExpandedPosts(prev => ({ ...prev, [post.id]: true }))}
+                                                                className="text-gray-500 font-bold ml-1 hover:text-gray-700"
+                                                            >
+                                                                more
+                                                            </button>
+                                                        )}
+                                                    </p>
+
+                                                    {/* Tags */}
+                                                    {post.tags && post.tags.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                                            {post.tags.map(tag => (
+                                                                <span key={tag} className="text-[11px] sm:text-xs font-semibold text-blue-600 hover:text-blue-700">#{tag}</span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+
                                                 {/* Image Carousel */}
                                                 <div className="relative bg-gray-50">
                                                     {images.length > 0 ? (
                                                         <>
-                                                            <div className="w-full aspect-square overflow-hidden relative cursor-pointer" onClick={handleDoubleTap}>
+                                                            <div className="w-full aspect-[4/3] overflow-hidden relative cursor-pointer" onClick={handleDoubleTap}>
                                                                 <img src={images[currentImageIndex]} alt="Post media" className="w-full h-full object-cover" />
 
                                                                 {/* Navigation Arrows */}
@@ -268,54 +297,26 @@ const Dashboard = () => {
                                                             </div>
                                                         </>
                                                     ) : (
-                                                        <div className="w-full aspect-square flex items-center justify-center">
+                                                        <div className="w-full aspect-[4/3] flex items-center justify-center">
                                                             <span className="material-icons-outlined text-gray-300 text-5xl">image_not_supported</span>
                                                         </div>
                                                     )}
                                                 </div>
 
-                                                {/* Engagement Stats - Like Icon Only */}
-                                                <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center border-b border-gray-100">
+                                                {/* Engagement Stats - Like Icon & Count */}
+                                                <div className="px-3 sm:px-4 py-1.5 sm:py-2.5 flex items-center gap-2.5 border-b border-gray-100">
                                                     <button
                                                         onClick={handleLikeClick}
-                                                        className="text-gray-600 hover:text-red-600 transition-colors"
+                                                        className="text-gray-600 hover:text-red-600 transition-colors flex items-center"
                                                         title="Like"
                                                     >
                                                         <span className="material-icons text-[24px] sm:text-[26px]" style={{ color: likedPosts[post.id] ? '#ef4444' : 'currentColor' }}>
                                                             {likedPosts[post.id] ? 'favorite' : 'favorite_border'}
                                                         </span>
                                                     </button>
-                                                </div>
-
-                                                {/* Post Caption & Info */}
-                                                <div className="px-3 sm:px-4 py-2 sm:py-3">
-                                                    <p className="text-[12px] sm:text-[13px] font-bold text-gray-900 mb-1.5 sm:mb-2">
+                                                    <span className="text-[13px] sm:text-[14px] font-bold text-gray-900">
                                                         {currentLikeCount} like{currentLikeCount !== 1 ? 's' : ''}
-                                                    </p>
-                                                    <p className="text-[13px] sm:text-[14px] text-gray-900 leading-snug mb-1.5">
-                                                        <span className="font-bold">{post.profiles?.full_name}</span>{' '}
-                                                        <span className="text-gray-800">{post.caption}</span>
-                                                    </p>
-                                                    <p className="text-[11px] sm:text-[12px] text-gray-500 font-medium">
-                                                        {formatDistanceToNow(new Date(post.created_at))} ago
-                                                    </p>
-
-                                                    {/* Tags */}
-                                                    {post.tags && post.tags.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1 mt-1.5">
-                                                            {post.tags.slice(0, 3).map(tag => (
-                                                                <span key={tag} className="text-[10px] sm:text-xs font-semibold text-blue-600 hover:text-blue-700">#{tag}</span>
-                                                            ))}
-                                                        </div>
-                                                    )}
-
-                                                    {/* View Profile Button */}
-                                                    <button
-                                                        onClick={() => navigate(`/customer/provider/${post.provider_id}`)}
-                                                        className="mt-3 w-full py-2 bg-gray-50 border border-gray-200 text-gray-900 rounded-lg font-bold text-[13px] hover:bg-gray-100 hover:border-gray-300 transition-all"
-                                                    >
-                                                        View Profile
-                                                    </button>
+                                                    </span>
                                                 </div>
                                             </div>
                                         );
