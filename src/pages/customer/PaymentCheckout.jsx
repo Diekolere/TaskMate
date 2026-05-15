@@ -46,32 +46,56 @@ const PaymentCheckout = () => {
         // Fetch provider's static VA from database
         const fetchProviderVA = async () => {
             try {
+                console.log('DEBUG: Initiating VA fetch for Request ID:', requestId);
+                
                 // Get the job to find provider_id
                 const { data: job, error: jobError } = await supabase
                     .from('jobs')
-                    .select('worker_id')
+                    .select('worker_id, status')
                     .eq('id', requestId)
-                    .single();
+                    .maybeSingle();
 
-                if (jobError) {
-                    throw new Error(`Job error: ${jobError.message}`);
+                console.log('DEBUG: Database Job record:', job);
+                console.log('DEBUG: Navigation State Provider:', stateProvider);
+
+                let providerId = job?.worker_id || stateProvider?.id;
+                
+                if (!providerId) {
+                    console.log('DEBUG: Worker ID missing, attempting recovery from negotiations...');
+                    const { data: latestNeg } = await supabase
+                        .from('negotiations')
+                        .select('provider_id')
+                        .eq('job_id', requestId)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    
+                    if (latestNeg?.provider_id) {
+                        providerId = latestNeg.provider_id;
+                        console.log('DEBUG: Recovered Provider ID from negotiations:', providerId);
+                    }
                 }
 
-                if (!job?.worker_id) {
+                console.log('DEBUG: Resolved Provider ID:', providerId);
+                
+                if (!providerId) {
+                    console.error('DEBUG ERROR: No provider ID found in DB, State, or Negotiations. Job Status:', job?.status);
                     throw new Error('Provider not assigned to this job');
                 }
 
                 // Fetch the provider's VA
+                console.log('DEBUG: Fetching VA for Provider:', providerId);
                 const { data: va, error: vaError } = await supabase
                     .from('virtual_accounts')
                     .select('*')
-                    .eq('provider_id', job.worker_id)
+                    .eq('provider_id', providerId)
                     .maybeSingle();
 
                 if (vaError) {
-                    console.error('VA Fetch Error:', vaError);
+                    console.error('DEBUG: VA Fetch Error:', vaError);
                     throw new Error(`VA error: ${vaError.message}`);
                 }
+                console.log('DEBUG: Virtual Account found:', va);
 
                 if (!va) {
                     console.log('VA not found, attempting to create one via Edge Function...');
@@ -79,7 +103,7 @@ const PaymentCheckout = () => {
                     const { data: provider } = await supabase
                         .from('profiles')
                         .select('email, full_name, phone_number')
-                        .eq('id', job.worker_id)
+                        .eq('id', providerId)
                         .single();
 
                     if (!provider) {
@@ -91,14 +115,14 @@ const PaymentCheckout = () => {
                     const lastName = names.slice(1).join(' ') || 'TaskMate';
 
                     const { data: createData, error: createError } = await supabase.functions.invoke('squad', {
-                        body: {
-                            action: 'create-static-virtual-account',
-                            providerId: job.worker_id,
-                            providerEmail: provider.email,
-                            providerFirstName: firstName,
-                            providerLastName: lastName,
-                            providerPhone: provider.phone_number
-                        }
+                         body: {
+                             action: 'create-static-virtual-account',
+                             providerId: providerId,
+                             providerEmail: provider.email,
+                             providerFirstName: firstName,
+                             providerLastName: lastName,
+                             providerPhone: provider.phone_number
+                         }
                     });
 
                     if (createError || !createData?.success) {

@@ -26,22 +26,34 @@ const STATUS_CONFIG = {
 };
 const getStatusCfg = s => STATUS_CONFIG[s] || { label: s, bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', dot: 'bg-gray-400' };
 
-const normTimelineStatus = (s) => (String(s).toLowerCase() === 'completed' ? 'Completed' : String(s));
+const normTimelineStatus = (s) => {
+    const val = String(s || '').toLowerCase();
+    return val === 'completed' ? 'completed' : val;
+};
 
 // ── Timeline steps ───────────────────────────────────────────────
 const buildTimeline = (status) => {
     const steps = [
-        { key: 'requested',       label: 'Request Received' },
-        { key: 'payment_secured', label: 'Payment Secured' },
-        { key: 'in_progress',     label: 'Job Started' },
-        { key: 'Completed',       label: 'Work Completed' },
-        { key: 'payment_released',label: 'Payout Released' },
+        { key: 'negotiating',     label: 'Negotiation' },
+        { key: 'awaiting_payment', label: 'Payment' },
+        { key: 'payment_secured', label: 'Job Locked' },
+        { key: 'in_progress',     label: 'In Progress' },
+        { key: 'completed',       label: 'Review' },
+        { key: 'payment_released',label: 'Paid' },
     ];
-    const order = ['requested', 'payment_secured', 'in_progress', 'Completed', 'payment_released'];
-    const currentIdx = order.indexOf(normTimelineStatus(status)) === -1 ? 1 : order.indexOf(normTimelineStatus(status));
+    
+    const order = ['negotiating', 'awaiting_payment', 'payment_secured', 'in_progress', 'completed', 'payment_released'];
+    const currentStatus = normTimelineStatus(status);
+    
+    let currentIdx = order.indexOf(currentStatus);
+    if (currentIdx === -1) {
+        if (['open', 'interested'].includes(currentStatus)) currentIdx = 0;
+        else currentIdx = 1;
+    }
+
     return steps.map((s, i) => ({
         ...s,
-        done: i <= currentIdx,
+        done: i < currentIdx,
         active: i === currentIdx,
     }));
 };
@@ -263,24 +275,20 @@ export default function JobDetails() {
                                                         {/* Job Details Grid */}
                                                         <div className="space-y-4">
                                                             <div className="flex flex-col gap-0.5">
-                                                                <h4 className="text-[15px] font-black text-gray-900">Job Parameters</h4>
+                                                                <h4 className="text-[15px] font-black text-gray-900">Job Details</h4>
                                                             </div>
                                                             
-                                                            <div className="divide-y divide-gray-100 border-y border-gray-100 rounded-xl overflow-hidden border-x">
+                                                            <div className="divide-y divide-gray-100 border-y border-gray-100 mt-4">
                                                                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
-                                                                    <div className="p-5 flex items-center gap-4">
-                                                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
-                                                                            <span className="material-icons-outlined text-lg">build</span>
-                                                                        </div>
+                                                                    <div className="py-5 flex items-center gap-4">
+                                                                        <span className="material-icons-outlined text-gray-400 text-lg">build</span>
                                                                         <div>
                                                                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Category</p>
                                                                             <p className="text-sm font-bold text-gray-900">{job.category || 'General Service'}</p>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="p-5 flex items-center gap-4">
-                                                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
-                                                                            <span className="material-icons-outlined text-lg">location_on</span>
-                                                                        </div>
+                                                                    <div className="py-5 sm:pl-8 flex items-center gap-4">
+                                                                        <span className="material-icons-outlined text-gray-400 text-lg">location_on</span>
                                                                         <div>
                                                                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Location</p>
                                                                             <p className="text-sm font-bold text-gray-900">{location}</p>
@@ -289,19 +297,15 @@ export default function JobDetails() {
                                                                 </div>
 
                                                                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
-                                                                    <div className="p-5 flex items-center gap-4">
-                                                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
-                                                                            <span className="material-icons-outlined text-lg">person</span>
-                                                                        </div>
+                                                                    <div className="py-5 flex items-center gap-4">
+                                                                        <span className="material-icons-outlined text-gray-400 text-lg">person</span>
                                                                         <div>
                                                                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</p>
                                                                             <p className="text-sm font-bold text-gray-900">{job.customerName || 'Customer'}</p>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="p-5 flex items-center gap-4">
-                                                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
-                                                                            <span className="material-icons-outlined text-lg">schedule</span>
-                                                                        </div>
+                                                                    <div className="py-5 sm:pl-8 flex items-center gap-4">
+                                                                        <span className="material-icons-outlined text-gray-400 text-lg">schedule</span>
                                                                         <div>
                                                                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Job ID</p>
                                                                             <p className="text-[11px] font-bold text-gray-500 truncate">{job.id}</p>

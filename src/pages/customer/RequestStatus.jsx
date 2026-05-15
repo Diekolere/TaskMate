@@ -96,7 +96,7 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
 
     const handleAccept = async (price) => {
         setAgreed(true);
-        await finalizeAgreement(requestId, price);
+        await finalizeAgreement(requestId, price, provider.id);
         await sendMessage(requestId, `✓ Price agreed at ₦${Number(price).toLocaleString()}. Proceed to payment.`, 'system', {}, provider.id);
     };
 
@@ -111,7 +111,7 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
     
     const confirmFinalize = async (price) => {
         setFinalized(true);
-        await finalizeAgreement(requestId, price);
+        await finalizeAgreement(requestId, price, provider.id);
         await sendMessage(requestId, `✓ Job finalised at ₦${Number(price).toLocaleString()}. Tap "Proceed to Payment" to secure the booking.`, 'system', {}, provider.id);
         setTimeout(() => onFinalized?.(price), 1200);
     };
@@ -536,8 +536,8 @@ const RequestStatus = () => {
 
                             {/* Job flow shortcuts */}
                             {(normalizedStatus === 'payment_secured' || normalizedStatus === 'completed') && (
-                                <div className="mt-8 py-4 flex flex-wrap items-center gap-3 border-t border-gray-50">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mr-2">Actions</span>
+                                <div className="mt-8 py-3 px-4 flex flex-wrap items-center gap-4 bg-gray-50/50 rounded-xl border border-gray-100/80">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Actions</span>
                                     {normalizedStatus === 'payment_secured' && (
                                         <Link
                                             to={`/customer/job-otp/${id}`}
