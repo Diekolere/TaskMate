@@ -185,7 +185,7 @@ const Earnings = () => {
                                         View All
                                     </button>
                                 </div>
-                                <div className="divide-y divide-gray-50 max-h-[450px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+                                <div className="divide-y divide-gray-50 max-h-[260px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
                                     {ledger.length > 0 ? (
                                         ledger.map((item) => (
                                             <div key={item.id} className="px-5 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
@@ -208,7 +208,7 @@ const Earnings = () => {
                                                     <p className={`text-sm font-bold ${
                                                         item.entry_type === 'credit' ? 'text-emerald-600' : 'text-red-600'
                                                     }`}>
-                                                        {item.entry_type === 'credit' ? '+' : '-'} ₦{Number(item.amount).toLocaleString()}
+                                                        {item.entry_type === 'credit' ? '+' : '-'} ₦{Math.abs(Number(item.amount)).toLocaleString()}
                                                     </p>
                                                 </div>
                                             </div>
