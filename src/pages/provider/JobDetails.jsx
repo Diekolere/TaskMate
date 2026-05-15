@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { supabase } from '../../lib/supabase';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
@@ -68,6 +69,24 @@ export default function JobDetails() {
     const [completing, setCompleting] = useState(false);
     const [confirmComplete, setConfirmComplete] = useState(false);
     const [showNegotiation, setShowNegotiation] = useState(false);
+    const [showAllDetails, setShowAllDetails] = useState(false);
+    const [showFinancials, setShowFinancials] = useState(false);
+    const [customerProfile, setCustomerProfile] = useState(null);
+
+    useEffect(() => {
+        const fetchCustomer = async () => {
+            const targetId = job?.customer_id || job?.customerId;
+            if (!targetId) return;
+            
+            const { data } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', targetId)
+                .single();
+            if (data) setCustomerProfile(data);
+        };
+        fetchCustomer();
+    }, [job?.customer_id, job?.customerId]);
 
     useEffect(() => {
         const found = jobs.find(j => j.id === id);
@@ -201,217 +220,309 @@ export default function JobDetails() {
                                         </span>
                                     </div>
                                     {job.description && (
-                                        <p className="text-sm text-gray-500 mt-4 leading-relaxed max-w-2xl font-medium">
+                                        <p className="text-[15px] text-gray-500 mt-4 leading-relaxed max-w-2xl font-medium">
                                             {job.description}
                                         </p>
                                     )}
+
+                                    {/* View More Details Toggle */}
+                                    <div className="mt-8">
+                                        <button 
+                                            onClick={() => setShowAllDetails(!showAllDetails)}
+                                            className="flex items-center gap-2 text-[#10B981] font-bold text-sm hover:opacity-80 transition-all"
+                                        >
+                                            <span className="material-icons text-lg">{showAllDetails ? 'expand_less' : 'expand_more'}</span>
+                                            {showAllDetails ? 'Hide details' : 'View more details'}
+                                        </button>
+
+                                        <AnimatePresence>
+                                            {showAllDetails && (
+                                                <motion.div 
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                                    className="overflow-hidden"
+                                                >
+                                                    <div className="pt-8 space-y-8">
+                                                        {/* Photos */}
+                                                        {images.length > 0 && (
+                                                            <div className="space-y-4">
+                                                                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Photos</h4>
+                                                                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                                                                    {images.map((src, i) => (
+                                                                        <button key={i} onClick={() => setLightbox(i)}
+                                                                            className="w-48 sm:w-64 aspect-[4/3] rounded-2xl overflow-hidden border border-gray-100 shrink-0 shadow-sm hover:opacity-95 transition-opacity">
+                                                                            <img src={src} alt={`Job ${i + 1}`} className="w-full h-full object-cover" />
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Job Details Grid */}
+                                                        <div className="space-y-4">
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <h4 className="text-[15px] font-black text-gray-900">Job Parameters</h4>
+                                                            </div>
+                                                            
+                                                            <div className="divide-y divide-gray-100 border-y border-gray-100 rounded-xl overflow-hidden border-x">
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                                                                    <div className="p-5 flex items-center gap-4">
+                                                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                            <span className="material-icons-outlined text-lg">build</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Category</p>
+                                                                            <p className="text-sm font-bold text-gray-900">{job.category || 'General Service'}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="p-5 flex items-center gap-4">
+                                                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                            <span className="material-icons-outlined text-lg">location_on</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Location</p>
+                                                                            <p className="text-sm font-bold text-gray-900">{location}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                                                                    <div className="p-5 flex items-center gap-4">
+                                                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                            <span className="material-icons-outlined text-lg">person</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</p>
+                                                                            <p className="text-sm font-bold text-gray-900">{job.customerName || 'Customer'}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="p-5 flex items-center gap-4">
+                                                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                            <span className="material-icons-outlined text-lg">schedule</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Job ID</p>
+                                                                            <p className="text-[11px] font-bold text-gray-500 truncate">{job.id}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* ── Main grid ────────────────────────────── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-                            {/* Left — 2 cols */}
-                            <div className="lg:col-span-2 space-y-6">
-
-                                {/* Action area — Prominent at the top of main column */}
-                                <div className="space-y-4">
-                                    {/* payment_secured → Enter Start Code */}
-                                    {job.status === 'payment_secured' && (
-                                        <Link
-                                            to={`/provider/job-start/${job.id}`}
-                                            className="w-full py-4 bg-[#10B981] hover:bg-[#059669] text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-[#10B981]/20 flex items-center justify-center gap-2"
-                                        >
-                                            <span className="material-icons text-base">key</span>
-                                            Enter Customer's Start Code
-                                        </Link>
-                                    )}
-
-                                    {/* in_progress → Update progress + Mark complete */}
-                                    {job.status === 'in_progress' && (
-                                        <>
-                                            <div className="relative">
-                                                <button
-                                                    onClick={() => setProgressOpen(v => !v)}
-                                                    className="w-full py-3.5 bg-[#0F172A] hover:bg-slate-700 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
-                                                >
-                                                    <span className="material-icons text-base">sync</span>
-                                                    Update Progress
-                                                    <span className={`material-icons text-base transition-transform ${progressOpen ? 'rotate-180' : ''}`}>expand_more</span>
-                                                </button>
-                                                <AnimatePresence>
-                                                    {progressOpen && (
-                                                        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                                                            className="absolute z-10 left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden">
-                                                            {PROGRESS_OPTS.map(opt => (
-                                                                <button key={opt.key} onClick={() => handleProgressUpdate(opt)}
-                                                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 font-semibold hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
-                                                                    <span className="material-icons-outlined text-[#10B981] text-base">{opt.icon}</span>
-                                                                    {opt.label}
-                                                                </button>
-                                                            ))}
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </div>
-                                            {!confirmComplete ? (
-                                                <button
-                                                    onClick={() => setConfirmComplete(true)}
-                                                    className="w-full py-3.5 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
-                                                >
-                                                    <span className="material-icons text-base text-[#10B981]">check_circle</span>
-                                                    Mark Job as Complete
-                                                </button>
-                                            ) : (
-                                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
-                                                    <p className="text-sm font-bold text-gray-900">Confirm completion?</p>
-                                                    <p className="text-xs text-gray-500 leading-relaxed">The customer will be notified to release payment or raise a dispute. Only confirm if the work is fully done.</p>
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={handleMarkComplete}
-                                                            disabled={completing}
-                                                            className="flex-1 py-2.5 bg-[#10B981] hover:bg-[#059669] text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-                                                        >
-                                                            {completing
-                                                                ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                                : <span className="material-icons text-sm">check</span>
-                                                            }
-                                                            Yes, I'm done
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setConfirmComplete(false)}
-                                                            className="px-4 py-2.5 border border-gray-200 text-gray-600 font-bold rounded-xl text-sm hover:bg-white transition-colors"
-                                                        >
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-
-                                    {/* Completed → waiting message */}
-                                    {(job.status === 'completed' || job.status === 'Completed') && (
-                                        <div className="bg-[#10B981]/5 border border-[#10B981]/20 rounded-xl p-4 flex items-start gap-3">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0 mt-0.5">
-                                                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                                                <path d="M7.5 12l3 3 6-6" />
-                                            </svg>
-                                            <div>
-                                                <p className="text-sm font-bold text-gray-900">Awaiting customer confirmation</p>
-                                                <p className="text-xs text-gray-500 mt-0.5">Payment auto-releases after {AUTO_RELEASE_HOURS} hours if no dispute is raised.</p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* payment_released → done */}
-                                    {job.status === 'payment_released' && (
-                                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
-                                            <span className="material-icons text-emerald-600 shrink-0">payments</span>
-                                            <div>
-                                                <p className="text-sm font-bold text-gray-900">Payout complete</p>
-                                                <p className="text-xs text-gray-500 mt-0.5">₦{takeHome.toLocaleString()} was sent to your bank account.</p>
-                                            </div>
-                                        </div>
+                        {/* ── Customer Info Section (Compact & Subtle) ── */}
+                        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-6 px-1">
+                            <div className="flex items-center gap-5">
+                                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-lg overflow-hidden border border-gray-200 shadow-sm shrink-0">
+                                    {customerProfile?.avatar_url || job.customerPhoto ? (
+                                        <img src={customerProfile?.avatar_url || job.customerPhoto} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                        (customerProfile?.full_name || job.customerName || 'C').charAt(0).toUpperCase()
                                     )}
                                 </div>
-
-                                {/* Images */}
-                                {images.length > 0 && (
-                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Job Photos</p>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {images.map((src, i) => (
-                                                <button key={i} onClick={() => setLightbox(i)}
-                                                    className="aspect-square rounded-xl overflow-hidden bg-gray-100 relative group">
-                                                    <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                                        <span className="material-icons-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity text-2xl">zoom_in</span>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Timeline moved to main column for better balance */}
-                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-5">Job Progress & History</p>
-                                    <div className="relative pl-6 border-l-2 border-gray-100 space-y-6">
-                                        {timeline.map((step, i) => (
-                                            <div key={step.key} className="relative">
-                                                <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-4 border-white ${
-                                                    step.active ? 'bg-[#10B981] shadow-[0_0_0_4px_rgba(16,185,129,0.2)]' :
-                                                    step.done   ? 'bg-[#10B981]' : 'bg-gray-200'
-                                                }`} />
-                                                <div>
-                                                    <p className={`text-sm font-bold ${step.active ? 'text-[#10B981]' : step.done ? 'text-gray-900' : 'text-gray-300'}`}>
-                                                        {step.label}
-                                                    </p>
-                                                    {step.active && <p className="text-[11px] text-gray-400 mt-0.5 font-medium">This is the current stage of the job.</p>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Right — 1 col */}
-                            <div className="space-y-5">
-
-                                {/* Customer card */}
-                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Customer</p>
-                                    <div className="flex items-center gap-3 mb-5">
-                                        <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden ring-2 ring-[#10B981]/20 flex items-center justify-center shrink-0">
-                                            {job.customerPhoto
-                                                ? <img src={job.customerPhoto} alt={job.customerName} className="w-full h-full object-cover" />
-                                                : <span className="material-icons-outlined text-xl text-gray-400">person</span>
-                                            }
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[15px] font-bold text-gray-900 flex items-center gap-1">
-                                                {job.customerName || 'Customer'}
-                                                <span className="material-icons-outlined text-blue-500 text-sm">verified</span>
-                                            </p>
-                                            <p className="text-xs text-gray-400 leading-relaxed">{job.customerLocation || location}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col gap-2.5">
-                                        <button
-                                            onClick={() => setShowNegotiation(true)}
-                                            className="w-full py-3 rounded-xl bg-[#10B981] hover:bg-[#059669] text-white font-bold flex items-center justify-center gap-2 text-[15px] transition-colors shadow-sm shadow-[#10B981]/20"
-                                        >
-                                            <span className="material-icons-outlined text-lg">chat</span>
-                                            Send Message
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Financials */}
-                                <div className="bg-[#0F172A] rounded-2xl p-5 text-white">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4">Your Earnings</p>
-                                    <div className="space-y-2.5 text-sm">
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-400">Agreed price</span>
-                                            <span className="font-bold">₦{agreedPrice.toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between text-slate-400">
-                                            <span>Platform fee (10%)</span>
-                                            <span>− ₦{commission.toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between pt-2.5 border-t border-white/10">
-                                            <span className="font-bold text-white">You receive</span>
-                                            <span className="font-black text-[#10B981] text-base">₦{takeHome.toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 mt-3 leading-relaxed">
-                                        Released to your bank after customer confirms completion.
+                                <div className="space-y-0.5">
+                                    <h3 className="text-[17px] font-bold text-gray-900 leading-tight">{customerProfile?.full_name || job.customerName || 'Customer'}</h3>
+                                    <p className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                                        <span className="material-icons text-[14px] text-gray-400">location_on</span>
+                                        {customerProfile?.location || job.customerLocation || job.location_name || 'Lagos, Nigeria'}
                                     </p>
                                 </div>
                             </div>
+
+                            <button
+                                onClick={() => setShowNegotiation(true)}
+                                className="px-6 py-2.5 bg-[#10B981] hover:bg-[#059669] text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-[#10B981]/10 flex items-center justify-center gap-2"
+                            >
+                                <span className="material-icons text-base">chat</span>
+                                Message Customer
+                            </button>
                         </div>
+
+                        {/* ── Horizontal Progress Stepper ── */}
+                        <div className="mb-12 px-1">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-8">Job Timeline</p>
+                            <div className="overflow-x-auto pb-8 pt-4 -mx-2 px-2 scrollbar-hide">
+                                <div className="flex items-center justify-between relative min-w-[500px] sm:min-w-0 w-full">
+                                    {/* Connector Line */}
+                                    <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-100 -z-0" />
+                                    
+                                    {timeline.map((step, i) => (
+                                        <div key={step.key} className="flex flex-col items-center gap-2 relative z-10 flex-1 shrink-0">
+                                            <div className={`w-8 h-8 rounded-full border-4 border-white flex items-center justify-center transition-all ${
+                                                step.active ? 'bg-[#10B981] ring-4 ring-[#10B981]/10' :
+                                                step.done   ? 'bg-[#10B981]' : 'bg-gray-200'
+                                            }`}>
+                                                {step.done && !step.active ? (
+                                                    <span className="material-icons text-white text-[14px]">check</span>
+                                                ) : step.active ? (
+                                                    <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                                                ) : null}
+                                            </div>
+                                            <p className={`text-[10px] font-bold text-center whitespace-nowrap px-2 ${
+                                                step.active ? 'text-[#10B981]' : 
+                                                step.done ? 'text-gray-900' : 'text-gray-400'
+                                            }`}>
+                                                {step.label}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ── Action Area (Above Secondary Grid) ── */}
+                        <div className="space-y-4 mb-8">
+                            {/* payment_secured → Enter Start Code */}
+                            {job.status === 'payment_secured' && (
+                                <Link
+                                    to={`/provider/job-start/${job.id}`}
+                                    className="w-full py-4 bg-[#10B981] hover:bg-[#059669] text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-[#10B981]/20 flex items-center justify-center gap-2"
+                                >
+                                    <span className="material-icons text-base">key</span>
+                                    Enter Customer's Start Code
+                                </Link>
+                            )}
+
+                            {/* in_progress → Update progress + Mark complete */}
+                            {job.status === 'in_progress' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setProgressOpen(v => !v)}
+                                            className="w-full h-full py-4 bg-[#0F172A] hover:bg-slate-700 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <span className="material-icons text-base">sync</span>
+                                            Update Progress
+                                            <span className={`material-icons text-base transition-transform ${progressOpen ? 'rotate-180' : ''}`}>expand_more</span>
+                                        </button>
+                                        <AnimatePresence>
+                                            {progressOpen && (
+                                                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                                                    className="absolute z-10 left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden">
+                                                    {PROGRESS_OPTS.map(opt => (
+                                                        <button key={opt.key} onClick={() => handleProgressUpdate(opt)}
+                                                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 font-semibold hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                                                            <span className="material-icons-outlined text-[#10B981] text-base">{opt.icon}</span>
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                    {!confirmComplete ? (
+                                        <button
+                                            onClick={() => setConfirmComplete(true)}
+                                            className="w-full py-4 border-2 border-gray-100 hover:bg-gray-50 text-gray-700 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <span className="material-icons text-base text-[#10B981]">check_circle</span>
+                                            Mark Job as Complete
+                                        </button>
+                                    ) : (
+                                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                                            <p className="text-sm font-bold text-gray-900">Confirm completion?</p>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={handleMarkComplete}
+                                                    disabled={completing}
+                                                    className="flex-1 py-2.5 bg-[#10B981] hover:bg-[#059669] text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50"
+                                                >
+                                                    Yes, I'm done
+                                                </button>
+                                                <button
+                                                    onClick={() => setConfirmComplete(false)}
+                                                    className="px-4 py-2.5 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl text-sm"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Completed → waiting message */}
+                            {(job.status === 'completed' || job.status === 'Completed') && (
+                                <div className="bg-[#10B981]/5 border border-[#10B981]/20 rounded-xl p-4 flex items-start gap-3">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0 mt-0.5">
+                                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                                        <path d="M7.5 12l3 3 6-6" />
+                                    </svg>
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900">Awaiting customer confirmation</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">Payment auto-releases after {AUTO_RELEASE_HOURS} hours if no dispute is raised.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* payment_released → done */}
+                            {job.status === 'payment_released' && (
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
+                                    <span className="material-icons text-emerald-600 shrink-0">payments</span>
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900">Payout complete</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">₦{takeHome.toLocaleString()} was sent to your bank account.</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ── Financial Section Toggle ── */}
+                        <div className="mb-4">
+                            <button
+                                onClick={() => setShowFinancials(v => !v)}
+                                className="flex items-center gap-2 text-gray-400 font-bold text-[11px] uppercase tracking-widest hover:text-[#10B981] transition-all px-1"
+                            >
+                                <span className="material-icons text-base">{showFinancials ? 'expand_less' : 'payments'}</span>
+                                {showFinancials ? 'Hide Financials' : 'View Financial Overview'}
+                            </button>
+                        </div>
+
+                        <AnimatePresence>
+                            {showFinancials && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="py-6 px-1 space-y-6 border-b border-gray-100 mb-8">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-500 font-medium">Agreed Price</span>
+                                                    <span className="font-bold text-gray-900">₦{agreedPrice.toLocaleString()}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-gray-500 font-medium">Service Fee</span>
+                                                        <span className="text-[9px] bg-gray-50 text-gray-400 px-1.5 py-0.5 rounded font-bold">10%</span>
+                                                    </div>
+                                                    <span className="text-gray-400 font-bold">− ₦{commission.toLocaleString()}</span>
+                                                </div>
+                                            </div>
+                                            <div className="sm:pl-8 sm:border-l border-gray-100 flex flex-col justify-center">
+                                                <span className="font-bold text-gray-900 uppercase tracking-wider text-[10px]">Estimated Payout</span>
+                                                <div className="flex items-baseline gap-1 mt-1">
+                                                    <span className="font-black text-[#10B981] text-3xl tracking-tight">₦{takeHome.toLocaleString()}</span>
+                                                    <span className="text-[10px] text-gray-400 font-bold uppercase">Net</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </main>
             </div>

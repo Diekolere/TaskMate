@@ -33,6 +33,7 @@ const RequestDetails = () => {
     const [rejectReason, setRejectReason] = useState('');
     const [customReason, setCustomReason] = useState('');
     const [lightboxImg, setLightboxImg] = useState(null);
+    const [showAllDetails, setShowAllDetails] = useState(false);
 
     // Handle negotiation chat opening
     useEffect(() => {
@@ -275,68 +276,127 @@ const RequestDetails = () => {
 
                             {/* Description */}
                             {request.description && (
-                                <p className="text-sm text-gray-500 leading-relaxed max-w-xl">{request.description}</p>
+                                <p className="text-[15px] text-gray-500 leading-relaxed max-w-2xl mt-4">{request.description}</p>
                             )}
 
-                            {/* AI Price Estimator */}
-                                    <div className="mt-4 flex flex-wrap items-center gap-3 text-gray-400">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="material-icons-outlined text-[18px]">auto_graph</span>
-                                            <span className="text-[11px] font-bold uppercase tracking-widest">Market rate</span>
-                                        </div>
-                                        <div className="h-4 w-px bg-gray-100" />
-                                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">Coming soon</span>
-                                    </div>
+                            {/* View More Details Toggle */}
+                            <div className="mt-8">
+                                <button 
+                                    onClick={() => setShowAllDetails(!showAllDetails)}
+                                    className="flex items-center gap-2 text-[#10B981] font-bold text-sm hover:opacity-80 transition-all"
+                                >
+                                    <span className="material-icons text-lg">{showAllDetails ? 'expand_less' : 'expand_more'}</span>
+                                    {showAllDetails ? 'Hide details' : 'View more details'}
+                                </button>
 
+                                <AnimatePresence>
+                                    {showAllDetails && (
+                                        <motion.div 
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="pt-8 space-y-8">
+                                                {/* Photos */}
+                                                {images.length > 0 && (
+                                                    <div className="space-y-4">
+                                                        <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Photos</h4>
+                                                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                                                            {images.map((src, i) => (
+                                                                <button key={i} onClick={() => setLightboxImg(src)}
+                                                                    className="w-48 sm:w-64 aspect-[4/3] rounded-2xl overflow-hidden border border-gray-100 shrink-0 shadow-sm hover:opacity-95 transition-opacity">
+                                                                    <img src={src} alt={`Job ${i + 1}`} className="w-full h-full object-cover" />
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
 
-                            {finalizedPrice && (
-                                <p className="mt-4 text-sm font-bold text-[#10B981]">
-                                    ₦{Number(finalizedPrice).toLocaleString()} agreed — awaiting customer payment
-                                </p>
-                            )}
-                                    </div>
+                                                {/* Job Details Grid */}
+                                                <div className="space-y-4">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <h4 className="text-[15px] font-black text-gray-900">Job Parameters</h4>
+                                                    </div>
+                                                    
+                                                    <div className="divide-y divide-gray-100 border-y border-gray-100 rounded-xl overflow-hidden border-x">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                                                            <div className="p-5 flex items-center gap-4">
+                                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                    <span className="material-icons-outlined text-lg">build</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Category</p>
+                                                                    <p className="text-sm font-bold text-gray-900">{request.category || 'General Service'}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="p-5 flex items-center gap-4">
+                                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                    <span className="material-icons-outlined text-lg">location_on</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Location</p>
+                                                                    <p className="text-sm font-bold text-gray-900">{request.location || 'Not specified'}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
 
-                        {/* ── Images ── */}
-                        {images.length > 0 && (
-                            <div className="mb-8">
-                                <h2 className="text-[15px] font-bold text-gray-900 mb-3">Photos</h2>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                                    {images.map((src, i) => (
-                                        <button key={i} onClick={() => setLightboxImg(src)}
-                                            className="aspect-video rounded-xl overflow-hidden bg-gray-100 hover:opacity-90 transition-opacity">
-                                            <img src={src} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover" />
-                                        </button>
-                                    ))}
-                                </div>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                                                            <div className="p-5 flex items-center gap-4">
+                                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                    <span className="material-icons-outlined text-lg">person</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</p>
+                                                                    <p className="text-sm font-bold text-gray-900">{request.customerName || 'Anonymous'}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="p-5 flex items-center gap-4">
+                                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                    <span className="material-icons-outlined text-lg">schedule</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Posted</p>
+                                                                    <p className="text-sm font-bold text-gray-900">{dateStr}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {(request.scheduledDate || request.urgency) && (
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                                                                {request.scheduledDate ? (
+                                                                    <div className="p-5 flex items-center gap-4">
+                                                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                            <span className="material-icons-outlined text-lg">event</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Scheduled</p>
+                                                                            <p className="text-sm font-bold text-gray-900">{new Date(request.scheduledDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : <div className="p-5" />}
+                                                                {request.urgency ? (
+                                                                    <div className="p-5 flex items-center gap-4">
+                                                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                            <span className="material-icons-outlined text-lg text-red-400">priority_high</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Urgency</p>
+                                                                            <p className="text-sm font-bold text-gray-900 capitalize">{request.urgency}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : <div className="p-5" />}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
-                        )}
-
-                        {/* ── Job Details — 2 per row ── */}
-                        <div className="mb-8">
-                            <h2 className="text-[15px] font-bold text-gray-900 mb-0.5">Job Details</h2>
-                            <p className="text-xs text-gray-400 mb-5">Review all information before accepting</p>
-
-                            <div className="space-y-0">
-                                {detailPairs.map((pair, rowIdx) => {
-                                    const [left, right] = pair.length === 2 ? pair : [pair[0], null];
-                                    return (
-                                        <div key={rowIdx} className={`grid grid-cols-2 gap-x-6 ${rowIdx !== 0 ? 'border-t border-gray-100' : ''}`}>
-                                            {[left, right].map((item, colIdx) => item ? (
-                                                <div key={item.label} className={`flex items-center gap-3 py-4 ${colIdx === 0 && right ? 'border-r border-gray-100 pr-6' : ''}`}>
-                                                    <div className="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
-                                                        <span className="material-icons-outlined text-gray-400 text-base">{item.icon}</span>
-                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{item.label}</p>
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">{item.value}</p>
-                                            </div>
-                                            </div>
-                                            ) : <div key={colIdx} className="py-4" />)}
-                                        </div>
-                                    );
-                                })}
-                                        </div>
-                                    </div>
+                        </div>
 
                         {/* ── Accept / Decline / Negotiate Actions ── */}
                         <div className="flex items-center gap-3 pt-2 pb-4">

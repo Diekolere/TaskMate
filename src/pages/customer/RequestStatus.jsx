@@ -41,7 +41,17 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
     const [rejected, setRejected] = useState(false);
 
     // Filter messages for this specific job AND this specific provider thread
-    const messages = allMessages.filter(m => m.job_id === requestId && m.provider_id === provider?.id);
+    const messages = allMessages.filter(m => {
+        if (m.job_id !== requestId) return false;
+        
+        // 1. Matches this specific provider thread
+        if (m.provider_id === provider?.id) return true;
+        
+        // 2. Fallback: message has no provider_id but this provider is the primary worker (Private requests)
+        if (!m.provider_id && request?.worker_id === provider?.id) return true;
+        
+        return false;
+    });
 
     useEffect(() => {
         if (!requestId || !provider?.id) return;
@@ -545,16 +555,20 @@ const RequestStatus = () => {
                                 </div>
                             )}
 
-                            {/* 🎉 Provider Accepted — Start Negotiating CTA */}
-                            {normalizedStatus === 'provider_accepted' && (
+                            {/* 🎉 Provider Accepted or Negotiating — Chat CTA */}
+                            {(normalizedStatus === 'provider_accepted' || normalizedStatus === 'negotiating') && (
                                 <div className="mt-8 p-5 sm:p-6 bg-emerald-50/40 rounded-2xl border border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
-                                            <span className="material-icons text-emerald-600 text-2xl">handshake</span>
+                                            <span className="material-icons text-emerald-600 text-2xl">{normalizedStatus === 'negotiating' ? 'chat' : 'handshake'}</span>
                                         </div>
                                         <div>
-                                            <h3 className="font-bold text-gray-900 text-base tracking-tight">Provider Accepted!</h3>
-                                            <p className="text-[13px] text-gray-600 mt-0.5">Start negotiating to agree on a price and secure the booking.</p>
+                                            <h3 className="font-bold text-gray-900 text-base tracking-tight">
+                                                {normalizedStatus === 'negotiating' ? 'Negotiation in Progress' : 'Provider Accepted!'}
+                                            </h3>
+                                            <p className="text-[13px] text-gray-600 mt-0.5">
+                                                {normalizedStatus === 'negotiating' ? 'Continue the conversation to finalize the price.' : 'Start negotiating to agree on a price and secure the booking.'}
+                                            </p>
                                         </div>
                                     </div>
                                     <button
@@ -566,7 +580,7 @@ const RequestStatus = () => {
                                         className="inline-flex items-center justify-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-6 py-3 rounded-xl transition-all shadow-sm shadow-emerald-500/20 whitespace-nowrap"
                                     >
                                         <span className="material-icons text-base">chat</span>
-                                        Start Negotiating
+                                        {normalizedStatus === 'negotiating' ? 'Continue Negotiating' : 'Start Negotiating'}
                                     </button>
                                 </div>
                             )}
