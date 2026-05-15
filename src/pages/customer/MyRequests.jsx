@@ -14,8 +14,15 @@ const MyRequests = () => {
     const location = useLocation();
     const { requests: allRequests } = useData();
     const [activeTab, setActiveTab] = useState('All');
+    const [showStatusLegend, setShowStatusLegend] = useState(false);
 
 
+
+    useEffect(() => {
+        const handleResize = () => { if (window.innerWidth >= 640) setShowStatusLegend(false); };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
 
@@ -27,8 +34,9 @@ const MyRequests = () => {
             case 'In Progress': return 'bg-blue-50 text-blue-700 border-blue-200';
             case 'Scheduled': return 'bg-purple-50 text-purple-700 border-purple-200';
             case 'Cancelled': return 'bg-red-50 text-red-700 border-red-200';
-            case 'Open': return 'bg-blue-50 text-blue-700 border-blue-200';
+            case 'Open': return 'bg-gray-50 text-gray-400 border-gray-100';
             case 'Interested': return 'bg-amber-50 text-amber-700 border-amber-200';
+            case 'provider_accepted': return 'bg-amber-50 text-amber-700 border-amber-200';
             case 'Declined': return 'bg-red-50 text-red-700 border-red-200';
             case 'Rejected': return 'bg-red-50 text-red-700 border-red-200';
             case 'negotiating': return 'bg-purple-50 text-purple-700 border-purple-200';
@@ -74,6 +82,16 @@ const MyRequests = () => {
         }
     };
 
+    const getStatusDotColor = (status) => {
+        const s = String(status || '').toLowerCase();
+        if (['completed', 'payment_released', 'payment_secured'].includes(s)) return 'bg-green-500';
+        if (['in_progress'].includes(s)) return 'bg-blue-500';
+        if (['negotiating'].includes(s)) return 'bg-purple-500';
+        if (['awaiting_payment', 'interested', 'provider_accepted'].includes(s)) return 'bg-amber-500';
+        if (['cancelled', 'declined', 'rejected'].includes(s)) return 'bg-red-500';
+        return 'bg-gray-300'; // Open / Pending / Default
+    };
+
     const isTerminalHistory = (r) => {
         const s = String(r.status || '').toLowerCase();
         return ['cancelled', 'declined', 'rejected', 'payment_released'].includes(s);
@@ -107,13 +125,21 @@ const MyRequests = () => {
                                 <h1 className="text-[22px] sm:text-[28px] font-extrabold text-gray-900 tracking-tight">My Requests</h1>
                                 <p className="mt-1 text-[13px] font-medium text-gray-400">Track and manage all your service requests.</p>
                             </div>
-                            <Link
-                                to="/customer/post-request"
-                                className="hidden sm:inline-flex items-center gap-1.5 text-[13px] font-bold text-white bg-[#10B981] px-4 py-2.5 rounded-xl hover:bg-[#059669] transition-colors shadow-sm"
-                            >
-                                <span className="material-icons-outlined text-[16px]">add</span>
-                                New Request
-                            </Link>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => setShowStatusLegend(true)}
+                                    className="sm:hidden w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <span className="material-icons-outlined text-[20px]">info</span>
+                                </button>
+                                <Link
+                                    to="/customer/post-request"
+                                    className="hidden sm:inline-flex items-center gap-1.5 text-[13px] font-bold text-white bg-[#10B981] px-4 py-2.5 rounded-xl hover:bg-[#059669] transition-colors shadow-sm"
+                                >
+                                    <span className="material-icons-outlined text-[16px]">add</span>
+                                    New Request
+                                </Link>
+                            </div>
                         </div>
 
                         {/* Tabs — underline style */}
@@ -201,12 +227,15 @@ const MyRequests = () => {
                                                 })()}
                                             </div>
 
-                                            {/* Status pill */}
-                                            <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold border whitespace-nowrap ${getStatusColor(req.status)}`}>
-                                                {formatStatus(req.status)}
-                                            </span>
+                                            {/* Status — Dot on mobile, Pill on desktop */}
+                                            <div className="shrink-0 flex items-center">
+                                                <div className={`sm:hidden w-2.5 h-2.5 rounded-full ${getStatusDotColor(req.status)}`} />
+                                                <span className={`hidden sm:inline-block px-2.5 py-1 rounded-lg text-[11px] font-bold border whitespace-nowrap ${getStatusColor(req.status)}`}>
+                                                    {formatStatus(req.status)}
+                                                </span>
+                                            </div>
 
-                                            <span className="material-icons text-[18px] text-gray-300 group-hover:text-gray-400 shrink-0 transition-colors">chevron_right</span>
+                                            <span className="material-icons text-[18px] text-gray-300 group-hover:text-gray-400 shrink-0 transition-colors ml-2 sm:ml-0">chevron_right</span>
                                             </div>
                                         </div>
                                     );
@@ -229,6 +258,56 @@ const MyRequests = () => {
                 </main>
                 <MobileNavBar />
             </div>
+
+            {/* Status Legend Modal (Mobile Only) */}
+            <AnimatePresence>
+                {showStatusLegend && (
+                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setShowStatusLegend(false)}
+                            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        />
+                        <motion.div 
+                            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="relative w-full max-w-sm bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl"
+                        >
+                            <div className="w-12 h-1 bg-gray-100 rounded-full mx-auto mb-6 sm:hidden" />
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-lg font-black text-gray-900">Status Guide</h3>
+                                <button onClick={() => setShowStatusLegend(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-400">
+                                    <span className="material-icons text-lg">close</span>
+                                </button>
+                            </div>
+                            <div className="space-y-5">
+                                {[
+                                    { color: 'bg-green-500', label: 'Success / Paid', sub: 'Payment secured or job finished.' },
+                                    { color: 'bg-blue-500', label: 'In Progress', sub: 'Job has started and is currently active.' },
+                                    { color: 'bg-purple-500', label: 'In Discussion', sub: 'You are currently negotiating with a pro.' },
+                                    { color: 'bg-amber-500', label: 'Action Required', sub: 'Provider accepted, needs payment.' },
+                                    { color: 'bg-gray-300', label: 'Open / Pending', sub: 'Waiting for providers to show interest.' },
+                                    { color: 'bg-red-500', label: 'Terminated', sub: 'Request has been cancelled or rejected.' },
+                                ].map(item => (
+                                    <div key={item.label} className="flex items-start gap-3">
+                                        <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${item.color}`} />
+                                        <div>
+                                            <p className="text-[14px] font-bold text-gray-900 leading-tight">{item.label}</p>
+                                            <p className="text-xs text-gray-400 font-medium mt-0.5">{item.sub}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <button 
+                                onClick={() => setShowStatusLegend(false)}
+                                className="w-full mt-8 py-3.5 bg-[#0F172A] text-white rounded-2xl text-sm font-bold active:scale-[0.98] transition-all"
+                            >
+                                Got it
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
