@@ -146,7 +146,7 @@ const MyRequests = () => {
                         </div>
 
                         {/* Tabs — underline style */}
-                        <div className="flex gap-6 border-b border-gray-100">
+                        <div className="flex gap-6 border-b border-gray-100 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
                             {[
                                 { id: 'All', count: allRequests.length },
                                 { id: 'Public', count: allRequests.filter(isPublicForCustomer).length },
@@ -157,7 +157,7 @@ const MyRequests = () => {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${
+                                    className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 whitespace-nowrap ${
                                         activeTab === tab.id
                                             ? 'border-[#10B981] text-[#10B981]'
                                             : 'border-transparent text-gray-400 hover:text-gray-700'

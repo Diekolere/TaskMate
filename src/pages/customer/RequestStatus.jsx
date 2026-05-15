@@ -509,20 +509,24 @@ const RequestStatus = () => {
                                 </span>
                             </div>
 
-                            {/* CTA row — only after negotiation is finalised */}
-                            {(finalizedDeal || releaseEnabled) && (
+                            {/* CTA row — only after negotiation is finalised or awaiting payment */}
+                            {(finalizedDeal || normalizedStatus === 'awaiting_payment' || releaseEnabled) && (
                                 <div className="flex flex-wrap items-center gap-3 mb-1">
-                                    {finalizedDeal && (
+                                    {(finalizedDeal || normalizedStatus === 'awaiting_payment') && (
                                         <button 
-                                            onClick={() => navigate(`/customer/payment/${request.id}`, { state: { agreedPrice: finalizedDeal.price, provider: finalizedDeal.provider } })}
-                                            className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-5 py-2 rounded-xl transition-all shadow-sm shadow-green-500/20">
+                                            onClick={() => {
+                                                const price = finalizedDeal?.price || request.agreedPrice || request.agreed_price || request.budget_estimate || 0;
+                                                const prov = finalizedDeal?.provider || interestedProviders[0] || { id: request.worker_id };
+                                                navigate(`/customer/payment/${request.id}`, { state: { agreedPrice: price, provider: prov } });
+                                            }}
+                                            className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-md shadow-[#10B981]/20">
                                             <span className="material-icons text-base">lock</span>
-                                            Proceed to Payment · ₦{Number(finalizedDeal.price).toLocaleString()}
+                                            Make Payment · ₦{Number(finalizedDeal?.price || request.agreedPrice || request.agreed_price || request.budget_estimate || 0).toLocaleString()}
                                         </button>
                                     )}
                                     {releaseEnabled && (
                                         <button onClick={handleRelease}
-                                            className="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-700 text-white font-bold text-sm px-5 py-2 rounded-xl transition-all">
+                                            className="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-md shadow-slate-900/10">
                                             <span className="material-icons text-base">payments</span>
                                             Release Payment
                                         </button>
