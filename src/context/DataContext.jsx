@@ -382,9 +382,27 @@ export function DataProvider({ children }) {
   };
 
   const acceptJob = async (jobId) => {
+    // Fetch job to get budget for proposed_price
+    const { data: job } = await supabase.from('jobs').select('budget_estimate, customer_id, title').eq('id', jobId).single();
+    
+    // FIRST: Record acceptance in job_applications table (idempotent upsert)
+    // This handles the "409 Conflict" case automatically by updating if exists
+    const { error: upsertError } = await supabase.from('job_applications').upsert({
+      job_id: jobId,
+      provider_id: currentUser.id,
+      proposed_price: job?.budget_estimate || null,
+      status: 'accepted',
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'job_id,provider_id' });
+
+    if (upsertError) {
+      throw new Error(`Failed to accept job: ${upsertError.message}`);
+    }
+    
+    // SECOND: Only after acceptance is recorded, update the job status
     await updateJobStatus(jobId, 'provider_accepted', { worker_id: currentUser.id });
     
-    // Create static virtual account for payment collection (Squad Platform Wallet Model)
+    // THIRD: Create virtual account (non-blocking)
     try {
       await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/squad`, {
         method: 'POST',
@@ -406,8 +424,7 @@ export function DataProvider({ children }) {
       // Continue anyway - VA creation failing shouldn't block job acceptance
     }
     
-    // Notify customer with a direct "Start Negotiating" deep link
-    const { data: job } = await supabase.from('jobs').select('customer_id, title').eq('id', jobId).single();
+    // FOURTH: Notify customer
     if (job) {
       await sendNotification(job.customer_id, {
         type: 'job_update',
@@ -714,13 +731,66 @@ export function DataProvider({ children }) {
       const { data, error } = await query;
       if (error) throw error;
 
-      return (data || []).map(p => ({
-        ...p, ...p.provider_profiles,
-        uid: p.id, displayName: p.full_name, photoURL: p.avatar_url,
-        isVerified: p.provider_profiles?.verification_status === 'verified'
-      }));
+      return (data || []).map(p => {
+        const profile = p.provider_profiles?.[0] || {};
+        return {
+          ...p,
+          ...profile,
+          uid: p.id,
+          displayName: p.full_name,
+          photoURL: p.avatar_url,
+          category: profile.trade_category?.[0] || profile.category || 'General Service',
+          isVerified: profile.verification_status === 'verified'
+        };
+      });
     } catch (error) {
       console.error('Get providers error:', error);
+      return [];
+    }
+  }, []);
+
+  // Fetch providers who accepted a specific job (for public requests)
+  const getInterestedProviders = useCallback(async (jobId) => {
+    try {
+      // Fetch job applications with status 'accepted' or 'negotiating' for this job
+      const { data: applications, error: appError } = await supabase
+        .from('job_applications')
+        .select('provider_id, proposed_price')
+        .eq('job_id', jobId)
+        .in('status', ['accepted', 'negotiating']);
+
+      if (appError) throw appError;
+      if (!applications || applications.length === 0) return [];
+
+      // Get provider IDs and proposed prices
+      const providerMap = new Map();
+      applications.forEach(app => {
+        providerMap.set(app.provider_id, app.proposed_price);
+      });
+
+      // Fetch provider profiles
+      const { data: providers, error: provError } = await supabase
+        .from('profiles')
+        .select('*, provider_profiles(*)')
+        .in('id', Array.from(providerMap.keys()));
+
+      if (provError) throw provError;
+
+      return (providers || []).map(p => {
+        const profile = p.provider_profiles?.[0] || {};
+        return {
+          ...p,
+          ...profile,
+          uid: p.id,
+          displayName: p.full_name,
+          photoURL: p.avatar_url,
+          category: profile.trade_category?.[0] || profile.category || 'General Service',
+          proposed_price: providerMap.get(p.id),
+          isVerified: profile.verification_status === 'verified'
+        };
+      });
+    } catch (error) {
+      console.error('Get interested providers error:', error);
       return [];
     }
   }, []);
@@ -960,7 +1030,7 @@ export function DataProvider({ children }) {
     requests, jobs, verifications, users, earnings, notifications, loading,
     createRequest, updateJobStatus, acceptJob, startNegotiation,
     finalizeAgreement, securePayment, markJobInProgress, completeJob,
-    releasePayment, getProviders, savedProviderIds, toggleSavedProvider,
+    releasePayment, getProviders, getInterestedProviders, savedProviderIds, toggleSavedProvider,
     submitReview, markNotificationRead, markAllNotificationsRead,
     createServicePost, updateServicePost, deleteServicePost, getServicePosts, getAllServicePosts, createSupportTicket,
     submitVerification, updateVerificationStatus, updateUserStatus,

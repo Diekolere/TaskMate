@@ -285,6 +285,7 @@ const RequestDetails = () => {
     const [loading, setLoading] = useState(true);
     const [request, setRequest] = useState(null);
     const [accepted, setAccepted] = useState(false);
+    const [accepting, setAccepting] = useState(false);
     const [negotiating, setNegotiating] = useState(false);
     const [finalizedPrice, setFinalizedPrice] = useState(null);
     const [showRejectModal, setShowRejectModal] = useState(false);
@@ -300,27 +301,77 @@ const RequestDetails = () => {
         }
     }, [id, location.state, navigate]);
 
+    // Polling / Real-time status check
     useEffect(() => {
-        if (!id) return;
-        const found = jobs.find(j => j.id === id);
-        if (found) { setRequest(found); setLoading(false); return; }
-        // Not yet in context — fetch directly from DB
-        import('../../lib/supabase').then(({ supabase }) => {
-            supabase.from('jobs').select('*').eq('id', id).single().then(({ data }) => {
-                setRequest(data || null);
+        if (!id || !currentUser?.id) return;
+
+        const fetchRequestStatus = async () => {
+            try {
+                const { supabase } = await import('../../lib/supabase');
+                
+                // 1. Fetch Job Details
+                const { data: jobData, error: jobError } = await supabase
+                    .from('jobs')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (jobData) {
+                    setRequest(jobData);
+                    // If explicitly assigned as worker
+                    if (jobData.worker_id === currentUser.id) {
+                        setAccepted(true);
+                    }
+                }
+
+                // 2. Fetch Application Status (The true "Accepted" state for providers)
+                const { data: appData, error: appError } = await supabase
+                    .from('job_applications')
+                    .select('status')
+                    .eq('job_id', id)
+                    .eq('provider_id', currentUser.id)
+                    .maybeSingle();
+
+                if (appData) {
+                    const isAccepted = ['accepted', 'negotiating', 'finalized'].includes(appData.status);
+                    if (isAccepted) {
+                        setAccepted(true);
+                    }
+                }
+
                 setLoading(false);
-            });
-        });
-    }, [id, jobs]);
+            } catch (err) {
+                console.error('Error fetching request status:', err);
+            }
+        };
+
+        fetchRequestStatus();
+        
+        // Poll every 4 seconds to keep UI in sync
+        const interval = setInterval(fetchRequestStatus, 4000);
+        return () => clearInterval(interval);
+    }, [id, currentUser?.id]);
 
     const isRestricted = (currentUser?.commissionBalance || 0) > DEBT_LIMIT;
 
     const handleAccept = async () => {
-        if (isRestricted) { toast.error(`Clear your ₦${DEBT_LIMIT.toLocaleString()} commission balance first.`); return; }
+        if (isRestricted) { 
+            toast.error(`Clear your ₦${DEBT_LIMIT.toLocaleString()} commission balance first.`); 
+            return; 
+        }
+        
+        setAccepting(true);
         try {
             await acceptJob(id);
+            toast.success('Request accepted! You can now start negotiating with the customer.');
             setAccepted(true);
-        } catch { toast.error('Failed to accept job'); }
+        } catch (error) { 
+            console.error('Accept job error:', error);
+            toast.error(error?.message || 'Failed to accept job. Please try again.');
+            setAccepted(false);
+        } finally {
+            setAccepting(false);
+        }
     };
 
     const handleDecline = async () => {
@@ -488,17 +539,14 @@ const RequestDetails = () => {
                             )}
 
                             {/* AI Price Estimator */}
-                            {request.category && (() => {
-                                const range = getPriceRange(request.category);
-                                const label = getSmartPriceLabel(request.title, request.description, request.category);
-                                return (
-                                    <div className="mt-4 inline-flex flex-wrap items-center gap-1.5 sm:gap-2 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl px-3.5 py-2">
-                                        <span className="material-icons-outlined text-[16px]">auto_graph</span>
-                                        <span className="text-[12px] font-bold whitespace-nowrap">Market rate:</span>
-                                        <span className="text-[12px] font-semibold whitespace-nowrap">₦{range.min.toLocaleString()} – ₦{range.max.toLocaleString()}</span>
+                                    <div className="mt-4 flex flex-wrap items-center gap-3 text-gray-400">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="material-icons-outlined text-[18px]">auto_graph</span>
+                                            <span className="text-[11px] font-bold uppercase tracking-widest">Market rate</span>
+                                        </div>
+                                        <div className="h-4 w-px bg-gray-100" />
+                                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">Coming soon</span>
                                     </div>
-                                );
-                            })()}
 
                             {/* Open negotiation if accepted */}
                             {accepted && !finalizedPrice && (
@@ -559,21 +607,38 @@ const RequestDetails = () => {
                                         </div>
                                     </div>
 
-                        {/* ── Accept / Decline — color-cued, after details ── */}
-                        {!accepted && !finalizedPrice && (
-                            <div className="flex items-center gap-3 pt-2 pb-4">
-                                <button onClick={handleAccept} disabled={isRestricted}
-                                    className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] disabled:opacity-40 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-sm shadow-green-500/20">
-                                    <span className="material-icons text-base">check_circle</span>
-                                    Accept Job
-                                        </button>
-                                <button onClick={() => setShowRejectModal(true)}
-                                    className="inline-flex items-center gap-1.5 border border-red-200 hover:bg-red-50 text-red-500 font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors">
-                                    <span className="material-icons text-base">cancel</span>
-                                    Decline
-                                        </button>
-                                    </div>
-                        )}
+                        {/* ── Accept / Decline / Negotiate Actions ── */}
+                        <div className="flex items-center gap-3 pt-2 pb-4">
+                            {!accepted && !finalizedPrice ? (
+                                <>
+                                    <button onClick={handleAccept} disabled={isRestricted || accepting}
+                                        className="inline-flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] disabled:opacity-40 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-sm shadow-green-500/20">
+                                        {accepting ? (
+                                            <>
+                                                <span className="material-icons text-base animate-spin">hourglass_top</span>
+                                                Accepting...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="material-icons text-base">check_circle</span>
+                                                Accept Job
+                                            </>
+                                        )}
+                                    </button>
+                                    <button onClick={() => setShowRejectModal(true)} disabled={accepting}
+                                        className="inline-flex items-center gap-1.5 border border-red-200 hover:bg-red-50 text-red-500 font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors disabled:opacity-40">
+                                        <span className="material-icons text-base">cancel</span>
+                                        Decline
+                                    </button>
+                                </>
+                            ) : !finalizedPrice ? (
+                                <button onClick={() => navigate(`/provider/jobs/${id}?negotiate=true`)}
+                                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-8 py-3 rounded-xl transition-all shadow-sm shadow-green-500/20">
+                                    <span className="material-icons text-base">chat</span>
+                                    Open Negotiation Chat
+                                </button>
+                            ) : null}
+                        </div>
 
                         {isRestricted && (
                             <div className="mt-4 rounded-2xl bg-red-50 border border-red-100 px-5 py-4 flex items-start gap-3">

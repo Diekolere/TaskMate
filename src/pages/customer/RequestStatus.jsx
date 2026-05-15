@@ -296,15 +296,17 @@ const RequestStatus = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { currentUser } = useAuth();
-    const { requests, getProviders, releasePayment } = useData();
+    const { requests, getProviders, getInterestedProviders, releasePayment } = useData();
     const [request, setRequest] = useState(null);
     const [interestedProviders, setInterestedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [negotiatingWith, setNegotiatingWith] = useState(null);
+    const [expandedProviderId, setExpandedProviderId] = useState(null);
     const [finalizedDeal, setFinalizedDeal] = useState(null); // { price, provider }
 
     const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
     const [showJobStartedSuccess, setShowJobStartedSuccess] = useState(false);
+    const [showAllDetails, setShowAllDetails] = useState(false);
 
     useEffect(() => {
         if (location.state?.paymentConfirmed) {
@@ -337,48 +339,60 @@ const RequestStatus = () => {
         }
 
         setRequest(req);
-            
-        getProviders('All').then(allProviders => {
-            let providers = [];
-
-            // If the job already has an assigned worker, add them first
-            if (req.worker_id) {
+        
+        const currentStatus = String(req.status || '').toLowerCase();
+        
+        // Determine if we should fetch interested providers
+        const isPublicOpen = req.request_type === 'public' && currentStatus === 'open';
+        
+        if (isPublicOpen) {
+            // For public+open: Fetch providers who accepted from job_applications
+            getInterestedProviders(req.id)
+                .then(interestedProvs => setInterestedProviders(interestedProvs))
+                .catch(() => setInterestedProviders([]));
+        } else if (req.worker_id) {
+            // For private or finalized public: Show only assigned provider
+            getProviders('All').then(allProviders => {
                 const assigned = allProviders.find(p => p.id === req.worker_id);
                 if (assigned) {
-                    providers.push({
+                    setInterestedProviders([{
                         ...assigned,
                         proposed_price: req.agreedPrice || req.budget_estimate,
                         message: "I'm working on your request.",
                         verified: assigned.isVerified,
-                        isAccepted: true, // Mark as accepted
-                    });
+                        isAccepted: true,
+                    }]);
                 }
-            }
-
-            // First try: fetch providers with matching category
-            let matches = allProviders.filter(p => 
-                p.id !== req.worker_id && // Don't duplicate the assigned provider
-                p.trade_category?.some(t => t.toLowerCase() === req.category?.toLowerCase())
-            );
-
-            // Fallback: if no category matches, show any available providers
-            if (matches.length === 0) {
-                matches = allProviders.filter(p => p.id !== req.worker_id);
-            }
-            
-            const otherProviders = matches.slice(0, 3).map(p => ({
-                ...p,
-                proposed_price: req.agreedPrice || req.budget_estimate,
-                message: "I'm interested and would like to discuss the details.",
-                verified: p.isVerified,
-                isAccepted: false,
-            }));
-
-            setInterestedProviders([...providers, ...otherProviders]);
-        }).catch(() => setInterestedProviders([]));
+            }).catch(() => setInterestedProviders([]));
+        } else {
+            // No worker assigned and not public+open
+            setInterestedProviders([]);
+        }
 
         setLoading(false);
-    }, [id, requests, getProviders]);
+    }, [id, requests, getProviders, getInterestedProviders]);
+
+    // ── Polling for interested providers (real-time updates) ─────────────────
+    useEffect(() => {
+        if (!request || request.request_type !== 'public' || String(request.status || '').toLowerCase() !== 'open') {
+            return; // Only poll for public+open requests
+        }
+
+        // Fetch interested providers immediately and then every 3 seconds
+        const refreshInterestedProviders = async () => {
+            try {
+                const providers = await getInterestedProviders(request.id);
+                setInterestedProviders(providers);
+            } catch (err) {
+                console.error('Failed to refresh interested providers:', err);
+            }
+        };
+
+        refreshInterestedProviders(); // Initial fetch
+        const interval = setInterval(refreshInterestedProviders, 3000); // Poll every 3 seconds
+
+        return () => clearInterval(interval);
+    }, [request?.id, request?.request_type, request?.status, getInterestedProviders]);
 
     if (loading) return (
             <div className="flex min-h-screen items-center justify-center bg-white">
@@ -558,16 +572,11 @@ const RequestStatus = () => {
                                             if (interestedProviders[0]) setNegotiatingWith(interestedProviders[0]);
                                             else toast.error("Provider details not loaded yet.");
                                         }}
-                                        className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#10B981] hover:bg-[#059669] text-white font-bold rounded-xl text-sm transition-all shadow-sm shadow-[#10B981]/20 shrink-0"
                                     >
                                         <span className="material-icons text-base">chat</span>
                                         Start Negotiating
                                     </button>
                                 </div>
-                            )}
-
-                            {request.description && (
-                                <p className="mt-5 text-sm text-gray-500 leading-relaxed max-w-xl">{request.description}</p>
                             )}
 
                             {/* AI Price Estimator */}
@@ -580,86 +589,241 @@ const RequestStatus = () => {
                                             <span className="text-[11px] font-bold uppercase tracking-widest">Market rate</span>
                                         </div>
                                         <div className="h-4 w-px bg-gray-100" />
-                                        <span className="text-sm font-black text-gray-900 tracking-tight">₦{range.min.toLocaleString()} – ₦{range.max.toLocaleString()}</span>
+                                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">Coming soon</span>
                                     </div>
                                 );
                             })()}
+
+                            {/* View More Details Toggle */}
+                            <div className="mt-6">
+                                <button 
+                                    onClick={() => setShowAllDetails(!showAllDetails)}
+                                    className="flex items-center gap-2 text-[13px] font-bold text-[#10B981] hover:text-[#059669] transition-all"
+                                >
+                                    <span className="material-icons text-lg">{showAllDetails ? 'expand_less' : 'expand_more'}</span>
+                                    {showAllDetails ? 'Hide details' : 'View more details'}
+                                </button>
+                                
+                                <AnimatePresence>
+                                    {showAllDetails && (
+                                        <motion.div 
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="pt-6 space-y-8">
+                                                {/* Photos */}
+                                                {(request.images?.length > 0 || request.image) && (
+                                                    <div className="space-y-4">
+                                                        <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Photos</h4>
+                                                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                                                            {(request.images || [request.image]).map((img, i) => (
+                                                                <div key={i} className="w-48 sm:w-64 aspect-[4/3] rounded-2xl overflow-hidden border border-gray-100 shrink-0 shadow-sm">
+                                                                    <img src={img} alt={`Job ${i}`} className="w-full h-full object-cover" />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Job Details Grid (Like 3rd image) */}
+                                                <div className="space-y-4">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <h4 className="text-[15px] font-black text-gray-900">Job Details</h4>
+                                                    </div>
+                                                    
+                                                    <div className="divide-y divide-gray-100 border-y border-gray-100">
+                                                        {/* Row 1 */}
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                                                            <div className="p-5 flex items-center gap-4">
+                                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                    <span className="material-icons-outlined text-lg">build</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Category</p>
+                                                                    <p className="text-sm font-bold text-gray-900">{request.category}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="p-5 flex items-center gap-4">
+                                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                    <span className="material-icons-outlined text-lg">location_on</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Location</p>
+                                                                    <p className="text-sm font-bold text-gray-900">{request.location || 'Not specified'}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Row 2 */}
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                                                            <div className="p-5 flex items-center gap-4">
+                                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                    <span className="material-icons-outlined text-lg">person</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</p>
+                                                                    <p className="text-sm font-bold text-gray-900">You (Owner)</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="p-5 flex items-center gap-4">
+                                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                    <span className="material-icons-outlined text-lg">schedule</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Posted</p>
+                                                                    <p className="text-sm font-bold text-gray-900">{dateStr}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Row 3 (Full Width) */}
+                                                        <div className="p-5 flex items-center gap-4">
+                                                            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                                <span className="material-icons-outlined text-lg">priority_high</span>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Urgency</p>
+                                                                <p className="text-sm font-bold text-gray-900 capitalize">{request.urgency || 'Low'}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Description */}
+                                                {request.description && (
+                                                    <div className="space-y-4">
+                                                        <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Task Description</h4>
+                                                        <p className="text-sm text-gray-600 leading-relaxed max-w-2xl">{request.description}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
                         </div>
 
-                        {/* ── Interested / Recommended Providers ──────────────── */}
-                        <div className="mt-2">
-                            {interestedProviders.length > 0 ? (
-                                <div>
-                                    <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-4 flex items-center gap-2">
-                                        {request.worker_id ? 'Your Provider' : 'Interested Providers'}
-                                    </h3>
-                                    <div className="divide-y divide-gray-100">
-                                        {interestedProviders.map((p, idx) => (
-                                            <div key={p.id} className="py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 first:pt-2">
-                                                <div className="flex items-start gap-4">
-                                                    <div className="w-14 h-14 rounded-full bg-gray-50 overflow-hidden shrink-0 border border-gray-100">
-                                                        {p.avatar_url ? <img src={p.avatar_url} alt={p.full_name} className="w-full h-full object-cover" /> : <span className="material-icons text-gray-400 text-2xl flex items-center justify-center h-full">person</span>}
+                        {/* ── Interested Providers (Public Requests Only) ──────────────── */}
+                        {request.request_type === 'public' && 
+                         (['open', 'interested', 'provider_accepted', 'negotiating'].includes(normalizedStatus)) && 
+                         interestedProviders.length > 0 ? (
+                            <div className="mt-2">
+                                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-4 flex items-center gap-2">
+                                    {normalizedStatus === 'provider_accepted' ? 'Providers who accepted' : 'Interested Providers'}
+                                </h3>
+                                <div className="space-y-1">
+                                    {interestedProviders.map((p, idx) => (
+                                        <div 
+                                            key={p.id} 
+                                            className="py-4 transition-all border-b border-gray-50 last:border-0"
+                                        >
+                                            <div 
+                                                className="flex items-center gap-4 cursor-pointer group"
+                                                onClick={() => setExpandedProviderId(expandedProviderId === p.id ? null : p.id)}
+                                            >
+                                            {/* Avatar */}
+                                            <div className="w-12 h-12 rounded-full border border-gray-200 overflow-hidden shrink-0">
+                                                <img 
+                                                    src={p.photoURL || p.avatar_url || `https://ui-avatars.com/api/?name=${p.displayName || p.full_name || 'Artisan'}&background=random&color=334155&font-size=0.4`} 
+                                                    alt={p.displayName} 
+                                                    className="w-full h-full object-cover" 
+                                                />
+                                            </div>
+                                            
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-2 mb-0.5">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <h3 className="text-[15px] font-bold text-gray-900 truncate group-hover:text-[#10B981] transition-colors">
+                                                            {p.full_name || p.displayName}
+                                                        </h3>
+                                                        <span className="material-icons text-[#10B981] text-[15px] shrink-0" title="Verified">verified</span>
                                                     </div>
-                                                    <div className="min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="font-bold text-gray-900 text-base">{p.full_name}</p>
-                                                            {p.isVerified && <span className="material-icons text-blue-500 text-[16px]">verified</span>}
-                                                            {/* Show "Accepted" badge for accepted provider */}
-                                                            {p.isAccepted && (
-                                                                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 uppercase tracking-tight">✓ Accepted</span>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{p.bio || 'Professional service provider'}</p>
-                                                        <div className="flex items-center gap-3 mt-2.5">
-                                                            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
-                                                                <span className="material-icons text-[14px] text-amber-400">star</span>
-                                                                {p.rating || '5.0'}
-                                                            </div>
-                                                            <div className="w-1 h-1 rounded-full bg-gray-200" />
-                                                            <span className="text-[11px] font-black text-emerald-600 uppercase tracking-tight">₦{p.proposed_price?.toLocaleString()}</span>
-                                                        </div>
+                                                    <div className="flex sm:hidden items-center gap-0.5 shrink-0">
+                                                        <span className="material-icons text-yellow-500 text-[14px]">star</span>
+                                                        <span className="text-[12px] font-bold text-gray-500">{p.rating || '5.0'}</span>
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    <button 
-                                                        onClick={() => !request.worker_id && setNegotiatingWith(p)}
-                                                        disabled={request.worker_id && !p.isAccepted}
-                                                        className={`px-6 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all ${
-                                                            request.worker_id && !p.isAccepted 
-                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50' 
-                                                                : 'bg-[#0F172A] text-white hover:bg-slate-700'
-                                                        }`}
-                                                        title={request.worker_id && !p.isAccepted ? 'Another provider already accepted' : ''}
-                                                    >
-                                                        <span className="material-icons text-base">chat</span>
-                                                        {normalizedStatus === 'open' ? 'Chat' : 'Negotiate'}
-                                                    </button>
-                                                    <Link 
-                                                        to={`/customer/provider/${p.id}`}
-                                                        className="w-10 h-10 rounded-xl border border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all flex items-center justify-center"
-                                                        title="View Profile"
-                                                    >
-                                                        <span className="material-icons-outlined text-[18px]">account_circle</span>
-                                                    </Link>
+                                                <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5 truncate">
+                                                    <span className="text-gray-700 font-semibold">{p.category || 'General Service'}</span> 
+                                                    <span className="text-gray-200">·</span> 
+                                                    <span className="truncate">{p.location || 'Lagos, Nigeria'}</span>
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-1.5">
+                                                    <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
+                                                        <span className="material-icons-outlined text-[12px] text-gray-300">task_alt</span>
+                                                        {p.completedJobs || '0'} jobs
+                                                    </div>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
+
+                                                {/* Rating + Toggle */}
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <div className="hidden sm:flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100">
+                                                        <span className="material-icons text-yellow-500 text-[14px]">star</span>
+                                                        <span className="font-bold text-[12px] text-gray-900">{p.rating || '5.0'}</span>
+                                                    </div>
+                                                    <span className={`material-icons text-gray-400 transition-transform duration-300 ${expandedProviderId === p.id ? 'rotate-180' : ''}`}>
+                                                        expand_more
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Expanded Details */}
+                                            <AnimatePresence>
+                                                {expandedProviderId === p.id && (
+                                                    <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        className="overflow-hidden"
+                                                    >
+                                                        <div className="pt-4 pb-2 space-y-4">
+                                                            {/* Bio */}
+                                                            {p.bio && (
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">About Provider</p>
+                                                                    <p className="text-sm text-gray-600 leading-relaxed">{p.bio}</p>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Portfolio/Photos (Placeholder for now) */}
+                                                            <div>
+                                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Portfolio Photos</p>
+                                                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                                                    {[1, 2, 3].map(i => (
+                                                                        <div key={i} className="w-24 h-24 rounded-xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
+                                                                            <span className="material-icons text-gray-200 text-2xl">image</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Actions */}
+                                                            <div className="pt-2 flex items-center gap-3">
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); setNegotiatingWith(p); }}
+                                                                    className="flex-1 py-2.5 bg-[#0F172A] text-white text-sm font-bold rounded-xl hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                                                                >
+                                                                    <span className="material-icons text-sm">chat</span>
+                                                                    Negotiate
+                                                                </button>
+                                                                <button className="flex-1 py-2.5 bg-gray-50 text-gray-600 text-sm font-bold rounded-xl hover:bg-gray-100 transition-all">
+                                                                    View Profile
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    ))}
                                 </div>
-                            ) : normalizedStatus === 'open' && (
-                                <div className="text-center py-20">
-                                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-5">
-                                        <span className="material-icons text-gray-300">hourglass_top</span>
-                                    </div>
-                                    <h3 className="text-sm font-bold text-gray-900 tracking-tight">Finding the best matches...</h3>
-                                    <p className="text-xs text-gray-400 mt-1 max-w-[240px] mx-auto leading-relaxed">Top-rated providers in your area are being notified. You'll see them here shortly.</p>
-                                    <Link to="/customer/browse" className="inline-flex items-center gap-1.5 text-[#10B981] font-bold text-xs mt-8 hover:underline uppercase tracking-widest">
-                                        Browse manually
-                                        <span className="material-icons text-sm">arrow_forward</span>
-                                    </Link>
-                                </div>
-                            )}
-                        </div>
+                            </div>
+                        ) : null}
 
                     </div>
                 </div>
