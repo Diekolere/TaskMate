@@ -2,14 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-
-/* Replicates KYC modal step 2 only — `KYCModal.jsx` is unchanged; this file inlines the same bank UI. */
-const BANKS = [
-    'Access Bank', 'Ecobank', 'Fidelity Bank', 'First Bank of Nigeria',
-    'FCMB', 'GTBank', 'Heritage Bank', 'Keystone Bank', 'Polaris Bank',
-    'Stanbic IBTC', 'Sterling Bank', 'UBA', 'Union Bank', 'Unity Bank',
-    'Wema Bank', 'Zenith Bank', 'Kuda Bank', 'Opay', 'Palmpay', 'Moniepoint',
-];
+import { useData } from '../../context/DataContext';
+import BANKS from '../../data/banks.json';
 
 function BankSelect({ value, onChange }) {
     const [open, setOpen] = useState(false);
@@ -17,7 +11,7 @@ function BankSelect({ value, onChange }) {
     const ref = useRef();
     const searchRef = useRef();
 
-    const filtered = BANKS.filter(b => b.toLowerCase().includes(search.toLowerCase()));
+    const filtered = BANKS.filter(b => b.name.toLowerCase().includes(search.toLowerCase()));
 
     useEffect(() => {
         const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -41,7 +35,7 @@ function BankSelect({ value, onChange }) {
                 } bg-white`}
             >
                 <span className={value ? 'text-gray-900 font-medium' : 'text-gray-400'}>
-                    {value || 'Select your bank'}
+                    {value?.name || 'Select your bank'}
                 </span>
                 <motion.span
                     animate={{ rotate: open ? 180 : 0 }}
@@ -79,17 +73,17 @@ function BankSelect({ value, onChange }) {
                         <div className="max-h-52 overflow-y-auto py-1.5">
                             {filtered.length > 0 ? filtered.map(bank => (
                                 <button
-                                    key={bank}
+                                    key={bank.code}
                                     type="button"
                                     onClick={() => select(bank)}
                                     className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between group ${
-                                        value === bank
+                                        value?.code === bank.code
                                             ? 'bg-[#10B981]/8 text-[#10B981] font-semibold'
                                             : 'text-gray-700 hover:bg-gray-50 font-medium'
                                     }`}
                                 >
-                                    {bank}
-                                    {value === bank && <span className="material-icons text-[#10B981] text-base">check</span>}
+                                    {bank.name}
+                                    {value?.code === bank.code && <span className="material-icons text-[#10B981] text-base">check</span>}
                                 </button>
                             )) : (
                                 <p className="text-sm text-gray-400 text-center py-6">No banks found</p>
@@ -114,7 +108,8 @@ function SquadBadge() {
 
 export default function EditPayoutAccountModal({ open, onClose, onSaved }) {
     const { currentUser, updateUserProfile, updateProviderProfile } = useAuth();
-    const [bankName, setBankName] = useState('');
+    const { verifyBankAccount } = useData();
+    const [selectedBank, setSelectedBank] = useState(null);
     const [accountNumber, setAccountNumber] = useState('');
     const [accountName, setAccountName] = useState('');
     const [fetchingAccount, setFetchingAccount] = useState(false);
@@ -129,24 +124,37 @@ export default function EditPayoutAccountModal({ open, onClose, onSaved }) {
 
     useEffect(() => {
         if (!open || !currentUser) return;
-        const b = (currentUser.bankName || '').trim();
+        const bName = (currentUser.bankName || '').trim();
+        const bCode = (currentUser.bankCode || '').trim();
         const n = (currentUser.accountNumber || '').trim();
         const a = (currentUser.accountName || '').trim();
-        setBankName(b);
+        
+        if (bName && bCode) {
+            setSelectedBank({ name: bName, code: bCode });
+        } else if (bName) {
+            // Fallback: try to find the code from our list
+            const found = BANKS.find(b => b.name === bName);
+            setSelectedBank(found || { name: bName, code: '' });
+        }
+        
         setAccountNumber(n);
         setAccountName(a);
-        setAccountVerified(!!(b && n && a));
+        setAccountVerified(!!(bName && n && a));
     }, [open, currentUser]);
 
-    const handleFetchAccount = () => {
+    const handleFetchAccount = async () => {
         if (accountNumber.length !== 10) { toast.error('Account number must be 10 digits'); return; }
-        if (!bankName) { toast.error('Select a bank first'); return; }
+        if (!selectedBank) { toast.error('Select a bank first'); return; }
         setFetchingAccount(true);
-        setTimeout(() => {
-            setAccountName((currentUser?.full_name || currentUser?.displayName || 'IBRAHIM MUSA').toUpperCase());
+        try {
+            const data = await verifyBankAccount(selectedBank.code, accountNumber);
+            setAccountName(data.account_name);
             setAccountVerified(true);
+        } catch (err) {
+            toast.error(err.message || 'Could not verify account');
+        } finally {
             setFetchingAccount(false);
-        }, 1400);
+        }
     };
 
     const handleSave = async () => {
@@ -157,7 +165,8 @@ export default function EditPayoutAccountModal({ open, onClose, onSaved }) {
         setSaving(true);
         try {
             await updateProviderProfile({ 
-                bank_name: bankName, 
+                bank_name: selectedBank.name,
+                bank_code: selectedBank.code,
                 account_number: accountNumber, 
                 account_name: accountName 
             });
@@ -208,8 +217,8 @@ export default function EditPayoutAccountModal({ open, onClose, onSaved }) {
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Bank</label>
                         <BankSelect
-                            value={bankName}
-                            onChange={(b) => { setBankName(b); if (accountVerified) { setAccountVerified(false); setAccountName(''); } }}
+                            value={selectedBank}
+                            onChange={(b) => { setSelectedBank(b); if (accountVerified) { setAccountVerified(false); setAccountName(''); } }}
                         />
                     </div>
 
@@ -231,7 +240,7 @@ export default function EditPayoutAccountModal({ open, onClose, onSaved }) {
                             <button
                                 type="button"
                                 onClick={handleFetchAccount}
-                                disabled={fetchingAccount || accountVerified || accountNumber.length !== 10 || !bankName}
+                                disabled={fetchingAccount || accountVerified || accountNumber.length !== 10 || !selectedBank}
                                 className={`h-12 px-5 rounded-xl text-sm font-bold transition-all shrink-0 ${
                                     accountVerified
                                         ? 'bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20'

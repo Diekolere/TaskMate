@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 
 const WithdrawalModal = ({ isOpen, onClose, currentBalance, payoutAccount, onPayoutComplete }) => {
     const [amount, setAmount] = useState('');
@@ -27,13 +27,14 @@ const WithdrawalModal = ({ isOpen, onClose, currentBalance, payoutAccount, onPay
         try {
             const { data: { session } } = await supabase.auth.getSession();
             
-            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/squad`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session?.access_token}`
-                },
-                body: JSON.stringify({
+            console.log('[WithdrawalModal] Initiating payout call...', {
+                amount,
+                providerId: session?.user?.id,
+                bankCode: payoutAccount?.bankCode
+            });
+
+            const { data: result, error: invokeError } = await supabase.functions.invoke('squad', {
+                body: {
                     action: 'initiate-payout',
                     providerId: session?.user?.id,
                     amount: Number(amount),
@@ -41,17 +42,18 @@ const WithdrawalModal = ({ isOpen, onClose, currentBalance, payoutAccount, onPay
                     accountNumber: payoutAccount.accountNumber,
                     accountName: payoutAccount.accountName,
                     remark: `TaskMate Withdrawal - ${session?.user?.id.substring(0, 5)}`
-                })
+                }
             });
 
-            const result = await response.json();
+            console.log('[WithdrawalModal] Invoke result:', { result, invokeError });
 
-            if (result.success) {
-                toast.success("Withdrawal initiated successfully!");
+            if (invokeError) throw invokeError;
+
+            if (result?.success) {
                 onPayoutComplete();
                 onClose();
             } else {
-                toast.error(result.message || "Withdrawal failed");
+                toast.error(result?.message || "Withdrawal failed");
             }
         } catch (error) {
             console.error("Withdrawal error:", error);

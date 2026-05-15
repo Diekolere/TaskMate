@@ -42,7 +42,7 @@ const Earnings = () => {
             setCommissionBalance(currentUser.commissionBalance || 0);
             fetchWalletData();
         }
-    }, [currentUser]);
+    }, [currentUser, payoutVersion]);
 
     const fetchWalletData = async () => {
         setLoading(true);
