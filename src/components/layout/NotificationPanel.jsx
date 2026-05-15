@@ -5,18 +5,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { toast } from 'sonner';
 
-// Deterministic OTP (must match JobOTP.jsx + JobStart.jsx)
-const generateOTP = (id = '') => {
-    const hash = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    return String((hash % 9000) + 1000);
-};
+import { supabase } from '../../lib/supabase';
 
 // ── OTP Entry Mini-modal ─────────────────────────────────────────
 function OTPModal({ jobId, onClose }) {
     const navigate = useNavigate();
-    const correctOTP = generateOTP(jobId);
     const [digits, setDigits] = useState(['', '', '', '']);
-    const [phase, setPhase] = useState('idle'); // idle | error | success
+    const [phase, setPhase] = useState('idle'); // idle | error | success | verifying
     const [shake, setShake] = useState(false);
     const inputRefs = [useRef(), useRef(), useRef(), useRef()];
 
@@ -35,22 +30,50 @@ function OTPModal({ jobId, onClose }) {
             inputRefs[index - 1].current?.focus();
     };
 
-    const handleVerify = () => {
+    const handleVerify = async () => {
         const entered = digits.join('');
         if (entered.length < 4) { toast.error('Enter all 4 digits'); return; }
-        if (entered === correctOTP) {
-            setPhase('success');
-            toast.success('Job started! Good luck.');
-            setTimeout(() => { onClose(); navigate('/provider/jobs'); }, 2000);
-        } else {
-            setPhase('error');
-            setShake(true);
-            setTimeout(() => {
-                setShake(false); setPhase('idle');
-                setDigits(['', '', '', '']);
-                inputRefs[0].current?.focus();
-            }, 700);
-            toast.error('Wrong code — ask the customer to show you their screen.');
+        
+        setPhase('verifying');
+        try {
+            const { data: job, error: fetchError } = await supabase
+                .from('jobs')
+                .select('otp_code, otp_expires_at')
+                .eq('id', jobId)
+                .single();
+
+            if (fetchError || !job) throw new Error('Could not find job details');
+
+            const isExpired = job.otp_expires_at && new Date(job.otp_expires_at) < new Date();
+
+            if (entered === job.otp_code && !isExpired) {
+                const { error: updateError } = await supabase
+                    .from('jobs')
+                    .update({ 
+                        status: 'in_progress', 
+                        started_at: new Date().toISOString() 
+                    })
+                    .eq('id', jobId);
+
+                if (updateError) throw updateError;
+
+                setPhase('success');
+                toast.success('Job started! Good luck.');
+                setTimeout(() => { onClose(); navigate('/provider/jobs'); }, 2000);
+            } else {
+                setPhase('error');
+                setShake(true);
+                setTimeout(() => {
+                    setShake(false); setPhase('idle');
+                    setDigits(['', '', '', '']);
+                    inputRefs[0].current?.focus();
+                }, 700);
+                toast.error(isExpired ? 'Code has expired. Ask the customer to generate a new one.' : 'Wrong code — ask the customer to show you their screen.');
+            }
+        } catch (error) {
+            console.error('Verification error:', error);
+            toast.error(error.message || 'Verification failed');
+            setPhase('idle');
         }
     };
 
