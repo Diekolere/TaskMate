@@ -44,6 +44,13 @@ const Earnings = () => {
         }
     }, [currentUser, payoutVersion]);
 
+    const handlePayoutComplete = () => {
+        // Add a small delay to ensure DB triggers have finished
+        setTimeout(() => {
+            fetchWalletData();
+        }, 800);
+    };
+
     const fetchWalletData = async () => {
         setLoading(true);
         try {
@@ -200,7 +207,7 @@ const Earnings = () => {
                                         View All
                                     </button>
                                 </div>
-                                <div className="divide-y divide-gray-50">
+                                <div className="divide-y divide-gray-50 max-h-[450px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
                                     {ledger.length > 0 ? (
                                         ledger.map((item) => (
                                             <div key={item.id} className="px-5 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
@@ -341,7 +348,7 @@ const Earnings = () => {
                 onClose={() => setShowWithdrawalModal(false)}
                 currentBalance={walletBalance}
                 payoutAccount={payoutAccount}
-                onPayoutComplete={fetchWalletData}
+                onPayoutComplete={handlePayoutComplete}
             />
         </div>
     );
