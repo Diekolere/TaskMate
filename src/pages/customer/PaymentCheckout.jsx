@@ -43,25 +43,24 @@ const PaymentCheckout = () => {
         };
         setRequest(resolved);
 
-        // Fetch provider's static VA from database
-        const fetchProviderVA = async () => {
+        // Fetch or create a job-scoped escrow VA
+        const fetchEscrowVA = async () => {
             try {
-                console.log('DEBUG: Initiating VA fetch for Request ID:', requestId);
-                
-                // Get the job to find provider_id
+                console.log('ESCROW: Initiating escrow VA fetch for Job:', requestId);
+
+                // 1. Get the job to resolve provider and agreed price
                 const { data: job, error: jobError } = await supabase
                     .from('jobs')
-                    .select('worker_id, status')
+                    .select('worker_id, status, agreed_price, final_budget, escrow_amount, escrow_status')
                     .eq('id', requestId)
                     .maybeSingle();
 
-                console.log('DEBUG: Database Job record:', job);
-                console.log('DEBUG: Navigation State Provider:', stateProvider);
+                console.log('ESCROW: Job record:', job);
 
                 let providerId = job?.worker_id || stateProvider?.id;
-                
+
+                // Fallback: recover provider from negotiations if missing
                 if (!providerId) {
-                    console.log('DEBUG: Worker ID missing, attempting recovery from negotiations...');
                     const { data: latestNeg } = await supabase
                         .from('negotiations')
                         .select('provider_id')
@@ -69,102 +68,84 @@ const PaymentCheckout = () => {
                         .order('created_at', { ascending: false })
                         .limit(1)
                         .maybeSingle();
-                    
-                    if (latestNeg?.provider_id) {
-                        providerId = latestNeg.provider_id;
-                        console.log('DEBUG: Recovered Provider ID from negotiations:', providerId);
-                    }
+                    providerId = latestNeg?.provider_id;
                 }
 
-                console.log('DEBUG: Resolved Provider ID:', providerId);
-                
+                console.log('ESCROW: Resolved Provider ID:', providerId);
+
                 if (!providerId) {
-                    console.error('DEBUG ERROR: No provider ID found in DB, State, or Negotiations. Job Status:', job?.status);
                     throw new Error('Provider not assigned to this job');
                 }
 
-                // Fetch the provider's VA
-                console.log('DEBUG: Fetching VA for Provider:', providerId);
-                const { data: va, error: vaError } = await supabase
-                    .from('virtual_accounts')
+                // 2. Check if a job escrow VA already exists
+                const { data: existingEscrowVA } = await supabase
+                    .from('job_escrow_vas')
                     .select('*')
-                    .eq('provider_id', providerId)
+                    .eq('job_id', requestId)
                     .maybeSingle();
 
-                if (vaError) {
-                    console.error('DEBUG: VA Fetch Error:', vaError);
-                    throw new Error(`VA error: ${vaError.message}`);
-                }
-                console.log('DEBUG: Virtual Account found:', va);
+                const agreedAmount = Number(
+                    stateAgreedPrice ||
+                    job?.agreed_price ||
+                    job?.final_budget ||
+                    resolved.agreedPrice ||
+                    0
+                );
 
-                if (!va) {
-                    console.log('VA not found, attempting to create one via Edge Function...');
-                    // Get provider details to create VA
-                    const { data: provider } = await supabase
-                        .from('profiles')
-                        .select('email, full_name, phone_number')
-                        .eq('id', providerId)
-                        .single();
-
-                    if (!provider) {
-                        throw new Error('Could not find provider profile details');
-                    }
-
-                    const names = (provider.full_name || 'Provider').split(' ');
-                    const firstName = names[0];
-                    const lastName = names.slice(1).join(' ') || 'TaskMate';
-
-                    const { data: createData, error: createError } = await supabase.functions.invoke('squad', {
-                         body: {
-                             action: 'create-static-virtual-account',
-                             providerId: providerId,
-                             providerEmail: provider.email,
-                             providerFirstName: firstName,
-                             providerLastName: lastName,
-                             providerPhone: provider.phone_number
-                         }
-                    });
-
-                    if (createError || !createData?.success) {
-                        console.error('VA Creation Error:', createError || createData);
-                        throw new Error(createData?.error || 'Failed to create virtual account for provider');
-                    }
-
-                    // Calculate amount
-                    const amount = Number(stateAgreedPrice || resolved.agreedPrice || resolved.proposed_price || resolved.budget_estimate || 11000);
-
-                    // VA was created, use the returned data
+                if (existingEscrowVA) {
+                    console.log('ESCROW: Using existing escrow VA:', existingEscrowVA.virtual_account_number);
                     setVAccount({
-                        bank: createData.data.beneficiary_bank_name || 'GTBank',
-                        accountNumber: createData.data.virtual_account_number,
-                        accountName: createData.data.account_name || 'TaskMate Platform',
-                        amount,
+                        bank: existingEscrowVA.bank_name || 'GTBank',
+                        accountNumber: existingEscrowVA.virtual_account_number,
+                        accountName: existingEscrowVA.account_name || 'TASKMATE ESCROW',
+                        amount: agreedAmount,
                         expiresIn: null,
                     });
-                } else {
-                    // Calculate amount
-                    const amount = Number(stateAgreedPrice || resolved.agreedPrice || resolved.proposed_price || resolved.budget_estimate || 11000);
-
-                    // VA already exists
-                    setVAccount({
-                        bank: va.beneficiary_bank_name || 'GTBank',
-                        accountNumber: va.virtual_account_number,
-                        accountName: va.account_name || 'TaskMate Platform',
-                        amount,
-                        expiresIn: null,
-                    });
+                    setFetchError(null);
+                    setGenerating(false);
+                    return;
                 }
+
+                // 3. Create a new job-scoped escrow VA via Squad edge function
+                console.log('ESCROW: Creating new job escrow VA...');
+                const { data: createData, error: createError } = await supabase.functions.invoke('squad', {
+                    body: {
+                        action: 'create-job-escrow-va',
+                        jobId: requestId,
+                        providerId,
+                        customerEmail: 'escrow@taskmate.ng',
+                        customerFirstName: 'TaskMate',
+                        customerLastName: 'Escrow',
+                        amount: agreedAmount
+                    }
+                });
+
+                if (createError || !createData?.success) {
+                    console.error('ESCROW: VA creation error:', createError || createData);
+                    throw new Error(createData?.message || 'Failed to create escrow payment account');
+                }
+
+                const va = createData.data;
+                console.log('ESCROW: Escrow VA created:', va);
+
+                setVAccount({
+                    bank: va.bank_name || 'GTBank',
+                    accountNumber: va.virtual_account_number,
+                    accountName: va.account_name || 'TASKMATE ESCROW',
+                    amount: agreedAmount,
+                    expiresIn: null,
+                });
                 setFetchError(null);
                 setGenerating(false);
             } catch (error) {
-                console.error('Error fetching VA:', error);
+                console.error('Error fetching Escrow VA:', error);
                 setFetchError(error.message);
                 toast.error(error.message || 'Could not load payment details.');
                 setGenerating(false);
             }
         };
 
-        fetchProviderVA();
+        fetchEscrowVA();
     }, [requestId, requests, stateAgreedPrice, stateProvider]);
 
     const amount = Number(stateAgreedPrice || request?.agreedPrice || request?.proposed_price || request?.budget_estimate || 11000);
@@ -208,13 +189,7 @@ const PaymentCheckout = () => {
                 throw new Error(data?.message || 'Simulation failed at Squad API level');
             }
 
-            console.log('STEP 4: Updating job status in DB...');
-            await supabase
-                .from('jobs')
-                .update({ status: 'payment_secured' })
-                .eq('id', requestId);
-
-            console.log('STEP 5: Simulation successful! Redirecting...');
+            console.log('STEP 4: Simulation successful! Redirecting...');
             setStep('success');
             
             setTimeout(() => {
@@ -339,11 +314,11 @@ const PaymentCheckout = () => {
                                                     ))}
                                                 </div>
 
-                                                {/* Expiry notice */}
-                                                <div className="mx-5 mb-5 flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-                                                    <span className="material-icons text-blue-500 text-base shrink-0">info</span>
-                                                    <p className="text-xs text-blue-700 font-medium">
-                                                        This account is <span className="font-bold">permanent</span> and belongs to the provider. Transfer the <span className="font-bold">exact amount</span> shown above.
+                                                {/* Escrow notice */}
+                                                <div className="mx-5 mb-5 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                                                    <span className="material-icons text-amber-500 text-base shrink-0">shield</span>
+                                                    <p className="text-xs text-amber-800 font-medium">
+                                                        Funds are held in <span className="font-bold">TaskMate Escrow</span> — the provider receives payment only after you confirm job completion.
                                                     </p>
                                                 </div>
                                             </div>
