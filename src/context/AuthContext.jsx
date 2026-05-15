@@ -183,41 +183,67 @@ export function AuthProvider({ children }) {
     return { simulated: false };
   };
 
-  // ── Update Profile ─────────────────────────────────────
+  // ── Unified Profile Update ─────────────────────────────
   const updateUserProfile = async (data) => {
     if (!currentUser) return;
 
     try {
-      const updateData = { ...data };
+      // 1. Separate data for 'profiles' and 'provider_profiles'
+      const profileData = {};
+      const providerData = {};
+
+      // Mapping for 'profiles' table
+      if (data.displayName || data.full_name) profileData.full_name = data.displayName || data.full_name;
+      if (data.photoURL || data.avatar_url) profileData.avatar_url = data.photoURL || data.avatar_url;
+      if (data.phoneNumber || data.phone_number) profileData.phone_number = data.phoneNumber || data.phone_number;
+      if (data.locationName || data.location_name) profileData.location_name = data.locationName || data.location_name;
+      if (data.status) profileData.status = data.status;
+
+      // Mapping for 'provider_profiles' table
+      if (data.bio || data.description) providerData.bio = data.bio || data.description;
+      if (data.address) providerData.address = data.address;
+      if (data.businessName || data.business_name) providerData.business_name = data.businessName || data.business_name;
+      if (data.yearsExperience || data.years_experience) providerData.years_experience = Number(data.yearsExperience || data.years_experience);
+      if (data.skills || data.trade_category) providerData.trade_category = Array.isArray(data.skills || data.trade_category) ? (data.skills || data.trade_category) : [];
+      if (data.website) providerData.website = data.website;
+
+      // 2. Perform updates
+      const updatePromises = [];
+
+      if (Object.keys(profileData).length > 0) {
+        updatePromises.push(
+          supabase.from('profiles').update(profileData).eq('id', currentUser.id)
+        );
+      }
+
+      if (Object.keys(providerData).length > 0 && currentUser.role === 'provider') {
+        updatePromises.push(
+          supabase.from('provider_profiles').update(providerData).eq('id', currentUser.id)
+        );
+      }
+
+      const results = await Promise.all(updatePromises);
+      const errors = results.filter(r => r.error).map(r => r.error);
       
-      // Map frontend camelCase to database snake_case
-      if (updateData.photoURL) {
-        updateData.avatar_url = updateData.photoURL;
-        delete updateData.photoURL;
-      }
-      if (updateData.displayName) {
-        updateData.full_name = updateData.displayName;
-        delete updateData.displayName;
+      if (errors.length > 0) {
+        console.error('Update errors:', errors);
+        throw errors[0];
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('id', currentUser.id);
-
-      if (error) throw error;
-
+      // 3. Update local state
       setCurrentUser(prev => {
-        const next = { ...prev, ...updateData };
-        // Keep camelCase versions in state for UI consistency
-        if (updateData.full_name) next.displayName = updateData.full_name;
-        if (updateData.avatar_url) next.photoURL = updateData.avatar_url;
+        const next = { ...prev, ...data };
+        // Sync shimmed fields
+        if (profileData.full_name) next.displayName = profileData.full_name;
+        if (profileData.avatar_url) next.photoURL = profileData.avatar_url;
+        if (providerData.bio) next.bio = providerData.bio;
         return next;
       });
+
       toast.success('Profile updated');
     } catch (error) {
       console.error('Profile update error:', error);
-      toast.error('Failed to update profile');
+      toast.error(error.message || 'Failed to update profile');
       throw error;
     }
   };
