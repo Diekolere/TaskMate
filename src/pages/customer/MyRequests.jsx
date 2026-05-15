@@ -118,27 +118,32 @@ const MyRequests = () => {
 
                         {/* Tabs — underline style */}
                         <div className="flex gap-6 border-b border-gray-100">
-                            {['All', 'Private', 'Active', 'History'].map((tab) => (
+                            {[
+                                { id: 'All', count: allRequests.length },
+                                { id: 'Private', count: allRequests.filter(isPrivateForCustomer).length },
+                                { id: 'Active', count: allRequests.filter(r => !isTerminalHistory(r)).length },
+                                { id: 'History', count: allRequests.filter(isTerminalHistory).length },
+                            ].map((tab) => (
                                 <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px ${
-                                        activeTab === tab
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${
+                                        activeTab === tab.id
                                             ? 'border-[#10B981] text-[#10B981]'
                                             : 'border-transparent text-gray-400 hover:text-gray-700'
                                     }`}
                                 >
-                                    {tab}
+                                    {tab.id}
+                                    {tab.count > 0 && (
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
+                                            {tab.count}
+                                        </span>
+                                    )}
                                 </button>
                             ))}
                         </div>
 
-                        {/* Count */}
-                        {filteredRequests.length > 0 && (
-                            <p className="text-xs text-gray-400 font-medium">
-                                <span className="font-bold text-gray-700">{filteredRequests.length}</span> {filteredRequests.length === 1 ? 'request' : 'requests'}
-                            </p>
-                        )}
+
 
                         {/* Request List */}
                         {filteredRequests.length > 0 ? (

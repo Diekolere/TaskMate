@@ -86,15 +86,15 @@ const BrowseProviders = () => {
 
                 {/* Main Content Area */}
                 <main className="relative z-0 flex-1 overflow-y-auto bg-white">
-                    <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 pb-24 md:pb-10 space-y-6">
+                    <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 pb-24 md:pb-10 flex flex-col gap-1 sm:gap-6">
                         
                         {/* Header Section */}
-                        <div className="mb-2 sm:mb-6">
-                            <h1 className="text-[22px] sm:text-[28px] font-extrabold tracking-tight text-gray-900 mb-1">Explore Providers</h1>
-                            <p className="text-[13px] font-medium text-gray-400 mb-3 sm:mb-6">Find and hire skilled professionals near you.</p>
+                        <div className="mb-1 sm:mb-6">
+                            <h1 className="text-[20px] sm:text-[28px] font-extrabold tracking-tight text-gray-900 mb-0.5 sm:mb-1">Explore Providers</h1>
+                            <p className="text-[12px] sm:text-[13px] font-medium text-gray-400 mb-3 sm:mb-6">Find and hire skilled professionals near you.</p>
 
                             {/* Search Bar + Filter Toggle */}
-                            <div className="flex items-center gap-2 mb-2 sm:mb-4">
+                            <div className="flex items-center gap-2 mb-1 sm:mb-4">
                                 <div className="flex-1 flex items-center bg-white rounded-xl px-4 py-2.5 sm:py-3.5 border border-gray-200 group focus-within:border-gray-400 focus-within:shadow-sm transition-all cursor-text w-full">
                                     <span className="material-icons-outlined text-[18px] text-gray-400 group-focus-within:text-gray-600">search</span>
                                     <input 
@@ -228,11 +228,17 @@ const BrowseProviders = () => {
                                             
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-1.5 mb-0.5">
-                                                    <h3 className="text-[15px] font-bold text-gray-900 truncate group-hover:text-[#10B981] transition-colors">
-                                                        {provider.displayName || provider.full_name || 'Artisan'}
-                                                    </h3>
-                                                    <span className="material-icons text-[#10B981] text-[15px] shrink-0" title="Verified">verified</span>
+                                                <div className="flex items-center justify-between gap-2 mb-0.5">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <h3 className="text-[15px] font-bold text-gray-900 truncate group-hover:text-[#10B981] transition-colors">
+                                                            {provider.displayName || provider.full_name || 'Artisan'}
+                                                        </h3>
+                                                        <span className="material-icons text-[#10B981] text-[15px] shrink-0" title="Verified">verified</span>
+                                                    </div>
+                                                    <div className="flex sm:hidden items-center gap-0.5 shrink-0">
+                                                        <span className="material-icons text-yellow-500 text-[14px]">star</span>
+                                                        <span className="text-[12px] font-bold text-gray-500">{provider.rating || '4.8'}</span>
+                                                    </div>
                                                 </div>
                                                 <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5 truncate">
                                                     <span className="text-gray-700 font-semibold">{provider.category || 'General Service'}</span> 
@@ -249,7 +255,7 @@ const BrowseProviders = () => {
 
                                             {/* Rating + Chevron */}
                                             <div className="flex items-center gap-2 shrink-0">
-                                                <div className="flex items-center gap-1 bg-yellow-50 px-2.5 py-1 rounded-lg border border-yellow-100">
+                                                <div className="hidden sm:flex items-center gap-1 bg-yellow-50 px-2.5 py-1 rounded-lg border border-yellow-100">
                                                     <span className="material-icons text-yellow-500 text-[16px]">star</span>
                                                     <span className="font-bold text-[13px] text-gray-900">{provider.rating || '4.8'}</span>
                                                 </div>

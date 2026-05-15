@@ -69,13 +69,13 @@ const Dashboard = () => {
 
                         {/* Feed Column */}
                         <div className="flex-1 max-w-[580px]">
-                            {/* Header & Search Area */}
-                            <div className="mb-2 sm:mb-10 px-4 sm:px-0 pt-6 sm:pt-0">
-                                <h1 className="text-[24px] sm:text-[32px] font-extrabold tracking-tight text-gray-900 mb-2 sm:mb-6">Discovery Feed</h1>
+                            {/* Header & Search Area - Hidden on Mobile */}
+                            <div className="hidden sm:block mb-10 px-0 pt-0">
+                                <h1 className="text-[32px] font-extrabold tracking-tight text-gray-900 mb-6">Discovery Feed</h1>
 
                                 {/* Search Bar + Filter Toggle */}
-                                <div className="flex items-center gap-2 mb-2 sm:mb-4">
-                                    <div className="flex-1 flex items-center bg-white rounded-xl px-4 py-2.5 sm:py-3.5 border border-gray-200 group focus-within:border-gray-400 focus-within:shadow-sm transition-all cursor-text w-full">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="flex-1 flex items-center bg-white rounded-xl px-4 py-3.5 border border-gray-200 group focus-within:border-gray-400 focus-within:shadow-sm transition-all cursor-text w-full">
                                         <span className="material-icons-outlined text-[18px] text-gray-400 group-focus-within:text-gray-600">search</span>
                                         <input
                                             type="text"
@@ -95,12 +95,12 @@ const Dashboard = () => {
                                 </div>
 
                                 {/* Filter Pills */}
-                                <div className={`flex items-center flex-wrap gap-3 relative transition-all duration-300 ${showMobileFilters ? 'mb-4 mt-1 opacity-100' : 'max-h-0 sm:max-h-none opacity-0 sm:opacity-100 overflow-hidden sm:overflow-visible'}`}>
+                                <div className="flex items-center flex-wrap gap-3 relative">
                                     {/* Category Filter */}
                                     <div className="relative">
                                         <button
                                             onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsSortOpen(false); }}
-                                            className="flex items-center gap-2 bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 rounded-xl px-4 py-2 sm:py-2.5 hover:border-gray-300 transition-colors shadow-sm"
+                                            className="flex items-center gap-2 bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 rounded-xl px-4 py-2.5 hover:border-gray-300 transition-colors shadow-sm"
                                         >
                                             {categoryFilter}
                                             <span className="material-icons-outlined text-[16px] text-gray-500">expand_more</span>
@@ -118,7 +118,7 @@ const Dashboard = () => {
                                     <div className="relative">
                                         <button
                                             onClick={() => { setIsSortOpen(!isSortOpen); setIsCategoryOpen(false); }}
-                                            className="flex items-center gap-2 bg-[#10B981] border border-[#10B981] text-[13px] font-semibold text-white rounded-xl px-4 py-2 sm:py-2.5 hover:bg-[#059669] transition-colors shadow-sm"
+                                            className="flex items-center gap-2 bg-[#10B981] border border-[#10B981] text-[13px] font-semibold text-white rounded-xl px-4 py-2.5 hover:bg-[#059669] transition-colors shadow-sm"
                                         >
                                             {sortFilter}
                                             <span className="material-icons-outlined text-[16px] text-white">expand_more</span>
