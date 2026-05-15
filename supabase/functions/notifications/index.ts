@@ -28,7 +28,7 @@ serve(async (req) => {
 
     // ── 1. SEND IN-APP NOTIFICATION ────────────────────────
     if (action === "send") {
-      const { userId, title, body: notifBody, type, icon, iconBg, iconColor, ctaPath } = body;
+      const { userId, title, body: notifBody, type, icon, iconBg, iconColor, ctaPath, ctaLabel, secondaryLabel } = body;
       if (!userId || !title) throw new Error("userId and title are required");
 
       const { error } = await supabaseClient.from("notifications").insert({
@@ -39,7 +39,9 @@ serve(async (req) => {
         icon: icon || "info",
         icon_bg: iconBg || "bg-gray-100",
         icon_color: iconColor || "text-gray-400",
-        cta_path: ctaPath || null
+        cta_path: ctaPath || null,
+        cta_label: ctaLabel || null,
+        secondary_label: secondaryLabel || "Later"
       });
 
       if (error) throw error;
@@ -51,7 +53,7 @@ serve(async (req) => {
 
     // ── 2. SEND BULK NOTIFICATIONS ─────────────────────────
     if (action === "send-bulk") {
-      const { userIds, title, body: notifBody, type, icon, iconBg, iconColor, ctaPath } = body;
+      const { userIds, title, body: notifBody, type, icon, iconBg, iconColor, ctaPath, ctaLabel, secondaryLabel } = body;
       if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
         throw new Error("userIds array is required");
       }
@@ -64,7 +66,9 @@ serve(async (req) => {
         icon: icon || "info",
         icon_bg: iconBg || "bg-gray-100",
         icon_color: iconColor || "text-gray-400",
-        cta_path: ctaPath || null
+        cta_path: ctaPath || null,
+        cta_label: ctaLabel || null,
+        secondary_label: secondaryLabel || "Later"
       }));
 
       const { error } = await supabaseClient.from("notifications").insert(notifications);

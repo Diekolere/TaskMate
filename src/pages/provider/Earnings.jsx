@@ -7,8 +7,6 @@ import TopNavbar from '../../components/layout/TopNavbar';
 import EditPayoutAccountModal from '../../components/provider/EditPayoutAccountModal';
 import WithdrawalModal from '../../components/provider/WithdrawalModal';
 import { supabase } from '../../lib/supabase';
-import EarningsChart from '../../components/provider/EarningsChart';
-import EarningsChartModal from '../../components/provider/EarningsChartModal';
 import TransactionDrawer from '../../components/provider/TransactionDrawer';
 
 function BankBuildingIllustration({ className }) {
@@ -33,7 +31,6 @@ const Earnings = () => {
     const [payoutVersion, setPayoutVersion] = useState(0);
     const [ledger, setLedger] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showChartModal, setShowChartModal] = useState(false);
     const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
     const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
 
@@ -81,8 +78,8 @@ const Earnings = () => {
         }
     };
 
-    const { weeklyData, totalEarnings, monthlyEarnings, maxVal } = useMemo(() => {
-        if (!currentUser) return { weeklyData: Array(7).fill(0), totalEarnings: 0, monthlyEarnings: 0, maxVal: 1000 };
+    const { totalEarnings, monthlyEarnings } = useMemo(() => {
+        if (!currentUser) return { totalEarnings: 0, monthlyEarnings: 0 };
 
         const credits = ledger.filter(item => item.entry_type === 'credit');
         const now = new Date();
@@ -108,7 +105,7 @@ const Earnings = () => {
             }
         });
 
-        return { weeklyData: weekData, totalEarnings: allTimeEarnings, monthlyEarnings, maxVal: Math.max(...weekData, 1000) };
+        return { totalEarnings: allTimeEarnings, monthlyEarnings };
     }, [ledger, currentUser]);
 
     const commissionPct = Math.min((commissionBalance / 5000) * 100, 100);
@@ -134,7 +131,7 @@ const Earnings = () => {
                     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto space-y-6">
 
                         {/* Summary Cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
 
                             {/* Available Wallet Balance (Squad Platform Wallet) */}
                             <div className="bg-[#0F172A] text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
@@ -173,25 +170,6 @@ const Earnings = () => {
                                 </div>
                             </div>
 
-                            {/* Weekly Chart - Clickable */}
-                            <button 
-                                onClick={() => setShowChartModal(true)}
-                                className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between text-left hover:border-[#10B981]/50 transition-all active:scale-[0.98] group"
-                            >
-                                <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Weekly Trend</p>
-                                    <span className="material-icons-outlined text-gray-300 group-hover:text-[#10B981] transition-colors text-lg">zoom_in</span>
-                                </div>
-                                <div className="h-32 mt-auto relative w-full -mx-5 px-0">
-                                    <EarningsChart 
-                                        data={weeklyData} 
-                                        height={120} 
-                                        showXAxis={true} 
-                                        showYAxis={false} 
-                                        showDots={true} 
-                                    />
-                                </div>
-                            </button>
                         </div>
 
                         {/* Transaction History (2/3) + payout account (1/3) */}
@@ -330,13 +308,6 @@ const Earnings = () => {
             <ProviderMobileNavBar />
 
             {/* ── Modular UI Components (Portals) ── */}
-            <EarningsChartModal 
-                isOpen={showChartModal} 
-                onClose={() => setShowChartModal(false)} 
-                weeklyData={weeklyData} 
-                maxVal={maxVal} 
-            />
-
             <TransactionDrawer 
                 isOpen={showHistoryDrawer} 
                 onClose={() => setShowHistoryDrawer(false)} 

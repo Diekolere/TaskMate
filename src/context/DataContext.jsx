@@ -57,6 +57,11 @@ export function DataProvider({ children }) {
       providerId: job.worker_id,
       agreedPrice: job.agreed_price || job.agreedPrice,
       budget: job.budget_estimate,
+      finalAmount: job.final_budget || job.agreed_price || job.budget_estimate,
+      completedAt: job.completed_at ? {
+        toDate: () => new Date(job.completed_at),
+        toMillis: () => new Date(job.completed_at).getTime()
+      } : null,
       createdAt: job.created_at ? {
         toDate: () => new Date(job.created_at),
         toMillis: () => new Date(job.created_at).getTime(),

@@ -5,29 +5,61 @@ import { toast } from 'sonner';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
-
-/** Demo: short window for testing — switch to e.g. 20 * 60 for production */
-const OTP_EXPIRY_SECONDS = 10;
-
-// Deterministic 4-digit OTP from job ID for demo consistency
-const generateOTP = (id = '') => {
-    const hash = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    return String((hash % 9000) + 1000);
-};
+import { supabase } from '../../lib/supabase';
 
 const JobOTP = () => {
     const { jobId } = useParams();
     const navigate = useNavigate();
-    const otp = generateOTP(jobId);
-    const digits = otp.split('');
 
-    const [status, setStatus] = useState('waiting'); // 'waiting' | 'started' | 'expired'
-    const [secondsLeft, setSecondsLeft] = useState(OTP_EXPIRY_SECONDS);
-    /** Bump when generating a new code so the simulated provider timeout re-runs */
-    const [codeRound, setCodeRound] = useState(0);
+    const [job, setJob] = useState(null);
+    const [otp, setOtp] = useState('');
+    const [status, setStatus] = useState('loading'); // 'loading' | 'waiting' | 'started' | 'expired'
+    const [secondsLeft, setSecondsLeft] = useState(0);
+
+    const fetchJobDetails = async () => {
+        const { data } = await supabase.from('jobs').select('*').eq('id', jobId).single();
+        if (data) setJob(data);
+    };
 
     useEffect(() => {
-        if (status !== 'waiting') return;
+        fetchJobDetails();
+    }, [jobId]);
+
+    const digits = otp ? otp.split('') : ['', '', '', ''];
+    const secs = secondsLeft;
+    const pad = n => String(n).padStart(2, '0');
+
+    const generateAndSaveOTP = async () => {
+        try {
+            const newOTP = Math.floor(1000 + Math.random() * 9000).toString();
+            const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+            
+            const { error } = await supabase
+                .from('jobs')
+                .update({ 
+                    otp_code: newOTP, 
+                    otp_expires_at: expiresAt 
+                })
+                .eq('id', jobId);
+
+            if (error) throw error;
+            
+            setOtp(newOTP);
+            setSecondsLeft(15 * 60);
+            setStatus('waiting');
+        } catch (error) {
+            console.error('Failed to generate OTP:', error);
+            toast.error('Failed to generate start code');
+        }
+    };
+
+    useEffect(() => {
+        generateAndSaveOTP();
+    }, [jobId]);
+
+    // Timer logic
+    useEffect(() => {
+        if (status !== 'waiting' || secondsLeft <= 0) return;
         const tick = setInterval(() => {
             setSecondsLeft(s => {
                 if (s <= 1) {
@@ -38,47 +70,63 @@ const JobOTP = () => {
             });
         }, 1000);
         return () => clearInterval(tick);
-    }, [status, codeRound]);
+    }, [status, secondsLeft]);
 
-    /**
-     * Demo: simulate provider entering the code partway through the window — only after the customer
-     * taps “Generate new code” (codeRound > 0). First window lets the countdown reach 0 so “Timed out” works.
-     */
+    // Poll for status change
     useEffect(() => {
         if (status !== 'waiting') return;
-        if (codeRound === 0) return;
-        const simulateMs = Math.min(5000, Math.max(2500, (OTP_EXPIRY_SECONDS * 1000) - 2000));
-        const t = setTimeout(() => {
-            setStatus(s => (s === 'waiting' ? 'started' : s));
-        }, simulateMs);
-        return () => clearTimeout(t);
-    }, [status, codeRound]);
+        
+        const channel = supabase
+            .channel(`job_status_${jobId}`)
+            .on('postgres_changes', { 
+                event: 'UPDATE', 
+                schema: 'public', 
+                table: 'jobs',
+                filter: `id=eq.${jobId}`
+            }, (payload) => {
+                if (payload.new.status === 'in_progress') {
+                    setStatus('started');
+                }
+            })
+            .subscribe();
 
+        // Fallback polling every 5 seconds
+        const poll = setInterval(async () => {
+            const { data } = await supabase
+                .from('jobs')
+                .select('status')
+                .eq('id', jobId)
+                .single();
+            
+            if (data?.status === 'in_progress') {
+                setStatus('started');
+            }
+        }, 5000);
+
+        return () => {
+            supabase.removeChannel(channel);
+            clearInterval(poll);
+        };
+    }, [status, jobId]);
+    // Auto-navigate after success
     useEffect(() => {
         if (status !== 'started') return;
         const t = setTimeout(() => {
-            navigate('/customer/requests', { replace: true, state: { jobStarted: true, jobId } });
-            toast.success('Job started', {
-                description: 'When your provider finishes, you’ll get a notification to confirm or dispute within 48 hours.',
-            });
+            navigate(`/customer/request-status/${jobId}`, { replace: true, state: { jobStarted: true, jobId } });
         }, 3000);
         return () => clearTimeout(t);
     }, [status, jobId, navigate]);
-
-    const secs = secondsLeft;
-    const pad = n => String(n).padStart(2, '0');
-
     const resetWaiting = () => {
-        setSecondsLeft(OTP_EXPIRY_SECONDS);
-        setStatus('waiting');
-        setCodeRound(r => r + 1);
+        generateAndSaveOTP();
     };
+
+    if (status === 'loading') return null;
 
     return (
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
             <Sidebar />
             <div className="flex-1 flex flex-col min-w-0">
-                <TopNavbar breadcrumbs={['Customer', { label: 'Active Job', path: `/customer/request/${jobId}` }, 'Job Code']} />
+                <TopNavbar breadcrumbs={['Customer', { label: 'Request Details', path: `/customer/request-status/${jobId}` }, 'Job Code']} />
 
                 <main className="flex-1 overflow-y-auto bg-white pb-24 md:pb-0">
                     <div className="max-w-lg mx-auto px-4 py-12 sm:py-16 flex flex-col items-center">
@@ -150,7 +198,7 @@ const JobOTP = () => {
 
                                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 w-full flex items-center gap-3">
                                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${secs <= 3 ? 'bg-red-50' : 'bg-amber-50'}`}>
-                                            <span className={`material-icons text-lg ${secs <= 3 ? 'text-red-500' : 'text-amber-500'}`}>schedule</span>
+                                            <span className="material-icons text-lg text-amber-500">schedule</span>
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold text-gray-900">Waiting for provider</p>
@@ -158,20 +206,18 @@ const JobOTP = () => {
                                         </div>
                                         <div className="ml-auto text-right shrink-0">
                                             <p className="text-[10px] text-gray-400 uppercase tracking-wide">Expires in</p>
-                                            <p className={`text-sm font-mono font-bold tabular-nums ${secs <= 3 ? 'text-red-500' : 'text-gray-700'}`}>
-                                                00:{pad(secs)}
+                                            <p className={`text-sm font-mono font-bold tabular-nums ${secs <= 10 ? 'text-red-500' : 'text-gray-700'}`}>
+                                                {pad(Math.floor(secs / 60))}:{pad(secs % 60)}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <p className="text-[11px] text-gray-400 text-center mt-4 max-w-sm leading-relaxed">
-                                        {codeRound === 0
-                                            ? 'This code expires when the timer hits 0 — then you can generate a new one. After that, the demo simulates your provider entering the code.'
-                                            : 'When your provider enters the code, you’ll continue automatically. (Demo simulates this while there’s no live connection.)'}
+                                    <p className="text-[11px] text-gray-400 text-center mt-6 max-w-sm leading-relaxed">
+                                        When your provider enters the code, you’ll continue automatically.
                                     </p>
 
                                     <p className="text-xs text-gray-400 text-center mt-6 max-w-xs leading-relaxed">
-                                        Your payment of <span className="font-semibold text-gray-600">₦{(15000).toLocaleString()}</span> is held safely by TaskMate until the job is confirmed complete.
+                                        Your payment of <span className="font-semibold text-gray-600">₦{Number(job?.final_budget || job?.budget_estimate || 0).toLocaleString()}</span> is held safely by TaskMate until the job is confirmed complete.
                                     </p>
                                 </motion.div>
                             )}

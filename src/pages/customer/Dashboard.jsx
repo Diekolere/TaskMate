@@ -12,10 +12,10 @@ const Dashboard = () => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
     const { getAllServicePosts, getProviders } = useData();
-    
+
     // Track customer location for optimal proximity matching
     useLocationHeartbeat();
-    
+
     // Custom Filter States
     const [searchQuery, setSearchQuery] = useState('');
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -25,13 +25,18 @@ const Dashboard = () => {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [recommendedArtisans, setRecommendedArtisans] = useState([]);
+    const [imageIndexes, setImageIndexes] = useState({});
+    const [likedPosts, setLikedPosts] = useState({});
+    const [openMenu, setOpenMenu] = useState(null);
+    const [lastTapTime, setLastTapTime] = useState({});
+    const [expandedPosts, setExpandedPosts] = useState({});
 
     React.useEffect(() => {
         const loadFeed = async () => {
             setLoading(true);
             const data = await getAllServicePosts(categoryFilter === 'Category' ? null : categoryFilter);
             setPosts(data);
-            
+
             // Also load some recommended providers
             const providers = await getProviders();
             setRecommendedArtisans(providers.slice(0, 3));
@@ -56,21 +61,21 @@ const Dashboard = () => {
 
             <div className="flex-1 flex flex-col min-w-0">
                 <TopNavbar breadcrumbs={['Customer', 'Feed']} />
-                
+
                 {/* Main Content Area */}
                 <main className="relative z-0 flex-1 overflow-y-auto bg-white">
-                    <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-10 pb-24 md:pb-10 flex flex-col xl:flex-row gap-8 xl:gap-12">
-                        
+                    <div className="max-w-[1200px] mx-auto w-full px-0 sm:px-8 py-0 sm:py-10 pb-24 md:pb-10 flex flex-col xl:flex-row gap-0 xl:gap-12">
+
                         {/* Feed Column */}
-                        <div className="flex-1 max-w-3xl">
+                        <div className="flex-1 max-w-[580px]">
                             {/* Header & Search Area */}
-                            <div className="mb-6 sm:mb-10">
+                            <div className="mb-6 sm:mb-10 px-4 sm:px-0 pt-6 sm:pt-0">
                                 <h1 className="text-[24px] sm:text-[32px] font-extrabold tracking-tight text-gray-900 mb-4 sm:mb-6">Discovery Feed</h1>
 
                                 {/* Simple Search Bar */}
                                 <div className="flex items-center bg-white rounded-xl px-4 py-3.5 border border-gray-200 group focus-within:border-gray-400 focus-within:shadow-sm transition-all cursor-text mb-4 w-full">
                                     <span className="material-icons-outlined text-[18px] text-gray-400 group-focus-within:text-gray-600">search</span>
-                                    <input 
+                                    <input
                                         type="text"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -84,7 +89,7 @@ const Dashboard = () => {
                                 <div className="flex items-center flex-wrap gap-3 relative">
                                     {/* Category Filter */}
                                     <div className="relative">
-                                        <button 
+                                        <button
                                             onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsSortOpen(false); }}
                                             className="flex items-center gap-2 bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 rounded-xl px-4 py-2.5 hover:border-gray-300 transition-colors shadow-sm"
                                         >
@@ -102,7 +107,7 @@ const Dashboard = () => {
 
                                     {/* Active Green Sort/View Filter */}
                                     <div className="relative">
-                                        <button 
+                                        <button
                                             onClick={() => { setIsSortOpen(!isSortOpen); setIsCategoryOpen(false); }}
                                             className="flex items-center gap-2 bg-[#10B981] border border-[#10B981] text-[13px] font-semibold text-white rounded-xl px-4 py-2.5 hover:bg-[#059669] transition-colors shadow-sm"
                                         >
@@ -120,7 +125,7 @@ const Dashboard = () => {
 
                                     {/* Clear All */}
                                     {(categoryFilter !== 'Category' || sortFilter !== 'Relevance' || searchQuery !== '') && (
-                                        <button 
+                                        <button
                                             onClick={() => { setCategoryFilter('Category'); setSortFilter('Relevance'); setSearchQuery(''); }}
                                             className="text-[13px] font-semibold text-gray-500 underline ml-2 hover:text-gray-900 transition-colors"
                                         >
@@ -131,7 +136,7 @@ const Dashboard = () => {
                             </div>
 
                             {/* Feed Posts */}
-                            <div className="space-y-4 sm:space-y-8">
+                            <div className="space-y-0 sm:space-y-8">
                                 {loading ? (
                                     <div className="py-20 flex flex-col items-center justify-center text-gray-400">
                                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#10B981] mb-4"></div>
@@ -146,68 +151,176 @@ const Dashboard = () => {
                                         <p className="text-[14px] font-medium text-gray-500 mt-1.5">Check back later for new artisan updates in {categoryFilter === 'Category' ? 'all categories' : categoryFilter}.</p>
                                     </div>
                                 ) : (
-                                    filteredPosts.map(post => (
-                                        <div key={post.id} className="bg-white border border-gray-200 rounded-2xl sm:rounded-[20px] overflow-hidden hover:shadow-md transition-shadow">
-                                            {/* Post Header */}
-                                            <div className="p-4 sm:p-6 flex items-start justify-between gap-2">
-                                                <div className="flex gap-3 sm:gap-4 items-center cursor-pointer group min-w-0" onClick={() => navigate(`/customer/provider/${post.provider_id}`)}>
-                                                    <div className="relative shrink-0">
-                                                        <img src={post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.full_name}&background=random`} alt={post.profiles?.full_name} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-transparent group-hover:border-gray-200 transition-colors" />
-                                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
-                                                            <span className="material-icons text-blue-500 text-[12px] sm:text-[14px]" title="Verified Artisan">verified</span>
+                                    filteredPosts.map(post => {
+                                        const currentImageIndex = imageIndexes[post.id] || 0;
+                                        const images = post.images || [];
+                                        const hasMultipleImages = images.length > 1;
+
+                                        const goToPreviousImage = (e) => {
+                                            e.stopPropagation();
+                                            setImageIndexes(prev => ({
+                                                ...prev,
+                                                [post.id]: (currentImageIndex - 1 + images.length) % images.length
+                                            }));
+                                        };
+
+                                        const goToNextImage = (e) => {
+                                            e.stopPropagation();
+                                            setImageIndexes(prev => ({
+                                                ...prev,
+                                                [post.id]: (currentImageIndex + 1) % images.length
+                                            }));
+                                        };
+
+                                        const handleDoubleTap = () => {
+                                            const now = Date.now();
+                                            const lastTap = lastTapTime[post.id] || 0;
+
+                                            if (now - lastTap < 300) {
+                                                // Double tap detected - set to liked
+                                                setLikedPosts(prev => ({ ...prev, [post.id]: true }));
+                                            }
+                                            setLastTapTime(prev => ({ ...prev, [post.id]: now }));
+                                        };
+
+                                        const handleLikeClick = () => {
+                                            const isCurrentlyLiked = likedPosts[post.id];
+                                            setLikedPosts(prev => ({ ...prev, [post.id]: !isCurrentlyLiked }));
+                                        };
+
+                                        const currentLikeCount = (post.likes_count || 0) + (likedPosts[post.id] ? 1 : 0);
+
+                                        return (
+                                            <div key={post.id} className="bg-white border-y sm:border border-gray-100 sm:border-gray-200 sm:rounded-xl overflow-hidden sm:hover:border-gray-300 transition-all">
+                                                {/* Post Header */}
+                                                <div className="py-2.5 px-3 sm:py-3 sm:px-4 flex items-start justify-between gap-2">
+                                                    <div className="flex gap-2 sm:gap-3 items-center cursor-pointer group min-w-0" onClick={() => navigate(`/customer/provider/${post.provider_id}`)}>
+                                                        <div className="relative shrink-0">
+                                                            <img src={post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.full_name}&background=random`} alt={post.profiles?.full_name} className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover border border-gray-200 group-hover:border-gray-300 transition-colors" />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <h3 className="font-bold text-[13px] sm:text-[14px] text-gray-900 group-hover:underline truncate">{post.profiles?.full_name}</h3>
+                                                            <p className="text-[11px] text-gray-500 font-medium">
+                                                                {post.category} • {formatDistanceToNow(new Date(post.created_at))} ago
+                                                                {post.profiles?.location_name && ` • ${post.profiles.location_name}`}
+                                                            </p>
                                                         </div>
                                                     </div>
-                                                    <div className="min-w-0">
-                                                        <h3 className="font-extrabold text-[14px] sm:text-[15px] text-gray-900 group-hover:underline tracking-wide truncate">{post.profiles?.full_name}</h3>
-                                                        <div className="flex items-center flex-wrap gap-x-1 text-[11px] sm:text-[12px] text-gray-500 font-medium mt-0.5">
-                                                            <span>{post.category}</span>
-                                                            <span className="text-gray-300">•</span>
-                                                            <span className="hidden sm:inline-flex items-center"><span className="material-icons-outlined text-[14px] mr-0.5">location_on</span>{post.profiles?.location_name || 'Lagos'}</span>
-                                                            <span className="hidden sm:inline text-gray-300">•</span>
-                                                            <span>{formatDistanceToNow(new Date(post.created_at))} ago</span>
+                                                    <div className="relative">
+                                                        <button onClick={() => setOpenMenu(openMenu === post.id ? null : post.id)} className="text-gray-400 hover:text-gray-900 transition-colors p-1 shrink-0">
+                                                            <span className="material-icons-outlined text-[18px]">more_horiz</span>
+                                                        </button>
+                                                        {openMenu === post.id && (
+                                                            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-max">
+                                                                <button className="block w-full text-left px-4 py-2.5 text-[13px] font-medium text-gray-900 hover:bg-gray-50 border-b border-gray-100">
+                                                                    <span className="material-icons-outlined text-[16px] align-middle mr-2">report</span>
+                                                                    Report Post
+                                                                </button>
+                                                                <button className="block w-full text-left px-4 py-2.5 text-[13px] font-medium text-gray-900 hover:bg-gray-50">
+                                                                    <span className="material-icons-outlined text-[16px] align-middle mr-2">bookmark_border</span>
+                                                                    Save Post
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Post Caption & Info (Above Image) */}
+                                                <div className="px-3 sm:px-4 pb-2">
+                                                    <p className="text-[13px] sm:text-[14px] text-gray-900 leading-snug">
+                                                        <span className="text-gray-800">
+                                                            {post.caption?.length > 120 && !expandedPosts[post.id] 
+                                                                ? `${post.caption.slice(0, 120)}...` 
+                                                                : post.caption}
+                                                        </span>
+                                                        {post.caption?.length > 120 && !expandedPosts[post.id] && (
+                                                            <button 
+                                                                onClick={() => setExpandedPosts(prev => ({ ...prev, [post.id]: true }))}
+                                                                className="text-gray-500 font-bold ml-1 hover:text-gray-700"
+                                                            >
+                                                                more
+                                                            </button>
+                                                        )}
+                                                    </p>
+
+                                                    {/* Tags */}
+                                                    {post.tags && post.tags.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                                            {post.tags.map(tag => (
+                                                                <span key={tag} className="text-[11px] sm:text-xs font-semibold text-blue-600 hover:text-blue-700">#{tag}</span>
+                                                            ))}
                                                         </div>
-                                                    </div>
+                                                    )}
                                                 </div>
-                                                <button className="text-gray-400 hover:text-gray-900 transition-colors p-1.5 sm:p-2 rounded-full hover:bg-gray-50 shrink-0">
-                                                    <span className="material-icons-outlined text-[20px]">more_horiz</span>
-                                                </button>
-                                            </div>
 
-                                            {/* Post Content */}
-                                            <div className="px-4 sm:px-6 pb-4 sm:pb-6">
-                                                <p className="text-[14px] sm:text-[15px] text-gray-800 leading-relaxed font-medium mb-3 sm:mb-4">{post.caption}</p>
-                                                
-                                                {post.images && post.images.length > 0 && (
-                                                    <div className="w-full h-48 sm:h-64 md:h-80 rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 border border-gray-100 bg-gray-50">
-                                                        <img src={post.images[0]} alt="Post media" className="w-full h-full object-cover" />
-                                                    </div>
-                                                )}
+                                                {/* Image Carousel */}
+                                                <div className="relative bg-gray-50">
+                                                    {images.length > 0 ? (
+                                                        <>
+                                                            <div className="w-full aspect-[4/3] overflow-hidden relative cursor-pointer" onClick={handleDoubleTap}>
+                                                                <img src={images[currentImageIndex]} alt="Post media" className="w-full h-full object-cover" />
 
-                                                <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
-                                                    {post.tags?.map(tag => (
-                                                        <span key={tag} className="text-[10px] sm:text-xs font-bold text-blue-700 bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg border border-blue-100/50 tracking-wide">#{tag}</span>
-                                                    ))}
+                                                                {/* Navigation Arrows */}
+                                                                {hasMultipleImages && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={goToPreviousImage}
+                                                                            className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-1.5 sm:p-2 transition-all"
+                                                                        >
+                                                                            <span className="material-icons-outlined text-[18px] sm:text-[20px]">chevron_left</span>
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={goToNextImage}
+                                                                            className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-1.5 sm:p-2 transition-all"
+                                                                        >
+                                                                            <span className="material-icons-outlined text-[18px] sm:text-[20px]">chevron_right</span>
+                                                                        </button>
+                                                                    </>
+                                                                )}
+
+                                                                {/* Carousel Dots */}
+                                                                {hasMultipleImages && (
+                                                                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 items-center bg-black/40 px-2 py-1.5 rounded-full">
+                                                                        {images.map((_, idx) => (
+                                                                            <button
+                                                                                key={idx}
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setImageIndexes(prev => ({ ...prev, [post.id]: idx }));
+                                                                                }}
+                                                                                className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all ${idx === currentImageIndex ? 'bg-white w-4 sm:w-5' : 'bg-white/50 hover:bg-white/75'
+                                                                                    }`}
+                                                                            />
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="w-full aspect-[4/3] flex items-center justify-center">
+                                                            <span className="material-icons-outlined text-gray-300 text-5xl">image_not_supported</span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </div>
 
-                                            {/* Post Footer/Actions */}
-                                            <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between border-t border-gray-100">
-                                                <div className="flex gap-4 sm:gap-6">
-                                                    <button className="flex items-center gap-1.5 sm:gap-2 text-gray-500 hover:text-gray-900 transition-colors group">
-                                                        <span className="material-icons-outlined text-[20px] sm:text-[22px] group-hover:text-red-500 transition-colors">favorite_border</span>
-                                                        <span className="text-[13px] sm:text-sm font-bold">{post.likes_count || 0}</span>
+                                                {/* Engagement Stats - Like Icon & Count */}
+                                                <div className="px-3 sm:px-4 py-1.5 sm:py-2.5 flex items-center gap-2.5 border-b border-gray-100">
+                                                    <button
+                                                        onClick={handleLikeClick}
+                                                        className="text-gray-600 hover:text-red-600 transition-colors flex items-center"
+                                                        title="Like"
+                                                    >
+                                                        <span className="material-icons text-[24px] sm:text-[26px]" style={{ color: likedPosts[post.id] ? '#ef4444' : 'currentColor' }}>
+                                                            {likedPosts[post.id] ? 'favorite' : 'favorite_border'}
+                                                        </span>
                                                     </button>
-                                                    <button className="flex items-center gap-1.5 sm:gap-2 text-gray-500 hover:text-gray-900 transition-colors group">
-                                                        <span className="material-icons-outlined text-[20px] sm:text-[22px]">chat_bubble_outline</span>
-                                                        <span className="text-[13px] sm:text-sm font-bold hidden sm:inline">Comment</span>
-                                                    </button>
+                                                    <span className="text-[13px] sm:text-[14px] font-bold text-gray-900">
+                                                        {currentLikeCount} like{currentLikeCount !== 1 ? 's' : ''}
+                                                    </span>
                                                 </div>
-                                                <button onClick={() => navigate(`/customer/provider/${post.provider_id}`)} className="text-[12px] sm:text-sm font-extrabold bg-white border-2 border-gray-200 text-gray-900 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl hover:border-gray-900 transition-all">
-                                                    View Profile
-                                                </button>
                                             </div>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         </div>
@@ -219,7 +332,7 @@ const Dashboard = () => {
                                 <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all"></div>
                                 <h2 className="text-[22px] sm:text-[28px] font-black text-white mb-3 sm:mb-4 tracking-tight">Need a Pro?</h2>
                                 <p className="text-gray-300 text-sm leading-relaxed mb-8 font-medium">Describe your task and let our verified professionals send you their best offers.</p>
-                                <button 
+                                <button
                                     onClick={() => navigate('/customer/post-request')}
                                     className="w-full py-4 bg-white text-[#0F172A] rounded-2xl font-black text-[15px] hover:bg-gray-50 transition-all flex items-center justify-center gap-2 shadow-xl active:scale-[0.98]"
                                 >

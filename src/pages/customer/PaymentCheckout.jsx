@@ -159,11 +159,11 @@ const PaymentCheckout = () => {
             toast.error('Payment details not fully loaded');
             return;
         }
-        
+
         setVerifying(true);
         try {
             console.log('STEP 1: Initiating Sandbox Simulation for VA:', vAccount.accountNumber, 'Amount:', vAccount.amount);
-            
+
             const { data, error } = await supabase.functions.invoke('squad', {
                 body: {
                     action: 'simulate-va-payment',
@@ -184,12 +184,17 @@ const PaymentCheckout = () => {
                 throw new Error(data?.message || 'Simulation failed at Squad API level');
             }
 
-            console.log('STEP 4: Simulation successful! Waiting for webhook...');
+            console.log('STEP 4: Updating job status in DB...');
+            await supabase
+                .from('jobs')
+                .update({ status: 'payment_secured' })
+                .eq('id', requestId);
+
+            console.log('STEP 5: Simulation successful! Redirecting...');
             setStep('success');
-            toast.success('Simulation Successful! Webhook should fire shortly.');
             
             setTimeout(() => {
-                navigate(`/customer/job-otp/${requestId || 'demo-001'}`);
+                navigate(`/customer/request-status/${requestId}`, { replace: true, state: { paymentConfirmed: true, jobId: requestId } });
             }, 3000);
 
         } catch (error) {
@@ -250,144 +255,98 @@ const PaymentCheckout = () => {
                                         <p className="mt-1 text-sm text-gray-500">Transfer the exact amount to the account below to confirm your booking.</p>
                                     </div>
 
-                                    {/* Grid — order summary LEFT, payment card RIGHT */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                                    {/* Payment card */}
+                                    <div className="space-y-4">
 
-                                        {/* ── Left col: Order Summary (shows first on mobile) ── */}
-                                        <div className="lg:col-span-2 flex flex-col gap-4">
-                                            <div className="rounded-2xl bg-[#10B981] p-5 text-white">
-                                                <p className="text-[10px] font-bold text-white uppercase tracking-wider mb-4">Order Summary</p>
-
-                                                <div className="flex items-start gap-3 mb-5 pb-5 border-b border-white/25">
-                                                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                                                        <span className="material-icons-outlined text-white text-base">handyman</span>
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-white text-sm">{request?.title}</p>
-                                                        <p className="text-xs text-white mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">{request?.category} · {request?.location}</p>
-                                                        {(stateProvider?.full_name || request?.providerName) && (
-                                                            <p className="text-xs text-white mt-1 font-semibold">
-                                                                {stateProvider?.full_name || request.providerName}
-                                                            </p>
-                                                        )}
-                                                    </div>
+                                        {generating ? (
+                                            <div className="rounded-2xl border border-gray-100 p-12 flex flex-col items-center gap-4">
+                                                <div className="relative w-10 h-10">
+                                                    <div className="absolute inset-0 rounded-full border-[3px] border-gray-100" />
+                                                    <div className="absolute inset-0 rounded-full border-[3px] border-[#10B981] border-t-transparent animate-spin" />
                                                 </div>
-
-                                                <div className="space-y-3 text-sm text-white">
-                                                    <div className="flex justify-between">
-                                                        <span>Service amount</span>
-                                                        <span className="font-semibold">₦{amount.toLocaleString()}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-xs">
-                                                        <span>Platform fee (10%)</span>
-                                                        <span className="font-semibold">₦{commission.toLocaleString()}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-xs">
-                                                        <span>Provider receives</span>
-                                                        <span className="font-semibold">₦{providerReceives.toLocaleString()}</span>
-                                                    </div>
-                                                    <div className="flex justify-between font-bold pt-3 border-t border-white/25 text-base">
-                                                        <span>You transfer</span>
-                                                        <span>₦{amount.toLocaleString()}</span>
-                                                    </div>
+                                                <p className="text-sm text-gray-400 font-medium">Generating your payment account…</p>
+                                            </div>
+                                        ) : fetchError ? (
+                                            <div className="rounded-2xl border border-red-200 bg-red-50 p-6 flex flex-col items-center gap-3">
+                                                <span className="material-icons text-red-500 text-4xl">error_outline</span>
+                                                <div className="text-center">
+                                                    <p className="text-sm font-bold text-red-900 mb-1">Could not load payment details</p>
+                                                    <p className="text-xs text-red-700 mb-4">{fetchError}</p>
+                                                    <button onClick={() => window.location.reload()} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors">
+                                                        Retry
+                                                    </button>
                                                 </div>
                                             </div>
-                                        </div>
-
-                                        {/* ── Right col: Wider payment account card ── */}
-                                        <div className="lg:col-span-3 space-y-4">
-
-                                            {generating ? (
-                                                <div className="rounded-2xl border border-gray-100 p-12 flex flex-col items-center gap-4">
-                                                    <div className="relative w-10 h-10">
-                                                        <div className="absolute inset-0 rounded-full border-[3px] border-gray-100" />
-                                                        <div className="absolute inset-0 rounded-full border-[3px] border-[#10B981] border-t-transparent animate-spin" />
+                                        ) : vAccount ? (
+                                            <div className="rounded-2xl border border-gray-100 overflow-hidden">
+                                                {/* Squad header */}
+                                                <div className="bg-[#0F172A] px-6 py-5 flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest mb-1">Payment Account</p>
+                                                        <p className="text-white font-black text-2xl">₦{amount.toLocaleString()}</p>
                                                     </div>
-                                                    <p className="text-sm text-gray-400 font-medium">Generating your payment account…</p>
-                                                </div>
-                                            ) : fetchError ? (
-                                                <div className="rounded-2xl border border-red-200 bg-red-50 p-6 flex flex-col items-center gap-3">
-                                                    <span className="material-icons text-red-500 text-4xl">error_outline</span>
-                                                    <div className="text-center">
-                                                        <p className="text-sm font-bold text-red-900 mb-1">Could not load payment details</p>
-                                                        <p className="text-xs text-red-700 mb-4">{fetchError}</p>
-                                                        <button onClick={() => window.location.reload()} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors">
-                                                            Retry
-                                                        </button>
+                                                    <div className="flex items-center gap-1.5 bg-white/10 border border-white/10 rounded-xl px-3 py-1.5">
+                                                        <img src="/squad.png" alt="Squad" className="h-4 w-auto object-contain" />
                                                     </div>
                                                 </div>
-                                            ) : vAccount ? (
-                                                <div className="rounded-2xl border border-gray-100 overflow-hidden">
-                                                    {/* Squad header */}
-                                                        <div className="bg-[#0F172A] px-6 py-5 flex items-center justify-between">
-                                                        <div>
-                                                            <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest mb-1">Payment Account</p>
-                                                            <p className="text-white font-black text-2xl">₦{amount.toLocaleString()}</p>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 bg-white/10 border border-white/10 rounded-xl px-3 py-1.5">
-                                                            <img src="/squad.png" alt="Squad" className="h-4 w-auto object-contain" />
-                                                        </div>
-                                                    </div>
 
-                                                    {/* Account details — 1 per row */}
-                                                    <div className="p-5 space-y-0">
-                                                        {[
-                                                            { label: 'Bank', value: vAccount?.bank },
-                                                            { label: 'Account Number', value: vAccount?.accountNumber, copyable: true, copyVal: vAccount?.accountNumber },
-                                                            { label: 'Account Name', value: vAccount?.accountName },
-                                                            { label: 'Amount', value: `₦${Number(vAccount?.amount).toLocaleString()}`, copyable: true, copyVal: String(vAccount?.amount) },
-                                                        ].map((row, i, arr) => (
-                                                            <div key={row.label}
-                                                                className={`flex items-center justify-between py-3.5 ${i !== arr.length - 1 ? 'border-b border-gray-100' : ''}`}>
-                                                                <div>
-                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{row.label}</p>
-                                                                    <p className="text-sm font-semibold text-gray-600">{row.value}</p>
-                                                                </div>
-                                                                {row.copyable && (
-                                                                    <button onClick={() => copy(row.copyVal, row.label)}
-                                                                        className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-all shrink-0 ml-4 ${copied === row.label ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                                                                        <span className="material-icons text-sm">{copied === row.label ? 'check' : 'content_copy'}</span>
-                                                                        <span>{copied === row.label ? 'Copied' : 'Copy'}</span>
-                                                                    </button>
-                                                                )}
+                                                {/* Account details — 1 per row */}
+                                                <div className="p-5 space-y-0">
+                                                    {[
+                                                        { label: 'Bank', value: vAccount?.bank },
+                                                        { label: 'Account Number', value: vAccount?.accountNumber, copyable: true, copyVal: vAccount?.accountNumber },
+                                                        { label: 'Account Name', value: vAccount?.accountName },
+                                                        { label: 'Amount', value: `₦${Number(vAccount?.amount).toLocaleString()}`, copyable: true, copyVal: String(vAccount?.amount) },
+                                                    ].map((row, i, arr) => (
+                                                        <div key={row.label}
+                                                            className={`flex items-center justify-between py-3.5 ${i !== arr.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                                                            <div>
+                                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{row.label}</p>
+                                                                <p className="text-sm font-semibold text-gray-600">{row.value}</p>
                                                             </div>
-                                                        ))}
-                                                    </div>
-
-                                                    {/* Expiry notice */}
-                                                    <div className="mx-5 mb-5 flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-                                                        <span className="material-icons text-blue-500 text-base shrink-0">info</span>
-                                                        <p className="text-xs text-blue-700 font-medium">
-                                                            This account is <span className="font-bold">permanent</span> and belongs to the provider. Transfer the <span className="font-bold">exact amount</span> shown above.
-                                                        </p>
-                                                    </div>
+                                                            {row.copyable && (
+                                                                <button onClick={() => copy(row.copyVal, row.label)}
+                                                                    className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-all shrink-0 ml-4 ${copied === row.label ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                                                                    <span className="material-icons text-sm">{copied === row.label ? 'check' : 'content_copy'}</span>
+                                                                    <span>{copied === row.label ? 'Copied' : 'Copy'}</span>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            ) : (
-                                                <div className="rounded-2xl border border-gray-100 p-12 flex flex-col items-center gap-4">
-                                                    <div className="relative w-10 h-10">
-                                                        <div className="absolute inset-0 rounded-full border-[3px] border-gray-100" />
-                                                        <div className="absolute inset-0 rounded-full border-[3px] border-[#10B981] border-t-transparent animate-spin" />
-                                                    </div>
-                                                    <p className="text-sm text-gray-400 font-medium">Loading payment details…</p>
+
+                                                {/* Expiry notice */}
+                                                <div className="mx-5 mb-5 flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                                                    <span className="material-icons text-blue-500 text-base shrink-0">info</span>
+                                                    <p className="text-xs text-blue-700 font-medium">
+                                                        This account is <span className="font-bold">permanent</span> and belongs to the provider. Transfer the <span className="font-bold">exact amount</span> shown above.
+                                                    </p>
                                                 </div>
-                                            )}
+                                            </div>
+                                        ) : (
+                                            <div className="rounded-2xl border border-gray-100 p-12 flex flex-col items-center gap-4">
+                                                <div className="relative w-10 h-10">
+                                                    <div className="absolute inset-0 rounded-full border-[3px] border-gray-100" />
+                                                    <div className="absolute inset-0 rounded-full border-[3px] border-[#10B981] border-t-transparent animate-spin" />
+                                                </div>
+                                                <p className="text-sm text-gray-400 font-medium">Loading payment details…</p>
+                                            </div>
+                                        )}
 
-                                            {/* Certify button */}
-                                            {!generating && (
-                                                <button onClick={handleCertify} disabled={verifying}
-                                                    className="w-full py-4 bg-[#10B981] hover:bg-[#059669] disabled:opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-[#10B981]/20 flex items-center justify-center gap-2">
-                                                    <span className="material-icons text-base">verified</span>
-                                                    Confirm Transfer
-                                                </button>
-                                            )}
+                                        {/* Certify button */}
+                                        {!generating && (
+                                            <button onClick={handleCertify} disabled={verifying}
+                                                className="w-full py-4 bg-[#10B981] hover:bg-[#059669] disabled:opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-[#10B981]/20 flex items-center justify-center gap-2">
+                                                <span className="material-icons text-base">verified</span>
+                                                Confirm Transfer
+                                            </button>
+                                        )}
 
-                                            {/* Help text */}
-                                            <p className="text-xs text-gray-400 text-center">
-                                                After transferring, tap the button above — we'll verify with Squad automatically.
-                                            </p>
-                                        </div>
+                                        {/* Help text */}
+                                        <p className="text-xs text-gray-400 text-center">
+                                            After transferring, tap the button above — we'll verify with Squad automatically.
+                                        </p>
                                     </div>
-
 
                                 </motion.div>
                             )}

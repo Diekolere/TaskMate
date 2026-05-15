@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import CategoryIcon from '../../components/ui/CategoryIcon';
@@ -14,12 +15,10 @@ const MyRequests = () => {
     const { requests: allRequests } = useData();
     const [activeTab, setActiveTab] = useState('All');
 
+
+
     useEffect(() => {
-        if (!location.state?.jobStarted) return;
-        toast.success('Job started', {
-            description: 'When your provider finishes, you’ll get a notification to confirm or dispute within 48 hours.',
-        });
-        navigate(location.pathname + location.search, { replace: true, state: {} });
+
     }, [location.state, location.pathname, location.search, navigate]);
 
     const getStatusColor = (status) => {
@@ -99,6 +98,8 @@ const MyRequests = () => {
                 
                 <main className="flex-1 overflow-y-auto bg-white">
                     <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 pb-24 md:pb-10 space-y-6">
+
+
 
                         {/* Header */}
                         <div className="flex items-end justify-between">

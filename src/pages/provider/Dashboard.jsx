@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
@@ -8,6 +8,7 @@ import KYCModal from '../../components/provider/KYCModal';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useLocationHeartbeat } from '../../hooks/useLocationHeartbeat';
+import { supabase } from '../../lib/supabase';
 
 const categoryIcon = (cat) => {
     const c = (cat || '').toLowerCase();
@@ -21,9 +22,34 @@ const ProviderDashboard = () => {
     const { currentUser } = useAuth();
     const { jobs } = useData();
     const navigate = useNavigate();
+    const [walletBalance, setWalletBalance] = useState(0);
+    const [ledger, setLedger] = useState([]);
+    const [metricsLoading, setMetricsLoading] = useState(true);
 
     // Start live location tracking for proximity matching
     useLocationHeartbeat();
+
+    useEffect(() => {
+        if (currentUser?.id) {
+            fetchWalletData();
+        }
+    }, [currentUser]);
+
+    const fetchWalletData = async () => {
+        try {
+            const [profileRes, ledgerRes] = await Promise.all([
+                supabase.from('provider_profiles').select('wallet_balance').eq('id', currentUser.id).single(),
+                supabase.from('wallet_ledger').select('*').eq('provider_id', currentUser.id).order('created_at', { ascending: false })
+            ]);
+            
+            if (profileRes.data) setWalletBalance(profileRes.data.wallet_balance || 0);
+            if (ledgerRes.data) setLedger(ledgerRes.data || []);
+        } catch (error) {
+            console.error('Error fetching dashboard metrics:', error);
+        } finally {
+            setMetricsLoading(false);
+        }
+    };
 
     const isVerified = currentUser?.kycCompleted === true;
     const kycCompleted = currentUser?.kycCompleted === true;
@@ -31,27 +57,45 @@ const ProviderDashboard = () => {
 
     const st = (v) => String(v || '').toLowerCase().replace(/\s+/g, '_');
 
-    const completedJobs = jobs.filter(j =>
-        (j.providerId === (currentUser?.id || currentUser?.uid)) &&
-        ['completed', 'payment_released'].includes(st(j.status))
-    );
-
-    const totalEarnings = completedJobs.reduce((acc, j) => acc + (Number(j.finalAmount) || Number(j.budget) || 0), 0);
-
+    // Stats from Ledger (Financial Reality)
+    const credits = ledger.filter(item => item.entry_type === 'credit');
+    const totalEarnings = credits.reduce((acc, item) => acc + Number(item.amount), 0);
+    
     const now = new Date();
-    const monthlyJobs = completedJobs.filter(j => {
-        const d = j.completedAt ? new Date(j.completedAt) : (j.updatedAt instanceof Date ? j.updatedAt : null);
-        return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    });
 
-    const nearbyRequests = jobs.filter(j =>
-        st(j.status) === 'open' ||
-        (st(j.status) === 'pending' && (j.providerId === (currentUser?.id || currentUser?.uid)))
+    // Stats from Jobs (Operational Reality) - MATCHING MyJobs.jsx EXACTLY
+    const MY_JOBS_STATUSES = ['provider_accepted', 'negotiating', 'awaiting_payment', 'payment_secured', 'in_progress', 'Completed', 'Canceled', 'payment_released'];
+    const myJobs = (jobs || []).filter(j =>
+        j.providerId === currentUser?.uid &&
+        MY_JOBS_STATUSES.includes(j.status)
+    );
+    
+    const completedJobsCount = myJobs.filter(j => 
+        ['Completed', 'Canceled', 'payment_released'].includes(j.status)
+    ).length;
+
+    const monthlyJobsCount = myJobs.filter(j => {
+        if (!['Completed', 'Canceled', 'payment_released'].includes(j.status)) return false;
+        
+        // Match the date logic from MyJobs (which uses createdAt for display)
+        // or use the most reliable timestamp available.
+        const d = j.completed_at ? new Date(j.completed_at) : 
+                 (j.completedAt?.toDate ? j.completedAt.toDate() : 
+                 (j.updatedAt?.toDate ? j.updatedAt.toDate() : 
+                 (j.createdAt?.toDate ? j.createdAt.toDate() : 
+                 (j.createdAt?.seconds ? new Date(j.createdAt.seconds * 1000) : null))));
+                 
+        return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+
+    const nearbyRequests = (jobs || []).filter(j =>
+        ['open', 'pending'].includes(st(j.status)) ||
+        (j.providerId === currentUser?.uid && st(j.status) === 'pending')
     );
 
     const schedule = jobs.filter(j =>
         ['provider_accepted', 'negotiating', 'awaiting_payment', 'payment_secured', 'scheduled', 'in_progress'].includes(st(j.status)) &&
-        (j.providerId === (currentUser?.id || currentUser?.uid))
+        j.providerId === currentUser?.uid
     );
 
 
@@ -152,7 +196,7 @@ const ProviderDashboard = () => {
                                     ₦{totalEarnings.toLocaleString()}
                                 </h2>
                                 <p className="text-xs sm:text-sm opacity-50 font-medium">
-                                    {completedJobs.length} job{completedJobs.length !== 1 ? 's' : ''} completed
+                                    {completedJobsCount} job{completedJobsCount !== 1 ? 's' : ''} completed
                                 </p>
                             </div>
 
@@ -163,7 +207,7 @@ const ProviderDashboard = () => {
                                 </div>
                                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider opacity-70 mb-2">This Month</p>
                                 <h2 className="text-2xl sm:text-3xl font-bold leading-none mb-3">
-                                    {monthlyJobs.length}
+                                    {monthlyJobsCount}
                                     <span className="text-sm font-medium opacity-70 ml-1">jobs</span>
                                 </h2>
                                 <p className="text-xs sm:text-sm opacity-80 font-medium">
