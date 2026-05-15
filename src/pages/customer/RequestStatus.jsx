@@ -40,22 +40,13 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
     const [finalized, setFinalized] = useState(false);
     const [rejected, setRejected] = useState(false);
 
-    // Filter messages for this specific job
-    const messages = allMessages.filter(m => m.job_id === requestId);
+    // Filter messages for this specific job AND this specific provider thread
+    const messages = allMessages.filter(m => m.job_id === requestId && m.provider_id === provider?.id);
 
     useEffect(() => {
-        if (requestId) fetchMessages(requestId);
-    }, [requestId, fetchMessages]);
-
-    useEffect(() => {
-        if (!requestId) return undefined;
-
-        const intervalId = window.setInterval(() => {
-            fetchMessages(requestId);
-        }, 5000);
-
-        return () => window.clearInterval(intervalId);
-    }, [requestId, fetchMessages]);
+        if (!requestId || !provider?.id) return;
+        fetchMessages(requestId, provider.id);
+    }, [requestId, provider?.id, fetchMessages]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -76,10 +67,10 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
     const send = async (text, extra = {}) => {
         if (!text.trim()) return;
         try {
-            await sendMessage(requestId, text, extra.isPriceProposal ? 'price_proposal' : 'text', extra);
+            await sendMessage(requestId, text, extra.isPriceProposal ? 'price_proposal' : 'text', extra, provider.id);
             setInput('');
             // Immediately refresh messages after sending
-            await fetchMessages(requestId);
+            await fetchMessages(requestId, provider.id);
             // toast.success removed
         } catch (error) {
             console.error('Failed to send message:', error);
@@ -96,7 +87,7 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
     const handleAccept = async (price) => {
         setAgreed(true);
         await finalizeAgreement(requestId, price);
-        await sendMessage(requestId, `✓ Price agreed at ₦${Number(price).toLocaleString()}. Proceed to payment.`, 'system');
+        await sendMessage(requestId, `✓ Price agreed at ₦${Number(price).toLocaleString()}. Proceed to payment.`, 'system', {}, provider.id);
     };
 
     /* Finalise flow */
@@ -105,23 +96,23 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
         const p = Number(finalizePrice);
         if (!p) return;
         setShowFinalizeInput(false);
-        await sendMessage(requestId, `Customer sent a finalise request at ₦${p.toLocaleString()}.`, 'system', { finalizePrice: p });
+        await sendMessage(requestId, `Customer sent a finalise request at ₦${p.toLocaleString()}.`, 'system', { finalizePrice: p }, provider.id);
     };
     
     const confirmFinalize = async (price) => {
         setFinalized(true);
         await finalizeAgreement(requestId, price);
-        await sendMessage(requestId, `✓ Job finalised at ₦${Number(price).toLocaleString()}. Tap "Proceed to Payment" to secure the booking.`, 'system');
+        await sendMessage(requestId, `✓ Job finalised at ₦${Number(price).toLocaleString()}. Tap "Proceed to Payment" to secure the booking.`, 'system', {}, provider.id);
         setTimeout(() => onFinalized?.(price), 1200);
     };
 
     const declineFinalize = () => {
-        sendMessage(requestId, 'Customer declined the finalise request. Negotiation continues.', 'system');
+        sendMessage(requestId, 'Customer declined the finalise request. Negotiation continues.', 'system', {}, provider.id);
     };
 
     const handleReject = () => {
         setRejected(true);
-        sendMessage(requestId, 'Customer rejected the offer.', 'system');
+        sendMessage(requestId, 'Customer rejected the offer.', 'system', {}, provider.id);
     };
 
     return (
@@ -296,7 +287,7 @@ const RequestStatus = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { currentUser } = useAuth();
-    const { requests, getProviders, getInterestedProviders, releasePayment } = useData();
+    const { requests, getProviders, getProviderProfile, getInterestedProviders, releasePayment } = useData();
     const [request, setRequest] = useState(null);
     const [interestedProviders, setInterestedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -352,13 +343,12 @@ const RequestStatus = () => {
                 .catch(() => setInterestedProviders([]));
         } else if (req.worker_id) {
             // For private or finalized public: Show only assigned provider
-            getProviders('All').then(allProviders => {
-                const assigned = allProviders.find(p => p.id === req.worker_id);
+            getProviderProfile(req.worker_id).then(assigned => {
                 if (assigned) {
                     setInterestedProviders([{
                         ...assigned,
                         proposed_price: req.agreedPrice || req.budget_estimate,
-                        message: "I'm working on your request.",
+                        message: "Targeted provider for this request.",
                         verified: assigned.isVerified,
                         isAccepted: true,
                     }]);
@@ -557,21 +547,23 @@ const RequestStatus = () => {
 
                             {/* 🎉 Provider Accepted — Start Negotiating CTA */}
                             {normalizedStatus === 'provider_accepted' && (
-                                <div className="mt-8 py-6 border-y border-emerald-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-                                            <span className="material-icons text-emerald-500 text-xl">handshake</span>
+                                <div className="mt-8 p-5 sm:p-6 bg-emerald-50/40 rounded-2xl border border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                                            <span className="material-icons text-emerald-600 text-2xl">handshake</span>
                                         </div>
                                         <div>
-                                            <p className="font-bold text-gray-900 text-sm">Provider Accepted!</p>
-                                            <p className="text-xs text-gray-500 mt-0.5">Start negotiating to agree on a price and secure the booking.</p>
+                                            <h3 className="font-bold text-gray-900 text-base tracking-tight">Provider Accepted!</h3>
+                                            <p className="text-[13px] text-gray-600 mt-0.5">Start negotiating to agree on a price and secure the booking.</p>
                                         </div>
                                     </div>
                                     <button
                                         onClick={() => {
-                                            if (interestedProviders[0]) setNegotiatingWith(interestedProviders[0]);
+                                            const prov = interestedProviders[0];
+                                            if (prov) setNegotiatingWith(prov);
                                             else toast.error("Provider details not loaded yet.");
                                         }}
+                                        className="inline-flex items-center justify-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm px-6 py-3 rounded-xl transition-all shadow-sm shadow-emerald-500/20 whitespace-nowrap"
                                     >
                                         <span className="material-icons text-base">chat</span>
                                         Start Negotiating
@@ -706,13 +698,13 @@ const RequestStatus = () => {
                             </div>
                         </div>
 
-                        {/* ── Interested Providers (Public Requests Only) ──────────────── */}
-                        {request.request_type === 'public' && 
-                         (['open', 'interested', 'provider_accepted', 'negotiating'].includes(normalizedStatus)) && 
+                        {/* ── Interested / Targeted Providers ──────────────── */}
+                        {(request.request_type === 'public' || request.request_type === 'private') && 
+                         (['open', 'interested', 'provider_accepted', 'negotiating', 'awaiting_payment', 'payment_secured'].includes(normalizedStatus)) && 
                          interestedProviders.length > 0 ? (
                             <div className="mt-2">
                                 <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-4 flex items-center gap-2">
-                                    {normalizedStatus === 'provider_accepted' ? 'Providers who accepted' : 'Interested Providers'}
+                                    {request.request_type === 'private' ? 'Targeted Provider' : normalizedStatus === 'provider_accepted' ? 'Providers who accepted' : 'Interested Providers'}
                                 </h3>
                                 <div className="space-y-1">
                                     {interestedProviders.map((p, idx) => (
@@ -721,8 +713,12 @@ const RequestStatus = () => {
                                             className="py-4 transition-all border-b border-gray-50 last:border-0"
                                         >
                                             <div 
-                                                className="flex items-center gap-4 cursor-pointer group"
-                                                onClick={() => setExpandedProviderId(expandedProviderId === p.id ? null : p.id)}
+                                                className={`flex items-center gap-4 ${request.request_type !== 'private' ? 'cursor-pointer group' : ''}`}
+                                                onClick={() => {
+                                                    if (request.request_type !== 'private') {
+                                                        setExpandedProviderId(expandedProviderId === p.id ? null : p.id);
+                                                    }
+                                                }}
                                             >
                                             {/* Avatar */}
                                             <div className="w-12 h-12 rounded-full border border-gray-200 overflow-hidden shrink-0">
@@ -737,7 +733,7 @@ const RequestStatus = () => {
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between gap-2 mb-0.5">
                                                     <div className="flex items-center gap-1.5 min-w-0">
-                                                        <h3 className="text-[15px] font-bold text-gray-900 truncate group-hover:text-[#10B981] transition-colors">
+                                                        <h3 className={`text-[15px] font-bold text-gray-900 truncate ${request.request_type !== 'private' ? 'group-hover:text-[#10B981]' : ''} transition-colors`}>
                                                             {p.full_name || p.displayName}
                                                         </h3>
                                                         <span className="material-icons text-[#10B981] text-[15px] shrink-0" title="Verified">verified</span>
@@ -760,65 +756,70 @@ const RequestStatus = () => {
                                                 </div>
                                             </div>
 
-                                                {/* Rating + Toggle */}
+                                                {/* Rating + Toggle / Action */}
                                                 <div className="flex items-center gap-3 shrink-0">
                                                     <div className="hidden sm:flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100">
                                                         <span className="material-icons text-yellow-500 text-[14px]">star</span>
                                                         <span className="font-bold text-[12px] text-gray-900">{p.rating || '5.0'}</span>
                                                     </div>
-                                                    <span className={`material-icons text-gray-400 transition-transform duration-300 ${expandedProviderId === p.id ? 'rotate-180' : ''}`}>
-                                                        expand_more
-                                                    </span>
+                                                    
+                                                    {request.request_type === 'private' ? null : (
+                                                        <span className={`material-icons text-gray-400 transition-transform duration-300 ${expandedProviderId === p.id ? 'rotate-180' : ''}`}>
+                                                            expand_more
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
 
-                                            {/* Expanded Details */}
-                                            <AnimatePresence>
-                                                {expandedProviderId === p.id && (
-                                                    <motion.div
-                                                        initial={{ height: 0, opacity: 0 }}
-                                                        animate={{ height: 'auto', opacity: 1 }}
-                                                        exit={{ height: 0, opacity: 0 }}
-                                                        className="overflow-hidden"
-                                                    >
-                                                        <div className="pt-4 pb-2 space-y-4">
-                                                            {/* Bio */}
-                                                            {p.bio && (
+                                            {/* Expanded Details (Public Requests Only) */}
+                                            {request.request_type !== 'private' && (
+                                                <AnimatePresence>
+                                                    {expandedProviderId === p.id && (
+                                                        <motion.div
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            className="overflow-hidden"
+                                                        >
+                                                            <div className="pt-4 pb-2 space-y-4">
+                                                                {/* Bio */}
+                                                                {p.bio && (
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">About Provider</p>
+                                                                        <p className="text-sm text-gray-600 leading-relaxed">{p.bio}</p>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Portfolio/Photos (Placeholder for now) */}
                                                                 <div>
-                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">About Provider</p>
-                                                                    <p className="text-sm text-gray-600 leading-relaxed">{p.bio}</p>
+                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Portfolio Photos</p>
+                                                                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                                                        {[1, 2, 3].map(i => (
+                                                                            <div key={i} className="w-24 h-24 rounded-xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
+                                                                                <span className="material-icons text-gray-200 text-2xl">image</span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
                                                                 </div>
-                                                            )}
 
-                                                            {/* Portfolio/Photos (Placeholder for now) */}
-                                                            <div>
-                                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Portfolio Photos</p>
-                                                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                                                    {[1, 2, 3].map(i => (
-                                                                        <div key={i} className="w-24 h-24 rounded-xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
-                                                                            <span className="material-icons text-gray-200 text-2xl">image</span>
-                                                                        </div>
-                                                                    ))}
+                                                                {/* Actions */}
+                                                                <div className="pt-2 flex items-center gap-3">
+                                                                    <button 
+                                                                        onClick={(e) => { e.stopPropagation(); setNegotiatingWith(p); }}
+                                                                        className="flex-1 py-2.5 bg-[#0F172A] text-white text-sm font-bold rounded-xl hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                                                                    >
+                                                                        <span className="material-icons text-sm">chat</span>
+                                                                        Negotiate
+                                                                    </button>
+                                                                    <button className="flex-1 py-2.5 bg-gray-50 text-gray-600 text-sm font-bold rounded-xl hover:bg-gray-100 transition-all">
+                                                                        View Profile
+                                                                    </button>
                                                                 </div>
                                                             </div>
-
-                                                            {/* Actions */}
-                                                            <div className="pt-2 flex items-center gap-3">
-                                                                <button 
-                                                                    onClick={(e) => { e.stopPropagation(); setNegotiatingWith(p); }}
-                                                                    className="flex-1 py-2.5 bg-[#0F172A] text-white text-sm font-bold rounded-xl hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-                                                                >
-                                                                    <span className="material-icons text-sm">chat</span>
-                                                                    Negotiate
-                                                                </button>
-                                                                <button className="flex-1 py-2.5 bg-gray-50 text-gray-600 text-sm font-bold rounded-xl hover:bg-gray-100 transition-all">
-                                                                    View Profile
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

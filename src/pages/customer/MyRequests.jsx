@@ -98,6 +98,7 @@ const MyRequests = () => {
     };
 
     const isPrivateForCustomer = (r) => String(r.request_type || r.visibility || '').toLowerCase() === 'private';
+    const isPublicForCustomer = (r) => String(r.request_type || r.visibility || '').toLowerCase() === 'public';
 
     const filteredRequests = activeTab === 'All'
         ? allRequests
@@ -105,7 +106,9 @@ const MyRequests = () => {
             ? allRequests.filter(isTerminalHistory)
             : activeTab === 'Private'
                 ? allRequests.filter(isPrivateForCustomer)
-                : allRequests.filter(r => !isTerminalHistory(r));
+                : activeTab === 'Public'
+                    ? allRequests.filter(isPublicForCustomer)
+                    : allRequests.filter(r => !isTerminalHistory(r));
 
     return (
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
@@ -146,6 +149,7 @@ const MyRequests = () => {
                         <div className="flex gap-6 border-b border-gray-100">
                             {[
                                 { id: 'All', count: allRequests.length },
+                                { id: 'Public', count: allRequests.filter(isPublicForCustomer).length },
                                 { id: 'Private', count: allRequests.filter(isPrivateForCustomer).length },
                                 { id: 'Active', count: allRequests.filter(r => !isTerminalHistory(r)).length },
                                 { id: 'History', count: allRequests.filter(isTerminalHistory).length },
