@@ -20,12 +20,6 @@ serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
-    await supabaseClient.from("edge_function_logs").insert({
-      function_name: "notifications",
-      status: "success",
-      metadata: { action }
-    });
-
     // ── 1. SEND IN-APP NOTIFICATION ────────────────────────
     if (action === "send") {
       const { userId, title, body: notifBody, type, icon, iconBg, iconColor, ctaPath, ctaLabel, secondaryLabel } = body;
