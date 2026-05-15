@@ -124,10 +124,29 @@ export function DataProvider({ children }) {
     if (!currentUser || currentUser.role !== 'provider') return;
 
     const fetchProviderJobs = async () => {
-      const { data, error } = await supabase
+      // Fetch jobs where:
+      // 1. User is the worker
+      // 2. Job is public and open
+      // 3. User has an application (negotiating phase)
+      
+      const { data: applications } = await supabase
+        .from('job_applications')
+        .select('job_id')
+        .eq('provider_id', currentUser.id);
+      
+      const appliedJobIds = (applications || []).map(a => a.job_id);
+      
+      let query = supabase
         .from('jobs')
-        .select('*')
-        .or(`worker_id.eq.${currentUser.id},status.eq.open`)
+        .select('*');
+      
+      const orConditions = [`worker_id.eq.${currentUser.id}`, 'status.eq.open'];
+      if (appliedJobIds.length > 0) {
+        orConditions.push(`id.in.(${appliedJobIds.map(id => `"${id}"`).join(',')})`);
+      }
+      
+      const { data, error } = await query
+        .or(orConditions.join(','))
         .order('created_at', { ascending: false });
 
       if (error) { console.error('Fetch provider jobs error:', error); toast.error('Failed to load jobs'); }
@@ -399,8 +418,10 @@ export function DataProvider({ children }) {
       throw new Error(`Failed to accept job: ${upsertError.message}`);
     }
     
-    // SECOND: Only after acceptance is recorded, update the job status
-    await updateJobStatus(jobId, 'provider_accepted', { worker_id: currentUser.id });
+    // SECOND: Update the job status. ONLY set worker_id if it's a private request.
+    // For public requests, multiple pros can accept and negotiate; assignment happens later.
+    const extra = (job?.request_type === 'private') ? { worker_id: currentUser.id } : {};
+    await updateJobStatus(jobId, 'provider_accepted', extra);
     
     // THIRD: Create virtual account (non-blocking)
     try {
@@ -520,15 +541,19 @@ export function DataProvider({ children }) {
 
   // ── Negotiation / Messaging ──────────────────────────
 
-  const fetchMessages = async (jobId) => {
+  const fetchMessages = async (jobId, providerId = null) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('negotiations')
         .select('*')
         .eq('job_id', jobId)
         .order('created_at', { ascending: true });
       
-      if (error) throw error;
+      if (providerId) {
+        query = query.eq('provider_id', providerId);
+      }
+      
+      const { data, error } = await query;
       
       // Transform data to match component expectations
       const transformedMessages = data.map(msg => ({
@@ -555,15 +580,18 @@ export function DataProvider({ children }) {
     }
   };
   
-  // Subscribe to realtime messages for a job
-  const subscribeToMessages = (jobId) => {
+  // Subscribe to realtime messages for a job/provider thread
+  const subscribeToMessages = (jobId, providerId = null) => {
     if (!jobId) return;
     
+    let filter = `job_id=eq.${jobId}`;
+    if (providerId) filter += `,provider_id=eq.${providerId}`;
+
     const channel = supabase
-      .channel(`negotiations_${jobId}`)
+      .channel(`negotiations_${jobId}_${providerId || 'global'}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'negotiations', filter: `job_id=eq.${jobId}` },
+        { event: 'INSERT', schema: 'public', table: 'negotiations', filter },
         (payload) => {
           const newMsg = {
             ...payload.new,
@@ -590,21 +618,43 @@ export function DataProvider({ children }) {
     return channel;
   };
 
-  const sendMessage = async (jobId, content, type = 'text', metadata = {}) => {
+  const sendMessage = async (jobId, content, type = 'text', metadata = {}, providerId = null) => {
     if (!currentUser) return;
     try {
-      const isPriceProposal = type === 'price_proposal' || type === 'budget_proposal';
-      const isFinalizeRequest = type === 'finalize_request' || metadata.finalizePrice != null;
-      const messageType = isFinalizeRequest ? 'finalize_request' : (isPriceProposal ? 'price_proposal' : (type === 'system' ? 'system' : 'text'));
-      const price = metadata.finalizePrice ?? metadata.price ?? metadata.budget ?? null;
+      // Resolve provider_id: 
+      // 1. Explicitly passed providerId
+      // 2. Current user if they are a provider
+      // 3. The job's worker_id (for private requests)
+      let targetProviderId = providerId;
       
+      if (!targetProviderId) {
+        if (currentUser.role === 'provider') {
+          targetProviderId = currentUser.id;
+        } else {
+          // If customer is sending and didn't pass providerId, check if job has a worker_id
+          const { data: jobInfo } = await supabase
+            .from('jobs')
+            .select('worker_id')
+            .eq('id', jobId)
+            .single();
+          targetProviderId = jobInfo?.worker_id;
+        }
+      }
+
+      const isPriceProposal = type === 'price_proposal' || type === 'budget_proposal';
+      const isFinalizeRequest = type === 'finalize_request' || metadata?.finalizePrice != null;
+      const messageType = isFinalizeRequest ? 'finalize_request' : (isPriceProposal ? 'price_proposal' : (type === 'system' ? 'system' : 'text'));
+      const price = metadata?.finalizePrice ?? metadata?.price ?? metadata?.proposed_price ?? metadata?.budget ?? null;
+
       const { error } = await supabase
         .from('negotiations')
         .insert([{
           job_id: jobId,
           sender_id: currentUser.id,
+          provider_id: targetProviderId,
           message: content,
           message_type: messageType,
+          metadata: metadata,
           price: price
         }]);
       
@@ -614,7 +664,9 @@ export function DataProvider({ children }) {
       const { data: job } = await supabase.from('jobs').select('customer_id, worker_id, title').eq('id', jobId).single();
       if (job) {
           const isCustomer = currentUser.id === job.customer_id;
-          const receiverId = isCustomer ? job.worker_id : job.customer_id;
+          // If customer is sending, notify the specific provider in this thread.
+          // If provider is sending, notify the customer.
+          const receiverId = isCustomer ? targetProviderId : job.customer_id;
           
           if (receiverId) {
               await sendNotification(receiverId, {
@@ -746,6 +798,34 @@ export function DataProvider({ children }) {
     } catch (error) {
       console.error('Get providers error:', error);
       return [];
+    }
+  }, []);
+
+  // Fetch a single provider profile with details
+  const getProviderProfile = useCallback(async (providerId) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*, provider_profiles(*)')
+        .eq('id', providerId)
+        .single();
+
+      if (error) throw error;
+      if (!data) return null;
+
+      const profile = data.provider_profiles?.[0] || {};
+      return {
+        ...data,
+        ...profile,
+        uid: data.id,
+        displayName: data.full_name,
+        photoURL: data.avatar_url,
+        category: profile.trade_category?.[0] || profile.category || 'General Service',
+        isVerified: profile.verification_status === 'verified'
+      };
+    } catch (error) {
+      console.error('Get provider profile error:', error);
+      return null;
     }
   }, []);
 
@@ -1030,7 +1110,7 @@ export function DataProvider({ children }) {
     requests, jobs, verifications, users, earnings, notifications, loading,
     createRequest, updateJobStatus, acceptJob, startNegotiation,
     finalizeAgreement, securePayment, markJobInProgress, completeJob,
-    releasePayment, getProviders, getInterestedProviders, savedProviderIds, toggleSavedProvider,
+    releasePayment, getProviders, getProviderProfile, getInterestedProviders, savedProviderIds, toggleSavedProvider,
     submitReview, markNotificationRead, markAllNotificationsRead,
     createServicePost, updateServicePost, deleteServicePost, getServicePosts, getAllServicePosts, createSupportTicket,
     submitVerification, updateVerificationStatus, updateUserStatus,
