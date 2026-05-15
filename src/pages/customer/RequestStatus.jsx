@@ -303,6 +303,20 @@ const RequestStatus = () => {
     const [negotiatingWith, setNegotiatingWith] = useState(null);
     const [finalizedDeal, setFinalizedDeal] = useState(null); // { price, provider }
 
+    const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+    const [showJobStartedSuccess, setShowJobStartedSuccess] = useState(false);
+
+    useEffect(() => {
+        if (location.state?.paymentConfirmed) {
+            setShowPaymentSuccess(true);
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+        if (location.state?.jobStarted) {
+            setShowJobStartedSuccess(true);
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state, location.pathname, navigate]);
+
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         if (params.get('negotiate') === 'true' && interestedProviders.length > 0 && !negotiatingWith) {
@@ -406,6 +420,49 @@ const RequestStatus = () => {
 
                 <div className="flex-1 overflow-y-auto bg-white">
                     <div className="max-w-5xl mx-auto w-full p-4 sm:p-6 md:p-8 pb-24 md:pb-10">
+
+                        {/* Inline Notifications */}
+                        <AnimatePresence>
+                            {showPaymentSuccess && (
+                                <motion.div 
+                                    initial={{ opacity: 0, height: 0, marginBottom: 0 }} 
+                                    animate={{ opacity: 1, height: 'auto', marginBottom: 24 }} 
+                                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                    className="p-4 bg-green-50 rounded-2xl border border-green-100 flex items-center gap-4 relative overflow-hidden mb-6"
+                                >
+                                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center shrink-0">
+                                        <span className="material-icons text-[#10B981]">verified</span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-[13px] font-bold text-[#10B981] leading-tight">Payment confirmed</p>
+                                        <p className="text-[12px] font-medium text-green-700/80 mt-0.5">Funds are held securely. You can find your job start code in the actions below.</p>
+                                    </div>
+                                    <button onClick={() => setShowPaymentSuccess(false)} className="text-green-300 hover:text-green-500 transition-colors">
+                                        <span className="material-icons text-lg">close</span>
+                                    </button>
+                                </motion.div>
+                            )}
+
+                            {showJobStartedSuccess && (
+                                <motion.div 
+                                    initial={{ opacity: 0, height: 0, marginBottom: 0 }} 
+                                    animate={{ opacity: 1, height: 'auto', marginBottom: 24 }} 
+                                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                    className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-center gap-4 relative overflow-hidden mb-6"
+                                >
+                                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                                        <span className="material-icons text-blue-600">play_circle</span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-[13px] font-bold text-blue-700 leading-tight">Job is Live!</p>
+                                        <p className="text-[12px] font-medium text-blue-600/80 mt-0.5">Your provider has started the job. You'll be notified when they complete it.</p>
+                                    </div>
+                                    <button onClick={() => setShowJobStartedSuccess(false)} className="text-blue-300 hover:text-blue-500 transition-colors">
+                                        <span className="material-icons text-lg">close</span>
+                                    </button>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         {/* Page header */}
                         <div className="mb-10 pb-8 border-b border-gray-100">
