@@ -364,17 +364,61 @@ serve(async (req) => {
       
       const response = await fetch(`${squadBaseUrl}/virtual-account/simulate/payment`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${squadApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          virtual_account_number,
-          amount: String(amount),
-        }),
+        headers: { Authorization: `Bearer ${squadApiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ virtual_account_number, amount: String(amount) }),
       });
 
       const resData = await response.json();
+
+      // ── SANDBOX SHORT-CIRCUIT ─────────────────────────────
+      // Manually trigger the escrow/ledger logic so the UI updates 
+      // immediately without waiting for a real webhook.
+      if (resData.success) {
+        console.log(`[Simulate] Success! Manually processing ledger for VA: ${virtual_account_number}`);
+        
+        // Check if this is a Job Escrow VA
+        const { data: escrowVA } = await supabaseClient
+          .from("job_escrow_vas")
+          .select("*")
+          .eq("virtual_account_number", virtual_account_number)
+          .maybeSingle();
+
+        if (escrowVA) {
+          const settledAmount = Number(amount);
+          const commission = Math.round(settledAmount * 0.10 * 100) / 100;
+          const netAmount = settledAmount - commission;
+
+          // Write to escrow_ledger
+          await supabaseClient.from("escrow_ledger").insert({
+            job_id: escrowVA.job_id,
+            provider_id: escrowVA.provider_id,
+            entry_type: "held",
+            gross_amount: settledAmount,
+            commission_amount: commission,
+            net_amount: netAmount,
+            description: `(SIMULATED) Escrow held for job ${escrowVA.job_id}`
+          });
+
+          // Log transaction for history
+          await supabaseClient.from("transactions").insert({
+            reference: `SIM_${Date.now()}`,
+            provider_id: escrowVA.provider_id,
+            settled_amount: settledAmount,
+            status: "held",
+            description: `Payment received in escrow for job ${escrowVA.job_id}`
+          });
+
+          // Update Job
+          await supabaseClient.from("jobs").update({
+            status: "payment_secured",
+            escrow_amount: settledAmount,
+            escrow_status: "held"
+          }).eq("id", escrowVA.job_id);
+          
+          console.log("[Simulate] Escrow ledger updated manually.");
+        }
+      }
+
       return new Response(JSON.stringify(resData), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: response.status,
@@ -462,22 +506,69 @@ serve(async (req) => {
 
       // Process based on event type
       if (payload.event_type === "virtual-account.incoming_transfer") {
-        // Find provider
+        const customerId = payload.customer_identifier;
+        const settledAmount = parseFloat(payload.settled_amount);
+        const COMMISSION_RATE = 0.10;
+
+        // ── Path A: Job Escrow VA (new escrow model) ──────────
+        const { data: escrowVA } = await supabaseClient
+          .from("job_escrow_vas")
+          .select("job_id, provider_id")
+          .eq("customer_identifier", customerId)
+          .maybeSingle();
+
+        if (escrowVA) {
+          const { job_id, provider_id } = escrowVA;
+          const commission = Math.round(settledAmount * COMMISSION_RATE * 100) / 100;
+          const netAmount = settledAmount - commission;
+
+          // 1. Write to escrow_ledger
+          await supabaseClient.from("escrow_ledger").insert({
+            job_id,
+            provider_id,
+            entry_type: "held",
+            gross_amount: settledAmount,
+            commission_amount: commission,
+            net_amount: netAmount,
+            squad_reference: payload.transaction_reference,
+            squad_response: payload,
+            description: `Customer payment held in escrow for job ${job_id}`
+          });
+
+          // 2. Log in transactions table for visibility
+          await supabaseClient.from("transactions").insert({
+            reference: payload.transaction_reference,
+            provider_id: provider_id,
+            settled_amount: settledAmount,
+            status: "held",
+            squad_response: payload
+          });
+
+          // 3. Mark job as payment_secured
+          await supabaseClient.from("jobs").update({
+            status: "payment_secured",
+            escrow_amount: settledAmount,
+            escrow_status: "held"
+          }).eq("id", job_id);
+
+          console.log(`[Webhook] Escrow held: ₦${settledAmount} for job ${job_id}, provider ${provider_id}`);
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+
+        // ── Path B: Legacy Provider Static VA (existing model) ─
         const { data: vaRecord } = await supabaseClient
           .from("virtual_accounts")
           .select("provider_id")
-          .eq("customer_identifier", payload.customer_identifier)
-          .single();
+          .eq("customer_identifier", customerId)
+          .maybeSingle();
 
         if (vaRecord) {
           const providerId = vaRecord.provider_id;
-          const amount = parseFloat(payload.settled_amount);
 
-          // Create transaction & ledger entry
           const { data: tx } = await supabaseClient.from("transactions").insert({
             reference: payload.transaction_reference,
             provider_id: providerId,
-            settled_amount: amount,
+            settled_amount: settledAmount,
             status: "completed",
             squad_response: payload
           }).select().single();
@@ -487,7 +578,7 @@ serve(async (req) => {
               provider_id: providerId,
               transaction_id: tx.id,
               entry_type: "credit",
-              amount: amount,
+              amount: settledAmount,
               description: `Payment received via VA ${payload.virtual_account_number}`
             });
           }
@@ -495,6 +586,206 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    }
+
+    // ── 10. CREATE JOB ESCROW VA ─────────────────────────────
+    // Creates a job-scoped VA so payment goes to TaskMate (not provider).
+    if (action === "create-job-escrow-va") {
+      const { jobId, providerId, customerEmail, customerFirstName, customerLastName, customerPhone, amount } = body;
+
+      if (!jobId || !providerId) {
+        return new Response(JSON.stringify({ success: false, message: "jobId and providerId are required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // Idempotency: return existing VA if one already exists for this job
+      const { data: existing } = await supabaseClient
+        .from("job_escrow_vas")
+        .select("*")
+        .eq("job_id", jobId)
+        .maybeSingle();
+
+      if (existing) {
+        return new Response(JSON.stringify({ success: true, data: existing, cached: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // Fetch TaskMate's beneficiary account (required by Squad for settlement)
+      const { data: beneficiaryConfig } = await supabaseClient
+        .from("payment_config")
+        .select("config_value")
+        .eq("config_key", "taskmate_beneficiary_account")
+        .single();
+
+      const beneficiaryAccount = beneficiaryConfig?.config_value || Deno.env.get("SQUAD_BENEFICIARY_ACCOUNT");
+
+      if (!beneficiaryAccount) {
+        return new Response(JSON.stringify({ success: false, message: "Beneficiary account not configured. Set taskmate_beneficiary_account in payment_config." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // Create a new static VA via Squad (customer_identifier = jobId for routing)
+      const squadPayload = {
+        customer_identifier: jobId,
+        first_name: customerFirstName || "TaskMate",
+        last_name: customerLastName || "Escrow",
+        mobile_num: customerPhone || "08012345678",
+        email: customerEmail || "escrow@taskmate.ng",
+        bvn: "22" + Math.floor(100000000 + Math.random() * 900000000).toString(),
+        dob: "01/01/1990",
+        address: "1 TaskMate Way, Lagos",
+        gender: "1",
+        beneficiary_account: beneficiaryAccount  // Required: TaskMate GTBank account
+      };
+
+      const response = await fetch(`${squadBaseUrl}/virtual-account`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${squadApiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(squadPayload)
+      });
+
+      const resData = await response.json();
+      if (!resData.success) throw new Error(resData.message || "Failed to create job escrow VA");
+
+      // Store in job_escrow_vas — use upsert to handle race conditions gracefully
+      // (React StrictMode double-invokes effects; two requests may arrive simultaneously)
+      const { error: saveError } = await supabaseClient
+        .from("job_escrow_vas")
+        .upsert({
+          job_id: jobId,
+          provider_id: providerId,
+          customer_identifier: jobId,
+          virtual_account_number: resData.data.virtual_account_number,
+          account_name: resData.data.account_name,
+          bank_name: resData.data.beneficiary_bank_name || "GTBank",
+          squad_response: resData.data
+        }, { onConflict: "customer_identifier" });
+
+      if (saveError) throw new Error(saveError.message);
+
+      // Re-fetch the saved row (works whether this was a fresh insert or a no-op)
+      const { data: saved } = await supabaseClient
+        .from("job_escrow_vas")
+        .select("*")
+        .eq("job_id", jobId)
+        .single();
+
+      return new Response(JSON.stringify({ success: true, data: saved }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── 11. RELEASE ESCROW ───────────────────────────────────
+    // Moves funds from escrow into the provider's platform wallet.
+    // Called when customer clicks "Release Payment".
+    if (action === "release-escrow") {
+      const { jobId } = body;
+
+      if (!jobId) {
+        return new Response(JSON.stringify({ success: false, message: "jobId is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      console.log(`[release-escrow] Attempting release for jobId: ${jobId}`);
+
+      // Find the held escrow entry for this job
+      const { data: escrowEntry, error: escrowError } = await supabaseClient
+        .from("escrow_ledger")
+        .select("*")
+        .eq("job_id", jobId)
+        .eq("entry_type", "held")
+        .maybeSingle();
+
+      if (escrowError) throw escrowError;
+      
+      if (!escrowEntry) {
+        console.error(`[release-escrow] No held entry for ${jobId}. Searching by customer_identifier instead...`);
+        // Fallback: check if we can find it via job_escrow_vas
+        const { data: va } = await supabaseClient.from("job_escrow_vas").select("job_id").eq("job_id", jobId).maybeSingle();
+        if (!va) throw new Error(`Escrow record not found for job ${jobId}`);
+      }
+
+      const { provider_id, net_amount, gross_amount, commission_amount } = escrowEntry;
+
+      // 1. Mark escrow as released
+      await supabaseClient.from("escrow_ledger").insert({
+        job_id: jobId,
+        provider_id,
+        entry_type: "released",
+        gross_amount,
+        commission_amount,
+        net_amount,
+        description: `Escrow released to provider for job ${jobId}`
+      });
+
+      // 2. Log transaction for history
+      await supabaseClient.from("transactions").insert({
+        reference: `REL_${jobId}_${Date.now()}`,
+        provider_id: provider_id,
+        settled_amount: net_amount,
+        status: "completed",
+        description: `Payment released from escrow for job ${jobId}`
+      });
+
+      // 3. Credit provider's platform wallet (net amount, after commission)
+      const { data: providerProfile } = await supabaseClient
+        .from("provider_profiles")
+        .select("wallet_balance")
+        .eq("id", provider_id)
+        .single();
+
+      const newBalance = (Number(providerProfile?.wallet_balance || 0)) + net_amount;
+
+      await supabaseClient
+        .from("provider_profiles")
+        .update({ wallet_balance: newBalance })
+        .eq("id", provider_id);
+
+      // Log the CREDIT to wallet_ledger
+      await supabaseClient.from("wallet_ledger").insert({
+        provider_id: provider_id,
+        amount: net_amount,
+        entry_type: "credit",
+        description: `Job Payment: ${jobId} (Released from Escrow)`,
+        balance_after: newBalance,
+        metadata: { job_id: jobId, gross: gross_amount }
+      });
+
+      // Log the COMMISSION (for provider visibility)
+      await supabaseClient.from("wallet_ledger").insert({
+        provider_id: provider_id,
+        amount: -commission_amount,
+        entry_type: "debit",
+        description: `TaskMate Platform Fee (10%)`,
+        balance_after: newBalance,
+        metadata: { job_id: jobId, type: 'commission' }
+      });
+
+      // 4. Update job status
+      await supabaseClient.from("jobs").update({
+        status: "completed",
+        escrow_status: "released",
+        completed_at: new Date().toISOString()
+      }).eq("id", jobId);
+
+      console.log(`[release-escrow] ₦${net_amount} released to provider ${provider_id} for job ${jobId}`);
+
+      console.log(`[release-escrow] ₦${net_amount} released to provider ${provider_id} for job ${jobId}`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: "Escrow released successfully",
+        net_amount,
+        commission_amount,
+        new_wallet_balance: balanceAfter
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ error: "Unsupported action" }), { status: 400, headers: corsHeaders });
