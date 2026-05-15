@@ -71,6 +71,7 @@ export function AuthProvider({ children }) {
             accountNumber: data.provider_profiles.account_number,
             accountName: data.provider_profiles.account_name,
             isVerified: data.provider_profiles.verification_status === 'verified',
+            transactionPin: data.provider_profiles.transaction_pin,
           } : {}),
           // Flatten customer_profiles
           ...(data.customer_profiles ? {
@@ -246,6 +247,7 @@ export function AuthProvider({ children }) {
           accountNumber: updatedProviderProfiles.account_number,
           accountName: updatedProviderProfiles.account_name,
           isVerified: updatedProviderProfiles.verification_status === 'verified',
+          transactionPin: updatedProviderProfiles.transaction_pin,
         };
       });
       toast.success('Provider profile updated');
