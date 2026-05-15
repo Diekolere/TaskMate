@@ -462,8 +462,19 @@ export function DataProvider({ children }) {
     await updateJobStatus(jobId, 'negotiating');
   };
 
-  const finalizeAgreement = async (jobId, finalBudget) => {
-    await updateJobStatus(jobId, 'awaiting_payment', { final_budget: finalBudget, agreed_price: finalBudget });
+  const finalizeAgreement = async (jobId, finalBudget, providerId = null) => {
+    const updates = { 
+      status: 'awaiting_payment', 
+      final_budget: finalBudget, 
+      agreed_price: finalBudget 
+    };
+    
+    if (providerId) {
+      updates.worker_id = providerId;
+    }
+
+    await updateJobStatus(jobId, 'awaiting_payment', updates);
+    
     // Notify customer to proceed with payment
     const { data: job } = await supabase.from('jobs').select('customer_id, worker_id, title').eq('id', jobId).single();
     if (job) {
