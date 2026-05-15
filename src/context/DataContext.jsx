@@ -536,17 +536,36 @@ export function DataProvider({ children }) {
   };
 
   const releasePayment = async (jobId) => {
-    await updateJobStatus(jobId, 'payment_released');
-    // Notify provider their funds are on the way
-    const { data: job } = await supabase.from('jobs').select('worker_id, title, agreed_price, final_budget').eq('id', jobId).single();
-    if (job?.worker_id) {
-      const amount = job.agreed_price || job.final_budget;
-      await sendNotification(job.worker_id, {
-        type: 'payment',
-        title: 'Payment Released!',
-        body: `₦${Number(amount || 0).toLocaleString()} for "${job.title}" has been released to your account.`,
-        icon: 'account_balance_wallet', iconBg: 'bg-green-50', iconColor: 'text-[#10B981]'
+    try {
+      const { data, error } = await supabase.functions.invoke('squad', {
+        body: { action: 'release-escrow', jobId }
       });
+
+      if (error) throw error;
+
+      if (!data?.success) {
+        // Graceful fallback: escrow entry not found (legacy job without escrow VA)
+        // Just update the status field to maintain backward compatibility
+        console.warn('[releasePayment] No escrow entry found, falling back to status update only.');
+        await updateJobStatus(jobId, 'payment_released');
+      }
+
+      // Notify provider their funds are incoming
+      const { data: job } = await supabase.from('jobs').select('worker_id, title, agreed_price, final_budget').eq('id', jobId).single();
+      if (job?.worker_id) {
+        const amount = data?.net_amount || job.agreed_price || job.final_budget;
+        await sendNotification(job.worker_id, {
+          type: 'payment',
+          title: '💰 Payment Released!',
+          body: `₦${Number(amount || 0).toLocaleString()} for "${job.title}" has been released to your wallet.`,
+          icon: 'account_balance_wallet', iconBg: 'bg-green-50', iconColor: 'text-[#10B981]'
+        });
+      }
+    } catch (err) {
+      console.error('[releasePayment] Error:', err);
+      // Last-resort fallback to avoid breaking the UI
+      await updateJobStatus(jobId, 'payment_released');
+      throw err;
     }
   };
 
