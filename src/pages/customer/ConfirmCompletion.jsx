@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { uploadFile, generateFilePath } from '../../lib/supabase';
+import { useData } from '../../context/DataContext';
+import supabase, { uploadFile, generateFilePath } from '../../lib/supabase';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
@@ -67,19 +68,15 @@ const ConfirmCompletion = () => {
     const { jobId } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const { releasePayment } = useData();
 
-    const amount = 15000;
-    const commission = Math.round(amount * COMMISSION_RATE);
-    const providerReceives = amount - commission;
-
+    const [job, setJob] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [secondsLeft, setSecondsLeft] = useState(DEMO_SECONDS_LEFT);
     const [phase, setPhase] = useState('pending');
-    const [disputeReason, setDisputeReason] = useState('');
-    const [disputeCategory, setDisputeCategory] = useState(DISPUTE_CATEGORIES[0]);
-    const [categoryOpen, setCategoryOpen] = useState(false);
-
+    
     // AI Dispute Assistant state
-    const [disputeStep, setDisputeStep] = useState(0); // 0=category, 1=questions, 2=photos, 3=summary
+    const [disputeStep, setDisputeStep] = useState(0); 
     const [answers, setAnswers] = useState({});
     const [generatingSummary, setGeneratingSummary] = useState(false);
     const [generatedSummary, setGeneratedSummary] = useState('');
@@ -89,22 +86,51 @@ const ConfirmCompletion = () => {
     const evidenceRef = useRef();
 
     useEffect(() => {
+        const fetchJob = async () => {
+            const { data, error } = await supabase
+                .from('jobs')
+                .select('*')
+                .eq('id', jobId)
+                .single();
+            
+            if (data) {
+                setJob(data);
+                // If it's already released, update the phase
+                if (data.status === 'payment_released') setPhase('released');
+                if (data.status === 'disputed') setPhase('disputed');
+            }
+            setLoading(false);
+        };
+        fetchJob();
+    }, [jobId]);
+
+    useEffect(() => {
         if (phase !== 'pending') return;
         const t = setInterval(() => setSecondsLeft(s => Math.max(0, s - 1)), 1000);
         return () => clearInterval(t);
     }, [phase]);
 
+    const amount = job?.escrow_amount || job?.agreed_price || job?.final_budget || 0;
+    
+    // Timer formatting
     const hours = Math.floor(secondsLeft / 3600);
     const mins = Math.floor((secondsLeft % 3600) / 60);
     const secs = secondsLeft % 60;
     const pad = (n) => String(n).padStart(2, '0');
-
     const releasePercent = Math.round(((DEMO_SECONDS_LEFT - secondsLeft) / DEMO_SECONDS_LEFT) * 100);
 
-    const handleRelease = () => {
-        setPhase('released');
-        // toast.success removed - redundant with full screen state
-        setTimeout(() => navigate('/customer/dashboard'), 3000);
+    const handleRelease = async () => {
+        try {
+            setPhase('processing');
+            // Call the real releasePayment method from context
+            await releasePayment(jobId);
+            setPhase('released');
+            setTimeout(() => navigate('/customer/dashboard'), 3000);
+        } catch (err) {
+            console.error('Release failed:', err);
+            toast.error('Payment release failed. Please try again.');
+            setPhase('pending');
+        }
     };
 
     const handleDispute = async () => {
@@ -114,8 +140,8 @@ const ConfirmCompletion = () => {
                 const path = generateFilePath(currentUser.id, evidenceFile.name);
                 await uploadFile('job-images', path, evidenceFile);
             }
-            // Actually call a dispute API here if it existed
-            // toast.success removed - redundant with full screen state
+            // Logic for submitting dispute to database
+            await supabase.from('jobs').update({ status: 'disputed', escrow_status: 'disputed' }).eq('id', jobId);
         } catch (err) {
             console.error('Evidence upload error:', err);
             toast.error('Dispute submitted, but evidence upload failed.');
@@ -126,7 +152,7 @@ const ConfirmCompletion = () => {
     const handleGenerateSummary = async () => {
         setGeneratingSummary(true);
         await new Promise(r => setTimeout(r, 1500));
-        setGeneratedSummary(buildSummary(disputeCategory, answers, hasPhotos));
+        setGeneratedSummary(buildSummary(answers, hasPhotos)); // Simplified
         setGeneratingSummary(false);
         setDisputeStep(3);
     };
@@ -138,6 +164,8 @@ const ConfirmCompletion = () => {
         setEvidencePreview(URL.createObjectURL(f));
         setHasPhotos(true);
     };
+
+    if (loading) return null; // Or a skeleton
 
     return (
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
@@ -156,7 +184,7 @@ const ConfirmCompletion = () => {
                                         <span className="material-icons text-white text-4xl">payments</span>
                                     </div>
                                     <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Released</h2>
-                                    <p className="text-gray-500">₦{providerReceives.toLocaleString()} has been sent to your provider. Thanks for using TaskMate!</p>
+                                    <p className="text-gray-500">₦{amount.toLocaleString()} has been sent to your provider. Thanks for using TaskMate!</p>
                                 </motion.div>
                             )}
 
@@ -215,16 +243,12 @@ const ConfirmCompletion = () => {
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Payment Breakdown</p>
                                         <div className="space-y-3">
                                             <div className="flex justify-between text-sm">
-                                                <span className="text-gray-500">Amount held in escrow</span>
+                                                <span className="text-gray-500">Total Amount Held</span>
                                                 <span className="font-bold text-gray-900">₦{amount.toLocaleString()}</span>
                                             </div>
-                                            <div className="flex justify-between text-sm text-gray-400">
-                                                <span>Platform commission (10%)</span>
-                                                <span>− ₦{commission.toLocaleString()}</span>
-                                            </div>
                                             <div className="flex justify-between text-sm pt-3 border-t border-gray-100">
-                                                <span className="font-bold text-gray-900">Provider receives</span>
-                                                <span className="font-bold text-[#10B981] text-base">₦{providerReceives.toLocaleString()}</span>
+                                                <span className="font-bold text-gray-900">Amount to Release</span>
+                                                <span className="font-bold text-[#10B981] text-base">₦{amount.toLocaleString()}</span>
                                             </div>
                                         </div>
                                     </div>
