@@ -176,8 +176,19 @@ const Earnings = () => {
 
                 <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
                     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto space-y-6">
+                        {/* Dynamic Greeting */}
+                        <div className="mb-2">
+                            <h1 className="text-2xl font-bold text-gray-900">
+                                {(() => {
+                                    const hour = new Date().getHours();
+                                    if (hour < 12) return 'Good morning';
+                                    if (hour < 17) return 'Good afternoon';
+                                    return 'Good evening';
+                                })()}, {currentUser?.full_name?.split(' ')[0] || 'Provider'}! 👋
+                            </h1>
+                            <p className="text-sm text-gray-500 mt-1">Here's what's happening with your earnings today.</p>
+                        </div>
 
-                        {/* Summary Cards — 3 column grid on desktop */}
                         {/* Summary Cards — 3 column grid on desktop, unique layout on mobile */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
 
