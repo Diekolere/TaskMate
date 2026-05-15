@@ -21,6 +21,7 @@ const BrowseProviders = () => {
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [sortFilter, setSortFilter] = useState('Highest Rated');
     const [ratingFilter, setRatingFilter] = useState('Any Rating');
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
 
     const categories = [
         "Electrical", "Plumbing", "Carpentry", "Painting & Decorating", 
@@ -88,30 +89,38 @@ const BrowseProviders = () => {
                     <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 pb-24 md:pb-10 space-y-6">
                         
                         {/* Header Section */}
-                        <div className="mb-6 sm:mb-8">
+                        <div className="mb-2 sm:mb-6">
                             <h1 className="text-[22px] sm:text-[28px] font-extrabold tracking-tight text-gray-900 mb-1">Explore Providers</h1>
-                            <p className="text-[13px] font-medium text-gray-400 mb-4 sm:mb-6">Find and hire skilled professionals near you.</p>
+                            <p className="text-[13px] font-medium text-gray-400 mb-3 sm:mb-6">Find and hire skilled professionals near you.</p>
 
-                            {/* Simple Search Bar */}
-                            <div className="flex items-center bg-white rounded-xl px-4 py-3.5 border border-gray-200 group focus-within:border-gray-400 focus-within:shadow-sm transition-all cursor-text mb-4 w-full">
-                                <span className="material-icons-outlined text-[18px] text-gray-400 group-focus-within:text-gray-600">search</span>
-                                <input 
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="bg-transparent border-none outline-none text-[15px] text-gray-800 ml-3 w-full placeholder:text-gray-400 font-medium"
-                                    placeholder="Search by name, skill, or keyword..."
-                                />
-                                <span className="text-[10px] bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 ml-2 font-mono font-bold text-gray-500 shrink-0">⌘K</span>
+                            {/* Search Bar + Filter Toggle */}
+                            <div className="flex items-center gap-2 mb-2 sm:mb-4">
+                                <div className="flex-1 flex items-center bg-white rounded-xl px-4 py-2.5 sm:py-3.5 border border-gray-200 group focus-within:border-gray-400 focus-within:shadow-sm transition-all cursor-text w-full">
+                                    <span className="material-icons-outlined text-[18px] text-gray-400 group-focus-within:text-gray-600">search</span>
+                                    <input 
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="bg-transparent border-none outline-none text-[15px] text-gray-800 ml-3 w-full placeholder:text-gray-400 font-medium"
+                                        placeholder="Search by name, skill, or keyword..."
+                                    />
+                                    <span className="text-[10px] bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 ml-2 font-mono font-bold text-gray-500 shrink-0 hidden sm:inline">⌘K</span>
+                                </div>
+                                <button 
+                                    onClick={() => setShowMobileFilters(!showMobileFilters)}
+                                    className={`sm:hidden w-11 h-11 flex items-center justify-center rounded-xl border transition-all shrink-0 ${showMobileFilters ? 'bg-[#0F172A] border-[#0F172A] text-white shadow-md' : 'bg-white border-gray-200 text-gray-500'}`}
+                                >
+                                    <span className="material-icons-outlined text-[20px]">{showMobileFilters ? 'close' : 'filter_list'}</span>
+                                </button>
                             </div>
 
                             {/* Filter Pills */}
-                            <div className="flex items-center flex-wrap gap-3 relative">
+                            <div className={`flex items-center flex-wrap gap-3 relative transition-all duration-300 ${showMobileFilters ? 'mb-4 mt-1 opacity-100' : 'max-h-0 sm:max-h-none opacity-0 sm:opacity-100 overflow-hidden sm:overflow-visible'}`}>
                                 {/* Category Dropdown (Multiple Selection) */}
                                 <div className="relative">
                                     <button 
                                         onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsSortOpen(false); setIsRatingOpen(false); }}
-                                        className="flex items-center gap-2 bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 rounded-xl px-4 py-2.5 hover:border-gray-300 transition-colors shadow-sm"
+                                        className="flex items-center gap-2 bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 rounded-xl px-4 py-2 sm:py-2.5 hover:border-gray-300 transition-colors shadow-sm"
                                     >
                                         {selectedCategories.length === 0 ? 'Category' : `Category (${selectedCategories.length})`}
                                         <span className="material-icons-outlined text-[16px] text-gray-500">expand_more</span>
@@ -143,7 +152,7 @@ const BrowseProviders = () => {
                                 <div className="relative">
                                     <button 
                                         onClick={() => { setIsRatingOpen(!isRatingOpen); setIsCategoryOpen(false); setIsSortOpen(false); }}
-                                        className="flex items-center gap-2 bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 rounded-xl px-4 py-2.5 hover:border-gray-300 transition-colors shadow-sm"
+                                        className="flex items-center gap-2 bg-white border border-gray-200 text-[13px] font-semibold text-gray-700 rounded-xl px-4 py-2 sm:py-2.5 hover:border-gray-300 transition-colors shadow-sm"
                                     >
                                         <span className="material-icons text-[16px] text-yellow-500">star</span>
                                         {ratingFilter}
@@ -162,7 +171,7 @@ const BrowseProviders = () => {
                                 <div className="relative">
                                     <button 
                                         onClick={() => { setIsSortOpen(!isSortOpen); setIsCategoryOpen(false); setIsRatingOpen(false); }}
-                                        className="flex items-center gap-2 bg-[#10B981] border border-[#10B981] text-[13px] font-semibold text-white rounded-xl px-4 py-2.5 hover:bg-[#059669] transition-colors shadow-sm"
+                                        className="flex items-center gap-2 bg-[#10B981] border border-[#10B981] text-[13px] font-semibold text-white rounded-xl px-4 py-2 sm:py-2.5 hover:bg-[#059669] transition-colors shadow-sm"
                                     >
                                         {sortFilter}
                                         <span className="material-icons-outlined text-[16px] text-white">expand_more</span>
