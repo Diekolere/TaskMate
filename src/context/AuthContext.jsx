@@ -38,6 +38,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ── Fetch profile from DB ───────────────────────────────
+  // Returns the fully-shimmed user object so callers can read .role immediately.
   const fetchProfile = async (user) => {
     try {
       const { data, error } = await supabase
@@ -79,38 +80,46 @@ export function AuthProvider({ children }) {
           } : {}),
         };
         setCurrentUser(shimmedUser);
+        return shimmedUser; // ← return so login() can read the real role
       } else {
-        // Profile doesn't exist yet (just created via OAuth)
-        setCurrentUser({
+        // Profile row doesn't exist yet (brand-new account, OAuth, etc.)
+        // Trust user_metadata.role which was set during register()
+        const fallbackUser = {
           ...user,
           uid: user.id,
           displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
           photoURL: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
           role: user.user_metadata?.role || 'customer',
-        });
+        };
+        setCurrentUser(fallbackUser);
+        return fallbackUser;
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      // Set basic user data even if profile fetch fails
-      setCurrentUser({
+      const fallbackUser = {
         ...user,
         uid: user.id,
         displayName: user.user_metadata?.full_name || '',
         role: user.user_metadata?.role || 'customer',
-      });
+      };
+      setCurrentUser(fallbackUser);
+      return fallbackUser;
     } finally {
       setLoading(false);
     }
   };
 
   // ── Email/Password Login ────────────────────────────────
-  const login = async (email, password, role) => {
-
+  // Awaits fetchProfile so the returned user always has the real DB role.
+  const login = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    
+
+    // fetchProfile sets state AND returns the full user — callers use this
+    // to navigate to the correct dashboard without a race condition.
+    const fullUser = await fetchProfile(data.user);
     toast.success('Welcome back!');
-    return data.user;
+    return fullUser;
   };
 
   // ── Google OAuth ────────────────────────────────────────

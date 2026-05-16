@@ -27,8 +27,11 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      await login(formData.email, formData.password, selectedRole);
-      if (selectedRole === 'provider') navigate('/provider/dashboard', { replace: true });
+      // login() now awaits fetchProfile internally, so fullUser.role is
+      // the real value from the DB — no race condition.
+      const fullUser = await login(formData.email, formData.password);
+      if (fullUser?.role === 'provider') navigate('/provider/dashboard', { replace: true });
+      else if (fullUser?.role === 'admin') navigate('/admin/dashboard', { replace: true });
       else navigate('/dashboard', { replace: true });
     } catch (err) {
       if (err.message === 'Email not confirmed') {
