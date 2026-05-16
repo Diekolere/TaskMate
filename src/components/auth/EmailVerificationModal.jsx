@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, ArrowRight, CheckCircle2, X, Loader2 } from 'lucide-react';
+import { X, Loader2, MailCheck, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 
 const EmailVerificationModal = ({ isOpen, onClose, email }) => {
     const { resendVerification } = useAuth();
     const [isResending, setIsResending] = useState(false);
+    const [resent, setResent] = useState(false);
 
     const handleResend = async () => {
-        if (!email) return;
+        if (!email || isResending) return;
         setIsResending(true);
         try {
             await resendVerification(email);
+            setResent(true);
+            setTimeout(() => setResent(false), 5000);
         } catch (err) {
             toast.error(err.message || 'Failed to resend email');
         } finally {
@@ -26,80 +29,82 @@ const EmailVerificationModal = ({ isOpen, onClose, email }) => {
         <AnimatePresence>
             <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
                 {/* Backdrop */}
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="absolute inset-0 bg-[#0F172A]/60 backdrop-blur-sm"
+                    className="absolute inset-0 bg-[#0F172A]/50 backdrop-blur-sm"
                 />
 
                 {/* Modal */}
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    initial={{ opacity: 0, scale: 0.96, y: 16 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="relative w-full max-w-[440px] bg-white rounded-[32px] shadow-2xl overflow-hidden"
+                    exit={{ opacity: 0, scale: 0.96, y: 16 }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                    className="relative w-full max-w-[420px] bg-white rounded-3xl shadow-2xl overflow-hidden"
                 >
-                    {/* Header Image/Icon Section */}
-                    <div className="relative h-40 bg-[#7AC142] flex items-center justify-center overflow-hidden">
-                        {/* Decorative elements */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
-                        <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full -ml-12 -mb-12 blur-xl" />
-                        
-                        <div className="relative bg-white p-5 rounded-3xl shadow-xl">
-                            <Mail className="w-10 h-10 text-[#7AC142]" />
-                        </div>
-                    </div>
-
-                    {/* Close Button */}
-                    <button 
+                    {/* Close button */}
+                    <button
                         onClick={onClose}
-                        className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors text-white"
+                        className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all z-10"
                     >
-                        <X className="w-5 h-5" />
+                        <X className="w-4 h-4" />
                     </button>
 
-                    {/* Content */}
-                    <div className="p-8 sm:p-10 text-center">
-                        <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mb-3 tracking-tight">
-                            Verify your email
+                    {/* Body */}
+                    <div className="px-8 pt-10 pb-8 text-center">
+
+                        {/* Icon */}
+                        <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto mb-6 shadow-sm">
+                            <MailCheck className="w-8 h-8 text-[#1a2b3c]" strokeWidth={1.5} />
+                        </div>
+
+                        {/* Heading */}
+                        <h2 className="text-xl font-bold text-gray-900 mb-2 tracking-tight">
+                            Check your inbox
                         </h2>
-                        <p className="text-gray-500 text-[15px] leading-relaxed mb-8">
-                            We've sent a verification link to <span className="font-bold text-gray-900">{email || 'your email'}</span>. Please click the link to activate your TaskMate account.
+                        <p className="text-sm text-gray-500 leading-relaxed mb-1">
+                            We sent a verification link to
+                        </p>
+                        <p className="text-sm font-semibold text-gray-800 mb-7 truncate px-4">
+                            {email || 'your email address'}
                         </p>
 
-                        <div className="space-y-4">
-                            <button 
-                                onClick={() => window.open('https://mail.google.com', '_blank')}
-                                className="w-full flex items-center justify-center gap-2 py-4 bg-[#0F172A] text-white rounded-2xl font-bold text-[15px] hover:bg-slate-800 transition-all shadow-xl group"
-                            >
-                                Open Gmail
-                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                            </button>
-                            
-                            <button 
-                                onClick={onClose}
-                                className="w-full py-4 text-gray-500 font-bold text-[14px] hover:text-gray-900 transition-colors"
-                            >
-                                I'll do it later
-                            </button>
-                        </div>
+                        {/* Primary CTA */}
+                        <button
+                            onClick={() => window.open('https://mail.google.com', '_blank')}
+                            className="w-full py-3.5 px-4 bg-[#1a2b3c] text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition-colors mb-3"
+                        >
+                            Open Gmail
+                        </button>
 
-                        {/* Footer Help */}
-                        <div className="mt-8 pt-8 border-t border-gray-100 flex items-center justify-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-gray-300" />
-                            <p className="text-[12px] font-medium text-gray-400">
-                                Didn't get it? <button 
-                                    onClick={handleResend}
-                                    disabled={isResending}
-                                    className="text-[#7AC142] font-bold hover:underline disabled:opacity-50 inline-flex items-center gap-1"
-                                >
-                                    {isResending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                                    Resend email
-                                </button>
-                            </p>
-                        </div>
+                        <button
+                            onClick={onClose}
+                            className="w-full py-3 text-sm text-gray-400 font-medium hover:text-gray-600 transition-colors"
+                        >
+                            I'll do it later
+                        </button>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-8 py-4 border-t border-gray-100 bg-gray-50/60 flex items-center justify-center gap-2">
+                        <p className="text-xs text-gray-400">
+                            Didn't receive it?{' '}
+                            <button
+                                onClick={handleResend}
+                                disabled={isResending || resent}
+                                className="font-semibold text-[#1a2b3c] hover:text-[#7AC142] transition-colors disabled:opacity-60 inline-flex items-center gap-1"
+                            >
+                                {isResending
+                                    ? <><Loader2 className="w-3 h-3 animate-spin inline" /> Resending…</>
+                                    : resent
+                                    ? '✓ Sent!'
+                                    : <><RefreshCw className="w-3 h-3 inline" /> Resend</>
+                                }
+                            </button>
+                        </p>
                     </div>
                 </motion.div>
             </div>
