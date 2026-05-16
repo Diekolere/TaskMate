@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 
@@ -11,6 +11,8 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Guard against concurrent fetchProfile calls (e.g. login() + onAuthStateChange both fire at once)
+  const fetchingRef = useRef(false);
 
   // ── Session bootstrap ───────────────────────────────────
   useEffect(() => {
@@ -40,6 +42,13 @@ export function AuthProvider({ children }) {
   // ── Fetch profile from DB ───────────────────────────────
   // Returns the fully-shimmed user object so callers can read .role immediately.
   const fetchProfile = async (user) => {
+    // Prevent duplicate concurrent calls (e.g. login() + onAuthStateChange)
+    if (fetchingRef.current) {
+      // Wait a bit and return the already-in-progress result via currentUser
+      await new Promise(r => setTimeout(r, 800));
+      return null; // caller should use currentUser state
+    }
+    fetchingRef.current = true;
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -57,9 +66,19 @@ export function AuthProvider({ children }) {
       }
 
       if (data) {
+        // Use sub-profile EXISTENCE as the authoritative role source.
+        // This is a safety net for accounts where profiles.role column may be
+        // stale, incorrectly set, or the trigger wasn't deployed to production.
+        let effectiveRole = data.role;
+        if (data.provider_profiles) effectiveRole = 'provider';
+        else if (data.customer_profiles) effectiveRole = 'customer';
+
+        console.log('[Auth] fetchProfile resolved role:', effectiveRole, '(DB role was:', data.role, ')');
+
         const shimmedUser = {
           ...user,
           ...data,
+          role: effectiveRole,          // ← always use the derived role
           uid: user.id,
           displayName: data.full_name,
           photoURL: data.avatar_url,
@@ -80,16 +99,19 @@ export function AuthProvider({ children }) {
           } : {}),
         };
         setCurrentUser(shimmedUser);
-        return shimmedUser; // ← return so login() can read the real role
+        return shimmedUser;
       } else {
-        // Profile row doesn't exist yet (brand-new account, OAuth, etc.)
+        // Profile row doesn't exist yet (brand-new account, etc.)
         // Trust user_metadata.role which was set during register()
+        const pendingRole = sessionStorage.getItem('pending_oauth_role');
+        const effectiveRole = pendingRole || user.user_metadata?.role || 'customer';
+        console.log('[Auth] fetchProfile: no profile row, using role:', effectiveRole);
         const fallbackUser = {
           ...user,
           uid: user.id,
           displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
           photoURL: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-          role: user.user_metadata?.role || 'customer',
+          role: effectiveRole,
         };
         setCurrentUser(fallbackUser);
         return fallbackUser;
@@ -106,20 +128,22 @@ export function AuthProvider({ children }) {
       return fallbackUser;
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   };
 
   // ── Email/Password Login ────────────────────────────────
   // Awaits fetchProfile so the returned user always has the real DB role.
-  const login = async (email, password) => {
+  // intentRole: the role the user SELECTED on the login page, used as
+  // a last-resort fallback if the DB and user_metadata are both unreliable.
+  const login = async (email, password, intentRole) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    // fetchProfile sets state AND returns the full user — callers use this
-    // to navigate to the correct dashboard without a race condition.
     const fullUser = await fetchProfile(data.user);
+    const resolvedUser = fullUser || { role: intentRole || 'customer' };
     toast.success('Welcome back!');
-    return fullUser;
+    return resolvedUser;
   };
 
   // ── Google OAuth ──────────────────────────────────
@@ -165,20 +189,43 @@ export function AuthProvider({ children }) {
 
   // ── Register ────────────────────────────────────────────
   const register = async (email, password, name, role) => {
-
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: name,
-          role: role,
+          role: role,   // saved to user_metadata for trigger + fallbacks
         }
       }
     });
 
     if (error) throw error;
-    
+
+    // Safety net: manually upsert profile rows immediately.
+    // The DB trigger may not be deployed to production.
+    // upsert is idempotent — safe even if the trigger DID run.
+    if (data.user) {
+      try {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          email: email,
+          full_name: name,
+          role: role,
+        }, { onConflict: 'id' });
+
+        if (role === 'provider') {
+          await supabase.from('provider_profiles').upsert({ id: data.user.id }, { onConflict: 'id' });
+        } else {
+          await supabase.from('customer_profiles').upsert({ id: data.user.id }, { onConflict: 'id' });
+        }
+      } catch (profileErr) {
+        // Non-fatal: RLS may block this until email is confirmed.
+        // user_metadata.role is the reliable fallback for the login step.
+        console.warn('[Auth] Profile upsert after register (non-fatal):', profileErr.message);
+      }
+    }
+
     toast.success('Account created! Check your email to verify.');
     return data.user;
   };

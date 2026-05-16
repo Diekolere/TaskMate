@@ -27,11 +27,12 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      // login() now awaits fetchProfile internally, so fullUser.role is
-      // the real value from the DB — no race condition.
-      const fullUser = await login(formData.email, formData.password);
-      if (fullUser?.role === 'provider') navigate('/provider/dashboard', { replace: true });
-      else if (fullUser?.role === 'admin') navigate('/admin/dashboard', { replace: true });
+      // login() awaits fetchProfile internally. fullUser.role is the
+      // real DB value. selectedRole is the last-resort fallback.
+      const fullUser = await login(formData.email, formData.password, selectedRole);
+      const role = fullUser?.role || selectedRole;
+      if (role === 'provider') navigate('/provider/dashboard', { replace: true });
+      else if (role === 'admin') navigate('/admin/dashboard', { replace: true });
       else navigate('/dashboard', { replace: true });
     } catch (err) {
       if (err.message === 'Email not confirmed') {
