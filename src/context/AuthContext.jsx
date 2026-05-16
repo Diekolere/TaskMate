@@ -122,9 +122,14 @@ export function AuthProvider({ children }) {
     return fullUser;
   };
 
-  // ── Google OAuth ────────────────────────────────────────
+  // ── Google OAuth ──────────────────────────────────
   const loginWithGoogle = async (role = 'customer') => {
-    const redirectTo = `${window.location.origin}/customer/dashboard`;
+    // Store the intended role in sessionStorage so the callback page can
+    // use it for brand-new accounts where the DB profile doesn't exist yet.
+    sessionStorage.setItem('pending_oauth_role', role);
+
+    // Redirect to a neutral callback route, NOT a role-specific page.
+    const redirectTo = `${window.location.origin}/auth/callback`;
     
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -134,9 +139,6 @@ export function AuthProvider({ children }) {
           access_type: 'offline',
           prompt: 'consent',
         },
-        data: {
-          role: role,
-        }
       },
     });
 

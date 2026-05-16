@@ -8,6 +8,7 @@ import Landing from './pages/public/Landing'
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import OAuthCallback from './pages/auth/OAuthCallback';
 // Customer Pages
 import Onboarding from './pages/customer/Onboarding';
 import InviteFriends from './pages/customer/InviteFriends';
@@ -74,6 +75,7 @@ function AnimatedRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/auth/callback" element={<OAuthCallback />} />
         
         {/* Customer Routes */}
         <Route path="/dashboard" element={<Navigate to="/customer/dashboard" replace />} />
