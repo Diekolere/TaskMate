@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import FullPageLoader from '../components/FullPageLoader';
 
 const AuthContext = createContext();
 
@@ -72,6 +73,27 @@ export function AuthProvider({ children }) {
         let effectiveRole = data.role;
         if (data.provider_profiles) effectiveRole = 'provider';
         else if (data.customer_profiles) effectiveRole = 'customer';
+
+        // SELF-HEALING: Fix database if trigger defaulted to customer but user intended provider
+        const intendedRole = user.user_metadata?.role;
+        const isNewUser = user.created_at ? (new Date() - new Date(user.created_at)) < 300000 : false;
+
+        if (intendedRole && intendedRole !== effectiveRole && isNewUser) {
+          console.warn(`[Auth] Role mismatch detected. DB: ${effectiveRole}, Metadata: ${intendedRole}. Self-healing...`);
+          try {
+            await supabase.from('profiles').update({ role: intendedRole }).eq('id', user.id);
+            if (intendedRole === 'provider') {
+              await supabase.from('provider_profiles').upsert({ id: user.id }, { onConflict: 'id' });
+              await supabase.from('customer_profiles').delete().eq('id', user.id);
+            } else {
+              await supabase.from('customer_profiles').upsert({ id: user.id }, { onConflict: 'id' });
+              await supabase.from('provider_profiles').delete().eq('id', user.id);
+            }
+            effectiveRole = intendedRole;
+          } catch (healErr) {
+            console.error('[Auth] Self-healing failed:', healErr);
+          }
+        }
 
         console.log('[Auth] fetchProfile resolved role:', effectiveRole, '(DB role was:', data.role, ')');
 
@@ -216,8 +238,10 @@ export function AuthProvider({ children }) {
 
         if (role === 'provider') {
           await supabase.from('provider_profiles').upsert({ id: data.user.id }, { onConflict: 'id' });
+          await supabase.from('customer_profiles').delete().eq('id', data.user.id);
         } else {
           await supabase.from('customer_profiles').upsert({ id: data.user.id }, { onConflict: 'id' });
+          await supabase.from('provider_profiles').delete().eq('id', data.user.id);
         }
       } catch (profileErr) {
         // Non-fatal: RLS may block this until email is confirmed.
@@ -366,7 +390,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? <FullPageLoader /> : children}
     </AuthContext.Provider>
   );
-}
+};

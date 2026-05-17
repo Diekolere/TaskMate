@@ -7,7 +7,7 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import EmailVerificationModal from '../../components/auth/EmailVerificationModal';
 
 const Login = () => {
-  const [selectedRole, setSelectedRole] = useState('customer');
+  const [selectedRole, setSelectedRole] = useState(null); // No default, user MUST choose
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,12 +24,25 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedRole) {
+      setError('Please select whether you are signing in as a Regular User or Service Pro.');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
       // login() awaits fetchProfile internally. fullUser.role is the
-      // real DB value. selectedRole is the last-resort fallback.
+      // real DB value.
       const fullUser = await login(formData.email, formData.password, selectedRole);
+      
+      // Mismatched Role Prevention:
+      // If the account's real role doesn't match what the user selected on the radio buttons,
+      // block the login and show an error.
+      if (fullUser?.role && fullUser.role !== selectedRole) {
+        setError(`This account is registered as a ${fullUser.role}. Please switch the toggle above to sign in.`);
+        return;
+      }
+
       const role = fullUser?.role || selectedRole;
       if (role === 'provider') navigate('/provider/dashboard', { replace: true });
       else if (role === 'admin') navigate('/admin/dashboard', { replace: true });
@@ -94,59 +107,94 @@ const Login = () => {
           </p>
         </div>
 
-        {/* Role toggle */}
-        <div className="mb-6 p-1 bg-gray-100 rounded-xl flex gap-1">
+        {/* Role toggle (Compact Horizontal Cards) */}
+        <div className="mb-6 grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={() => setSelectedRole('customer')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-              !isProvider
-                ? 'bg-white text-[#1a2b3c] shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+            className={`relative flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all overflow-hidden ${
+              selectedRole === 'customer'
+                ? 'border-[#7AC142] bg-[#7AC142]/[0.03] shadow-sm'
+                : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
             }`}
           >
-            <span className={`material-icons-outlined text-base ${!isProvider ? 'text-[#7AC142]' : 'text-gray-400'}`}>
-              person
-            </span>
-            Regular User
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+              selectedRole === 'customer' ? 'bg-[#7AC142]/10 text-[#7AC142]' : 'bg-gray-100 text-gray-400'
+            }`}>
+              <span className="material-icons-outlined text-lg">person</span>
+            </div>
+            <div className="flex-1 min-w-0 pr-4">
+              <h3 className={`font-bold text-xs leading-tight mb-0.5 truncate ${selectedRole === 'customer' ? 'text-[#1a2b3c]' : 'text-gray-600'}`}>Regular User</h3>
+              <p className="text-[10px] text-gray-500 font-medium truncate">I want to hire pros</p>
+            </div>
+            {selectedRole === 'customer' && (
+              <div className="absolute right-2 text-[#7AC142] flex items-center">
+                <span className="material-icons-outlined text-base">check_circle</span>
+              </div>
+            )}
           </button>
+
           <button
             type="button"
             onClick={() => setSelectedRole('provider')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-              isProvider
-                ? 'bg-[#0F172A] text-white shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+            className={`relative flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all overflow-hidden ${
+              selectedRole === 'provider'
+                ? 'border-[#0F172A] bg-[#0F172A]/[0.02] shadow-sm'
+                : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
             }`}
           >
-            <span className={`material-icons-outlined text-base ${isProvider ? 'text-[#10B981]' : 'text-gray-400'}`}>
-              handyman
-            </span>
-            Service Pro
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+              selectedRole === 'provider' ? 'bg-[#0F172A]/10 text-[#0F172A]' : 'bg-gray-100 text-gray-400'
+            }`}>
+              <span className="material-icons-outlined text-lg">handyman</span>
+            </div>
+            <div className="flex-1 min-w-0 pr-4">
+              <h3 className={`font-bold text-xs leading-tight mb-0.5 truncate ${selectedRole === 'provider' ? 'text-[#1a2b3c]' : 'text-gray-600'}`}>Service Pro</h3>
+              <p className="text-[10px] text-gray-500 font-medium truncate">I want to find jobs</p>
+            </div>
+            {selectedRole === 'provider' && (
+              <div className="absolute right-2 text-[#0F172A] flex items-center">
+                <span className="material-icons-outlined text-base">check_circle</span>
+              </div>
+            )}
           </button>
         </div>
 
         {/* Context hint */}
         <AnimatePresence mode="wait">
-          <motion.div
-            key={selectedRole}
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 6 }}
-            transition={{ duration: 0.2 }}
-            className={`mb-6 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm ${
-              isProvider
-                ? 'bg-[#0F172A]/[0.03] border-[#0F172A]/10 text-[#0F172A]/70'
-                : 'bg-[#7AC142]/[0.06] border-[#7AC142]/20 text-[#1a2b3c]/70'
-            }`}
-          >
-            <span className={`material-icons-outlined text-base shrink-0 ${isProvider ? 'text-[#10B981]' : 'text-[#7AC142]'}`}>
-              {isProvider ? 'verified' : 'check_circle'}
-            </span>
-            {isProvider
-              ? "You'll be signed into your provider dashboard to manage jobs and earnings."
-              : "You'll be signed into your customer dashboard to book and track services."}
-          </motion.div>
+          {selectedRole ? (
+            <motion.div
+              key={selectedRole}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.2 }}
+              className={`mb-6 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm ${
+                isProvider
+                  ? 'bg-[#0F172A]/[0.03] border-[#0F172A]/10 text-[#0F172A]/70'
+                  : 'bg-[#7AC142]/[0.06] border-[#7AC142]/20 text-[#1a2b3c]/70'
+              }`}
+            >
+              <span className={`material-icons-outlined text-base shrink-0 ${isProvider ? 'text-[#10B981]' : 'text-[#7AC142]'}`}>
+                {isProvider ? 'verified' : 'check_circle'}
+              </span>
+              {isProvider
+                ? "You'll be signed into your provider dashboard to manage jobs and earnings."
+                : "You'll be signed into your customer dashboard to book and track services."}
+            </motion.div>
+          ) : (
+             <motion.div
+              key="unselected"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.2 }}
+              className="mb-6 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-orange-200 bg-orange-50 text-sm text-orange-700"
+            >
+              <span className="material-icons-outlined text-base">info</span>
+              Please select an account type above to continue.
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* Form shell */}
@@ -219,11 +267,13 @@ const Login = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !selectedRole}
               className={`w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md ${
-                isProvider
-                  ? 'bg-[#0F172A] hover:bg-slate-700'
-                  : 'bg-[#1a2b3c] hover:bg-[#7AC142]'
+                !selectedRole 
+                  ? 'bg-gray-400'
+                  : isProvider
+                    ? 'bg-[#0F172A] hover:bg-slate-700'
+                    : 'bg-[#1a2b3c] hover:bg-[#7AC142]'
               }`}
             >
               {loading ? (
@@ -232,7 +282,7 @@ const Login = () => {
                   Signing in…
                 </>
               ) : (
-                `Sign in as ${isProvider ? 'Service Pro' : 'Customer'}`
+                `Sign in ${selectedRole ? `as ${isProvider ? 'Service Pro' : 'Customer'}` : ''}`
               )}
             </button>
           </form>
@@ -251,7 +301,7 @@ const Login = () => {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                disabled={googleLoading}
+                disabled={googleLoading || !selectedRole}
                 className="w-full inline-flex justify-center items-center gap-2 py-3 px-4 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60"
               >
                 <img className="h-5 w-5" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" />

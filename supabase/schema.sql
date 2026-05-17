@@ -355,21 +355,36 @@ CREATE TRIGGER set_updated_at_support_tickets
 -- Auto-create profile on auth.users insert
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  extracted_role public.user_role;
 BEGIN
-  INSERT INTO profiles (id, email, full_name, role, avatar_url)
+  -- Safely extract the role from metadata, do NOT default to anything if missing
+  BEGIN
+    extracted_role := (NEW.raw_user_meta_data->>'role')::public.user_role;
+  EXCEPTION WHEN OTHERS THEN
+    extracted_role := NULL;
+  END;
+
+  -- If no valid role metadata exists, do NOT create the profile row.
+  -- The frontend will detect the missing profile and force the user to select one.
+  IF extracted_role IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  INSERT INTO public.profiles (id, email, full_name, role, avatar_url)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
-    COALESCE((NEW.raw_user_meta_data->>'role')::user_role, 'customer'),
+    extracted_role,
     COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', '')
   );
   
   -- Create role-specific profile
-  IF COALESCE(NEW.raw_user_meta_data->>'role', 'customer') = 'provider' THEN
-    INSERT INTO provider_profiles (id) VALUES (NEW.id);
+  IF extracted_role = 'provider' THEN
+    INSERT INTO public.provider_profiles (id) VALUES (NEW.id);
   ELSE
-    INSERT INTO customer_profiles (id) VALUES (NEW.id);
+    INSERT INTO public.customer_profiles (id) VALUES (NEW.id);
   END IF;
   
   RETURN NEW;

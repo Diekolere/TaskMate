@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import FullPageLoader from '../../components/FullPageLoader';
 
 /**
  * OAuthCallback — landing page for all Google OAuth redirects.
@@ -42,56 +43,60 @@ export default function OAuthCallback() {
         }
 
         let role = profile?.role;
+        const pendingRole = sessionStorage.getItem('pending_oauth_role');
+        const isNewUser = user.created_at ? (new Date() - new Date(user.created_at)) < 120000 : false;
 
-        if (!role) {
-          // Brand-new Google account — no profile row exists yet.
-          // Use the role the user selected before clicking "Continue with Google".
-          const pendingRole = sessionStorage.getItem('pending_oauth_role') || 'customer';
+        if (pendingRole) {
           sessionStorage.removeItem('pending_oauth_role');
 
-          // Upsert the profile with the correct role so the DB trigger
-          // (if it hasn't already run) gets the right value.
-          await supabase.from('profiles').upsert({
-            id: user.id,
-            email: user.email,
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
-            avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-            role: pendingRole,
-          }, { onConflict: 'id' });
+          if (isNewUser) {
+            console.log('[OAuthCallback] New user detected, enforcing intent:', pendingRole);
+            
+            const { error: upsertError } = await supabase.from('profiles').upsert({
+              id: user.id,
+              email: user.email,
+              full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+              avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+              role: pendingRole,
+            }, { onConflict: 'id' });
 
-          // Also create the role-specific sub-profile if missing.
-          if (pendingRole === 'provider') {
-            await supabase.from('provider_profiles').upsert({ id: user.id }, { onConflict: 'id' });
+            if (upsertError) throw upsertError;
+
+            if (pendingRole === 'provider') {
+              await supabase.from('provider_profiles').upsert({ id: user.id }, { onConflict: 'id' });
+              await supabase.from('customer_profiles').delete().eq('id', user.id);
+            } else {
+              await supabase.from('customer_profiles').upsert({ id: user.id }, { onConflict: 'id' });
+              await supabase.from('provider_profiles').delete().eq('id', user.id);
+            }
+            
+            await supabase.auth.updateUser({ data: { role: pendingRole } });
+            role = pendingRole;
           } else {
-            await supabase.from('customer_profiles').upsert({ id: user.id }, { onConflict: 'id' });
+            console.log('[OAuthCallback] Existing user found with DB role:', role);
           }
-
-          role = pendingRole;
-        } else {
-          // Existing account — clear any stale pending role.
-          sessionStorage.removeItem('pending_oauth_role');
+        } else if (!role) {
+          role = 'customer'; // safe default
         }
 
-        // Navigate to the correct dashboard.
-        if (role === 'provider') navigate('/provider/dashboard', { replace: true });
-        else if (role === 'admin') navigate('/admin/dashboard', { replace: true });
-        else navigate('/customer/dashboard', { replace: true });
+        // Final navigation logic - exact match for the DB role
+        const targetPath = role === 'provider' ? '/provider/dashboard' 
+                         : role === 'admin' ? '/admin/dashboard' 
+                         : '/customer/dashboard';
+        
+        // Use a hard browser redirect instead of React Router's navigate().
+        // This guarantees that AuthContext completely re-mounts and fetches the 
+        // freshly corrected database state, completely avoiding the race condition.
+        window.location.replace(targetPath);
 
       } catch (err) {
         console.error('OAuth callback error:', err);
-        navigate('/login', { replace: true });
+        window.location.replace('/login');
       }
     };
 
     handleCallback();
   }, [navigate]);
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-white">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4" />
-        <p className="text-gray-500 text-sm font-medium">Signing you in…</p>
-      </div>
-    </div>
-  );
+  return <FullPageLoader />;
 }

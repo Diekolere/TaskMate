@@ -15,7 +15,7 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    userType: 'customer',
+    userType: null, // No default, user MUST choose
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -58,6 +58,10 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.userType) {
+      toast.error('Please select whether you are signing up as a Regular User or Service Pro.');
+      return;
+    }
     if (!validateForm()) return;
 
     setIsLoading(true);
@@ -101,43 +105,62 @@ const Register = () => {
           </p>
         </div>
 
-        {/* Form shell */}
-        <div className="bg-white py-2 px-0 sm:py-8 sm:px-8 sm:shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-2xl sm:border sm:border-[#1a2b3c]/5">
-          
-          {/* User Type Toggle — matches login page */}
-          <div className="mb-6 p-1 bg-gray-100 rounded-xl flex gap-1">
-            <button
-              type="button"
-              onClick={() => handleUserTypeChange('customer')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                formData.userType === 'customer'
-                  ? 'bg-white text-[#1a2b3c] shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <span className={`material-icons-outlined text-base ${formData.userType === 'customer' ? 'text-[#7AC142]' : 'text-gray-400'}`}>
-                person
-              </span>
-              Regular User
-            </button>
-            <button
-              type="button"
-              onClick={() => handleUserTypeChange('provider')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                formData.userType === 'provider'
-                  ? 'bg-[#0F172A] text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <span className={`material-icons-outlined text-base ${formData.userType === 'provider' ? 'text-[#10B981]' : 'text-gray-400'}`}>
-                handyman
-              </span>
-              Service Pro
-            </button>
-          </div>
+        {/* Role toggle (Compact Horizontal Cards) */}
+        <div className="mb-6 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => handleUserTypeChange('customer')}
+            className={`relative flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all overflow-hidden ${
+              formData.userType === 'customer'
+                ? 'border-[#7AC142] bg-[#7AC142]/[0.03] shadow-sm'
+                : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+              formData.userType === 'customer' ? 'bg-[#7AC142]/10 text-[#7AC142]' : 'bg-gray-100 text-gray-400'
+            }`}>
+              <span className="material-icons-outlined text-lg">person</span>
+            </div>
+            <div className="flex-1 min-w-0 pr-4">
+              <h3 className={`font-bold text-xs leading-tight mb-0.5 truncate ${formData.userType === 'customer' ? 'text-[#1a2b3c]' : 'text-gray-600'}`}>Regular User</h3>
+              <p className="text-[10px] text-gray-500 font-medium truncate">I want to hire pros</p>
+            </div>
+            {formData.userType === 'customer' && (
+              <div className="absolute right-2 text-[#7AC142] flex items-center">
+                <span className="material-icons-outlined text-base">check_circle</span>
+              </div>
+            )}
+          </button>
 
-          {/* Context hint */}
-          <AnimatePresence mode="wait">
+          <button
+            type="button"
+            onClick={() => handleUserTypeChange('provider')}
+            className={`relative flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all overflow-hidden ${
+              formData.userType === 'provider'
+                ? 'border-[#0F172A] bg-[#0F172A]/[0.02] shadow-sm'
+                : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+              formData.userType === 'provider' ? 'bg-[#0F172A]/10 text-[#0F172A]' : 'bg-gray-100 text-gray-400'
+            }`}>
+              <span className="material-icons-outlined text-lg">handyman</span>
+            </div>
+            <div className="flex-1 min-w-0 pr-4">
+              <h3 className={`font-bold text-xs leading-tight mb-0.5 truncate ${formData.userType === 'provider' ? 'text-[#1a2b3c]' : 'text-gray-600'}`}>Service Pro</h3>
+              <p className="text-[10px] text-gray-500 font-medium truncate">I want to find jobs</p>
+            </div>
+            {formData.userType === 'provider' && (
+              <div className="absolute right-2 text-[#0F172A] flex items-center">
+                <span className="material-icons-outlined text-base">check_circle</span>
+              </div>
+            )}
+          </button>
+        </div>
+
+        {/* Context hint */}
+        <AnimatePresence mode="wait">
+          {formData.userType ? (
             <motion.div
               key={formData.userType}
               initial={{ opacity: 0, y: -6 }}
@@ -157,8 +180,23 @@ const Register = () => {
                 ? "You'll set up a provider profile to offer services and receive job requests."
                 : "You'll set up a customer account to book and manage service requests."}
             </motion.div>
-          </AnimatePresence>
+          ) : (
+             <motion.div
+              key="unselected"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.2 }}
+              className="mb-6 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-orange-200 bg-orange-50 text-sm text-orange-700"
+            >
+              <span className="material-icons-outlined text-base">info</span>
+              Please select an account type above to continue.
+            </motion.div>
+          )}
+        </AnimatePresence>
 
+        {/* Form shell */}
+        <div className="bg-white py-2 px-0 sm:py-8 sm:px-8 sm:shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-2xl sm:border sm:border-[#1a2b3c]/5">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="fullName" className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">
@@ -255,11 +293,13 @@ const Register = () => {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !formData.userType}
               className={`w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md mt-2 ${
-                formData.userType === 'provider'
-                  ? 'bg-[#0F172A] hover:bg-slate-700'
-                  : 'bg-[#1a2b3c] hover:bg-[#7AC142]'
+                !formData.userType 
+                  ? 'bg-gray-400'
+                  : formData.userType === 'provider'
+                    ? 'bg-[#0F172A] hover:bg-slate-700'
+                    : 'bg-[#1a2b3c] hover:bg-[#7AC142]'
               }`}
             >
               {isLoading ? (
@@ -268,7 +308,7 @@ const Register = () => {
                   Creating Account…
                 </>
               ) : (
-                `Create Account as ${formData.userType === 'provider' ? 'Service Pro' : 'Customer'}`
+                `Create Account ${formData.userType ? `as ${formData.userType === 'provider' ? 'Service Pro' : 'Customer'}` : ''}`
               )}
             </button>
           </form>
@@ -292,7 +332,7 @@ const Register = () => {
                   catch (err) { toast.error('Google sign up failed'); console.error(err); }
                   finally { setGoogleLoading(false); }
                 }}
-                disabled={googleLoading}
+                disabled={googleLoading || !formData.userType}
                 className="w-full inline-flex justify-center items-center gap-2 py-3 px-4 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60"
               >
                 <img className="h-5 w-5" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" />
