@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { Loader2 } from 'lucide-react';
@@ -43,9 +44,9 @@ export default function CategorySelectionModal({ open, onClose }) {
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4">
+      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -54,14 +55,15 @@ export default function CategorySelectionModal({ open, onClose }) {
           className="fixed inset-0 bg-[#1a2b3c]/60 backdrop-blur-md"
         />
 
-        {/* Modal */}
+        {/* Modal - single card layout with consistent gap, padding and overflow */}
         <motion.div
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="relative w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl p-6 sm:p-10 flex flex-col gap-6 sm:gap-8 max-h-[90vh] overflow-y-auto z-10"
         >
-          <div className="p-5 sm:p-8 text-center pb-2 sm:pb-4">
+          {/* Header */}
+          <div className="text-center">
             <h2 className="text-xl sm:text-3xl font-bold text-[#1a2b3c] font-serif mb-1.5 sm:mb-2">
               Welcome to TaskMate!
             </h2>
@@ -70,38 +72,38 @@ export default function CategorySelectionModal({ open, onClose }) {
             </p>
           </div>
 
-          <div className="p-4 sm:p-8 overflow-y-auto flex-1">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4">
-              {CATEGORIES.map((cat) => {
-                const isSelected = selected.includes(cat.name);
-                return (
-                  <button
-                    key={cat.name}
-                    onClick={() => toggleCategory(cat.name)}
-                    className={`relative flex flex-col items-center justify-center p-3 sm:p-5 rounded-xl sm:rounded-2xl border-2 transition-all ${
-                      isSelected 
-                        ? `${cat.border} ${cat.activeBg} shadow-sm transform scale-[0.98]` 
-                        : `border-gray-200/50 bg-gray-50/30 hover:bg-gray-50 hover:border-gray-200/80`
-                    }`}
-                  >
-                    {isSelected && (
-                      <div className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 ${cat.badgeBg} rounded-full flex items-center justify-center`}>
-                        <span className="material-icons text-[11px] sm:text-[14px] text-white font-bold">check</span>
-                      </div>
-                    )}
-                    <span className={`material-icons text-2xl sm:text-3xl mb-1.5 sm:mb-2.5 transition-colors ${isSelected ? cat.color : 'text-gray-300'}`}>
-                      {cat.icon}
-                    </span>
-                    <span className={`text-xs sm:text-sm font-bold text-center transition-colors ${isSelected ? 'text-gray-900' : 'text-gray-400'}`}>
-                      {cat.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          {/* Categories Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4">
+            {CATEGORIES.map((cat) => {
+              const isSelected = selected.includes(cat.name);
+              return (
+                <button
+                  key={cat.name}
+                  onClick={() => toggleCategory(cat.name)}
+                  className={`relative flex flex-col items-center justify-center p-3 sm:p-5 rounded-xl sm:rounded-2xl border-2 transition-all ${
+                    isSelected 
+                      ? `${cat.border} ${cat.activeBg} shadow-sm transform scale-[0.98]` 
+                      : `border-gray-200/50 bg-gray-50/30 hover:bg-gray-50 hover:border-gray-200/80`
+                  }`}
+                >
+                  {isSelected && (
+                    <div className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 ${cat.badgeBg} rounded-full flex items-center justify-center`}>
+                      <span className="material-icons text-[11px] sm:text-[14px] text-white font-bold">check</span>
+                    </div>
+                  )}
+                  <span className={`material-icons text-2xl sm:text-3xl mb-1.5 sm:mb-2.5 transition-colors ${isSelected ? cat.color : 'text-gray-300'}`}>
+                    {cat.icon}
+                  </span>
+                  <span className={`text-xs sm:text-sm font-bold text-center transition-colors ${isSelected ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {cat.name}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="p-5 sm:p-8 pt-2 sm:pt-4 bg-transparent flex justify-end">
+          {/* Footer - same card, no dividing line, nice spacing */}
+          <div className="flex justify-end mt-2">
             <button
               onClick={handleSave}
               disabled={selected.length === 0 || loading}
@@ -116,6 +118,7 @@ export default function CategorySelectionModal({ open, onClose }) {
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
