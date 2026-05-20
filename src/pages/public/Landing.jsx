@@ -5,6 +5,7 @@ import Reveal from '../../components/public/landing/Reveal';
 import LandingNavbar from '../../components/public/landing/LandingNavbar';
 import HeroSection from '../../components/public/landing/HeroSection';
 import LandingFooter from '../../components/public/landing/LandingFooter';
+import { useData } from '../../context/DataContext';
 
 const AccordionItem = ({ title, content, isOpen, onClick }) => {
   return (
@@ -45,8 +46,10 @@ const StepCard = ({ num, title, desc, delay = 0, className = '' }) => (
 );
 
 const Landing = () => {
+  const { getAvailableCategories } = useData();
   const [openFaq, setOpenFaq] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [availableCats, setAvailableCats] = useState([]);
   const scrollRef = useRef(null);
 
   const smoothHorizontalScroll = (distance = 0, duration = 520) => {
@@ -71,8 +74,9 @@ const Landing = () => {
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
+    getAvailableCategories().then(cats => setAvailableCats(cats));
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [getAvailableCategories]);
 
   const faqs = [
     { question: 'How does TaskMate verify its service workers?', answer: 'We conduct thorough background checks, verify identities, and collect professional references before any artisan is allowed to accept jobs on our platform. We also continuously monitor their trust scores based on customer reviews.' },
@@ -84,14 +88,15 @@ const Landing = () => {
   const categories = [
     { title: 'Plumbing', icon: 'plumbing', color: 'from-blue-400 to-blue-600' },
     { title: 'Electrical', icon: 'electrical_services', color: 'from-yellow-400 to-orange-500' },
-    { title: 'Carpentry', icon: 'handyman', color: 'from-amber-600 to-amber-800' },
+    { title: 'Furniture (Carpentry)', icon: 'chair', color: 'from-amber-600 to-amber-800' },
     { title: 'Cleaning', icon: 'cleaning_services', color: 'from-cyan-400 to-blue-400' },
     { title: 'Painting', icon: 'format_paint', color: 'from-rose-400 to-pink-600' },
     { title: 'HVAC', icon: 'ac_unit', color: 'from-emerald-400 to-teal-600' },
     { title: 'Moving', icon: 'local_shipping', color: 'from-indigo-500 to-purple-600' },
     { title: 'Roofing', icon: 'roofing', color: 'from-slate-600 to-slate-800' },
     { title: 'Appliance Repair', icon: 'kitchen', color: 'from-red-400 to-red-600' },
-    { title: 'Landscaping', icon: 'grass', color: 'from-green-500 to-emerald-700' }
+    { title: 'Landscaping', icon: 'grass', color: 'from-green-500 to-emerald-700' },
+    { title: 'Laundry', icon: 'local_laundry_service', color: 'from-purple-400 to-purple-600' }
   ];
 
   return (
@@ -152,22 +157,32 @@ const Landing = () => {
           </Reveal>
 
           <div ref={scrollRef} className="flex gap-8 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-12 -mx-4 px-4">
-            {categories.map((category, idx) => (
-              <motion.div key={idx} initial={{ opacity: 0, x: 36 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.55, delay: idx * 0.045, ease: [0.22, 1, 0.36, 1] }} className="min-w-[320px] md:min-w-[400px] h-[500px] snap-center">
-                <Link to="/login" className="group block h-full bg-white/40 backdrop-blur-xl border border-[#1a2b3c]/10 rounded-[40px] overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col">
-                  <div className="flex-1 relative overflow-hidden flex items-center justify-center">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-10 group-hover:opacity-20 transition-opacity`}></div>
-                    <div className="relative z-10 w-32 h-32 md:w-40 md:h-40 rounded-full bg-white/80 backdrop-blur-sm border border-[#1a2b3c]/5 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-700">
-                      <span className="material-icons text-6xl md:text-7xl text-[#1a2b3c] group-hover:text-[#7AC142]">{category.icon}</span>
+            {categories.map((category, idx) => {
+              const isAvail = availableCats.includes(category.title.toLowerCase());
+              return (
+                <motion.div key={idx} initial={{ opacity: 0, x: 36 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.55, delay: idx * 0.045, ease: [0.22, 1, 0.36, 1] }} className="min-w-[320px] md:min-w-[400px] h-[500px] snap-center">
+                  <Link to={isAvail ? "/login" : "#"} onClick={e => !isAvail && e.preventDefault()} className={`group block h-full bg-white/40 backdrop-blur-xl border border-[#1a2b3c]/10 rounded-[40px] overflow-hidden flex flex-col relative ${isAvail ? 'shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500' : 'opacity-60 cursor-not-allowed grayscale'}`}>
+                    <div className="flex-1 relative overflow-hidden flex items-center justify-center">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-10 ${isAvail && 'group-hover:opacity-20'} transition-opacity`}></div>
+                      <div className={`relative z-10 w-32 h-32 md:w-40 md:h-40 rounded-full bg-white/80 backdrop-blur-sm border border-[#1a2b3c]/5 flex items-center justify-center shadow-lg ${isAvail && 'group-hover:scale-110'} transition-transform duration-700`}>
+                        <span className={`material-icons text-6xl md:text-7xl text-[#1a2b3c] ${isAvail && 'group-hover:text-[#7AC142]'}`}>{category.icon}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-10 bg-white/60">
-                    <h3 className="text-3xl font-bold font-serif text-[#1a2b3c] mb-6">{category.title}</h3>
-                    <div className="flex items-center gap-2 text-[#7AC142] font-bold text-lg">Book Now <span className="material-icons">arrow_forward</span></div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+                    <div className="p-10 bg-white/60">
+                      <h3 className="text-3xl font-bold font-serif text-[#1a2b3c] mb-6">{category.title}</h3>
+                      <div className={`flex items-center gap-2 font-bold text-lg ${isAvail ? 'text-[#7AC142]' : 'text-gray-400'}`}>
+                        {isAvail ? <>Book Now <span className="material-icons">arrow_forward</span></> : 'Coming Soon'}
+                      </div>
+                    </div>
+                    {!isAvail && (
+                      <div className="absolute top-6 right-6 bg-[#1a2b3c] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                        Coming Soon
+                      </div>
+                    )}
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
