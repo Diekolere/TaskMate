@@ -63,6 +63,7 @@ import ConfirmCompletion from './pages/customer/ConfirmCompletion';
 import JobStart from './pages/provider/JobStart';
 import ProtectedRoute from './components/ProtectedRoute';
 import AIChat from './components/customer/AIChat';
+import DeletedAccountModal from './components/auth/DeletedAccountModal';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -155,6 +156,7 @@ function App() {
     <Router>  
       <NetworkStatus />
       <Toaster position="top-right" richColors />
+      <DeletedAccountModal />
       <AnimatedRoutes />
     </Router>
   )
