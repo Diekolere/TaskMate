@@ -35,7 +35,7 @@ const Onboarding = () => {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(currentUser?.photoURL || null);
-  const [mapCenter, setMapCenter] = useState([6.5244, 3.3792]);
+  const [mapCenter, setMapCenter] = useState([6.5095, 3.3711]); // Yaba, Lagos default
 
   const [formData, setFormData] = useState({
     displayName: currentUser?.displayName || '',
@@ -131,13 +131,16 @@ const Onboarding = () => {
 
   const categories = [
     { name: 'Plumbing', sub: 'Fix leaks & pipes', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAFhoiv6hU1ql1lV3Ka7xz5RJyLQdoV3BT5RKO_KdhujxzkiDLXMdYWkqv5rgi2Ed8HjsKl0_ASBznyNurApEB0JXxxUp5AIy2GTLL0_lrYx00hMAfL3NjlaS7VZqod8ObuCVInOyC7SVX-MfKh9SMGcVuEL-xKBHnXz8XiIsLjR2Uwxmg1av3dpfFN-E7XjKhs58n9phaP0mFYLiX3fpKPXLdPo2aOYoBP3DocI_Rwy33K9Ue_b-pi3VjiepHU5VYJV40yQY6zBfQ' },
-    { name: 'House Cleaning', sub: 'Sparkling clean homes', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwoA2UI9YmmQ_ioOKXXUre87UIujPP67WS_HVV66cfRlE23zjmEjTbO336NsjVxygN2uGeyLbzjt5aeQF8KKO9dDVU2lUBqkOjaSvUBIif1f1Z48bP8hIg58N6tIRd2FJPwi6itqtZxzeZ-0O2_00ElOmU3BPZ6ZBXuESumHhy6nv0TZPb59D-nCTzHlU25pT_8zagAwkdXwGSQNbQQHDumcAno1Nf0772YinUNxO59IuGBomiCzxddYEzYfFdU7sSx7FwnuUUJdI' },
-    { name: 'Electrical Repairs', sub: 'Wiring & fixtures', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCGVwSZVeo4j_wjg-FlaM4nSjRY2-2agfE8FXHqxXFti1EdfBtKha0Ix0kAFvyZhzv1ckiKs-2li4lGUsd1d0t0gk2LZgd1d2tAELpS-RNPMnyOauPOkXxTeZSBKf-LysD4Ac4MwXpb0u1XUZZYHvBVTNHBbw2lQdy9HyLEdUVT46DpABaIZcWIEqdzZq-68v571JK0w2TI8tuehIk8iWux1e4uhUPsFrciuvrgo5tsq1ETFdOlA98aNBXDAcTvN8lpl_XKcuDQPWY' },
-    { name: 'Carpentry', sub: 'Furniture & woodwork', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDxlnsgLoEBAutVMg-9ypmj0A2ZhK1NGwgvk764Y2tbbHOhQa_EV7nvun6QM0QtVU_HDteAXWHhyFZZhmWmX_QDfnrFtge-XaTlJhb1DQQD43k9neBrAvqR0hB2cduWD8U9KGJgc0__isOjCiKoETpGyLbLcNQKd1xtWtEemqOKvAsAUgGUZBbLiaF8E16yKbmhWGQK21YnCt3UhFNOXccwGCT07MIkD_xrzXBwWm-7jeC2zfqziilYaXrUO3lnATMfEbBctQ2LTlQ' },
-    { name: 'AC Servicing', sub: 'Cooling maintenance', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDcsuiw8fihIG2Ox7C6uaqlZdIrt6uBLRfU1gmrpcyGEKqM_Pymvzj-Z9_PqXBwQMdcmB-Mvdfy7g7blHDAAy6TjufdHeOqOpI7FaKBDshufkFX2Nu95PKnUPrXFKxtfPKwc4qRhUtQ8AgMJspCTKnjg3byk03u8eqyKwKL1zv97NWJ1TGFgNpfANVVtECJmZayPsO79IJ-GMCsv7fvqcZmAiDQHqgQZ_2wEaZnRdNl3_DLKoFR9t9YGuB7Kp1objl-oPCf5W6lPkg' },
-    { name: 'Laundry', sub: 'Wash & fold', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAvhVa8xs41VIPJ0g4KGA2LJJt0eEPfj2Iu65v9gcvu-n7YoISeFq5RB1SfiVVOcbVkZwzGRp-RHTw-dEaFeAYg-QorWVVlgWfTRDZsUt9TvoWmEthm-ErVBFsoZEBP9JvEwrPdto0xwXH4xixRMfUxLRovvw5t_M1F6ONn5qaflI6eamnZxPKAlvEKuNRxnPyHPCpqjAqxLdQI6H_vSFOA9dS1ybF7IJqoEwW_VriAHQ7ENP3YddMln6M5KkpN8H-0-yP9oPWGgNU' },
+    { name: 'Cleaning', sub: 'Sparkling clean homes', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwoA2UI9YmmQ_ioOKXXUre87UIujPP67WS_HVV66cfRlE23zjmEjTbO336NsjVxygN2uGeyLbzjt5aeQF8KKO9dDVU2lUBqkOjaSvUBIif1f1Z48bP8hIg58N6tIRd2FJPwi6itqtZxzeZ-0O2_00ElOmU3BPZ6ZBXuESumHhy6nv0TZPb59D-nCTzHlU25pT_8zagAwkdXwGSQNbQQHDumcAno1Nf0772YinUNxO59IuGBomiCzxddYEzYfFdU7sSx7FwnuUUJdI' },
+    { name: 'Electrical', sub: 'Wiring & fixtures', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCGVwSZVeo4j_wjg-FlaM4nSjRY2-2agfE8FXHqxXFti1EdfBtKha0Ix0kAFvyZhzv1ckiKs-2li4lGUsd1d0t0gk2LZgd1d2tAELpS-RNPMnyOauPOkXxTeZSBKf-LysD4Ac4MwXpb0u1XUZZYHvBVTNHBbw2lQdy9HyLEdUVT46DpABaIZcWIEqdzZq-68v571JK0w2TI8tuehIk8iWux1e4uhUPsFrciuvrgo5tsq1ETFdOlA98aNBXDAcTvN8lpl_XKcuDQPWY' },
+    { name: 'Furniture (Carpentry)', sub: 'Furniture & woodwork', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDxlnsgLoEBAutVMg-9ypmj0A2ZhK1NGwgvk764Y2tbbHOhQa_EV7nvun6QM0QtVU_HDteAXWHhyFZZhmWmX_QDfnrFtge-XaTlJhb1DQQD43k9neBrAvqR0hB2cduWD8U9KGJgc0__isOjCiKoETpGyLbLcNQKd1xtWtEemqOKvAsAUgGUZBbLiaF8E16yKbmhWGQK21YnCt3UhFNOXccwGCT07MIkD_xrzXBwWm-7jeC2zfqziilYaXrUO3lnATMfEbBctQ2LTlQ' },
+    { name: 'HVAC', sub: 'Cooling maintenance', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDcsuiw8fihIG2Ox7C6uaqlZdIrt6uBLRfU1gmrpcyGEKqM_Pymvzj-Z9_PqXBwQMdcmB-Mvdfy7g7blHDAAy6TjufdHeOqOpI7FaKBDshufkFX2Nu95PKnUPrXFKxtfPKwc4qRhUtQ8AgMJspCTKnjg3byk03u8eqyKwKL1zv97NWJ1TGFgNpfANVVtECJmZayPsO79IJ-GMCsv7fvqcZmAiDQHqgQZ_2wEaZnRdNl3_DLKoFR9t9YGuB7Kp1objl-oPCf5W6lPkg' },
     { name: 'Painting', sub: 'Fresh wall colors', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA7THwV_8P6ZHGSjpHD0qpeSM4AX6M-YDPE9ads5jM_FDNPY2Eufhiu7dH0NQmtMB-T4CRob0X8A4E_rf9OrTW8JkCxLFZTeEVZIT3oHGTzekL-JVxElUQGbRRUEsPTLsoVNduAW8Vd09U0dwvssn7v-BPtKWhacXSYh6WKzDrCd6x5jemRmPTH1VomYgVCi5TQHqx10mcuwDOb2aQIzvFZRI9jMgCL67B0bFfB36ko8qz5Ejr6yhWyu0f1hCZ8gbNMXGoxmjUNPwc' },
-    { name: 'Gardening', sub: 'Lawn & plants', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBvzPlqWesT97x5nPQi4pjOQt7nGcEmXPkGTeY2GIBPFvI7SdBJfxZSqh9mjLmaRswxzEi5ql8a-B7cP_wiRG6ASZY3ZQyFBxFII8foQf2ttI69M06DMVLLAseLEMalq_ddPA8B4PSvXrEPG_fuO9NJwTcoMUixVtmbeGHWdDhCLkcGB-z9MqqnaOF58lUjS0Hga8cg1sDPEGY4kvNI6MtTFGLqGh5b9pXkox0dV3NJkf_9W-5CYQBOpsxL2ro-rOPUbQ-mVLTHFR4' },
+    { name: 'Landscaping', sub: 'Lawn & plants', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBvzPlqWesT97x5nPQi4pjOQt7nGcEmXPkGTeY2GIBPFvI7SdBJfxZSqh9mjLmaRswxzEi5ql8a-B7cP_wiRG6ASZY3ZQyFBxFII8foQf2ttI69M06DMVLLAseLEMalq_ddPA8B4PSvXrEPG_fuO9NJwTcoMUixVtmbeGHWdDhCLkcGB-z9MqqnaOF58lUjS0Hga8cg1sDPEGY4kvNI6MtTFGLqGh5b9pXkox0dV3NJkf_9W-5CYQBOpsxL2ro-rOPUbQ-mVLTHFR4' },
+    { name: 'Moving', sub: 'Transport & logistics', img: 'https://images.unsplash.com/photo-1600518464441-9154a4dea21b?auto=format&fit=crop&q=80&w=300' },
+    { name: 'Roofing', sub: 'Roof repairs', img: 'https://images.unsplash.com/photo-1632759145355-6b5895781a53?auto=format&fit=crop&q=80&w=300' },
+    { name: 'Appliance Repair', sub: 'Fix home devices', img: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&q=80&w=300' },
+    { name: 'Laundry', sub: 'Wash & fold services', img: 'https://images.unsplash.com/photo-1545180856-f6d0f62590aa?auto=format&fit=crop&q=80&w=300' }
   ];
 
   const handleFinish = async () => {
