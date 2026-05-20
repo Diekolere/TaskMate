@@ -6,10 +6,12 @@ import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { supabase } from '../../lib/supabase';
+import { useData } from '../../context/DataContext';
 
 const JobOTP = () => {
     const { jobId } = useParams();
     const navigate = useNavigate();
+    const { sendNotification } = useData();
 
     const [job, setJob] = useState(null);
     const [otp, setOtp] = useState('');
@@ -34,19 +36,34 @@ const JobOTP = () => {
             const newOTP = Math.floor(1000 + Math.random() * 9000).toString();
             const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
             
-            const { error } = await supabase
+            const { data: updatedJob, error } = await supabase
                 .from('jobs')
                 .update({ 
                     otp_code: newOTP, 
                     otp_expires_at: expiresAt 
                 })
-                .eq('id', jobId);
+                .eq('id', jobId)
+                .select('worker_id, title')
+                .single();
 
             if (error) throw error;
             
             setOtp(newOTP);
             setSecondsLeft(15 * 60);
             setStatus('waiting');
+
+            if (updatedJob && updatedJob.worker_id) {
+                await sendNotification(updatedJob.worker_id, {
+                    type: 'system',
+                    title: 'Enter Job OTP to Start',
+                    body: `The customer is ready. Ask them for the 4-digit code and enter it to start "${updatedJob.title}".`,
+                    icon: 'lock_open',
+                    iconBg: 'bg-green-50',
+                    iconColor: 'text-[#10B981]',
+                    ctaPath: `/provider/job-start/${jobId}`,
+                    ctaLabel: 'Enter OTP'
+                });
+            }
         } catch (error) {
             console.error('Failed to generate OTP:', error);
             toast.error('Failed to generate start code');

@@ -496,11 +496,11 @@ export function DataProvider({ children }) {
     if (job?.worker_id) {
       await sendNotification(job.worker_id, {
         type: 'payment',
-        title: 'Payment Secured — Go Get OTP!',
-        body: `Payment for "${job.title}" is locked in escrow. Head to the location and ask the customer for the 4-digit OTP to start the job.`,
-        icon: 'lock', iconBg: 'bg-green-50', iconColor: 'text-[#10B981]',
-        ctaPath: `/provider/job-start/${jobId}`,
-        ctaLabel: 'Enter OTP'
+        title: 'Payment Secured — Ready to Start',
+        body: `The customer has paid for "${job.title}". You can now start the job.`,
+        icon: 'account_balance_wallet', iconBg: 'bg-green-50', iconColor: 'text-[#10B981]',
+        ctaPath: `/provider/jobs/${jobId}`,
+        ctaLabel: 'Start Work'
       });
     }
   };
