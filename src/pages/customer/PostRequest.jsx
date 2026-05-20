@@ -148,20 +148,26 @@ const URGENCY_OPTIONS = [
 const FIELD = "block w-full rounded-xl border border-gray-200 py-3 px-4 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/15 transition-all bg-white";
 const LABEL = "block text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2";
 
-const CATEGORIES = ['Plumbing','Electrical','Cleaning','Moving','Painting','Carpentry','Landscaping','Other'];
+const CATEGORIES = [
+    'Plumbing', 'Electrical', 'Furniture (Carpentry)', 'Cleaning', 'Painting',
+    'HVAC', 'Moving', 'Roofing', 'Appliance Repair', 'Landscaping', 'Laundry'
+];
 
 const CATEGORY_META = {
-    Plumbing:    { icon: 'water_drop',    color: 'text-blue-500',   bg: 'bg-blue-50' },
-    Electrical:  { icon: 'bolt',          color: 'text-yellow-500', bg: 'bg-yellow-50' },
-    Cleaning:    { icon: 'cleaning_services', color: 'text-cyan-500',   bg: 'bg-cyan-50' },
-    Moving:      { icon: 'local_shipping', color: 'text-indigo-500', bg: 'bg-indigo-50' },
-    Painting:    { icon: 'format_paint',  color: 'text-pink-500',   bg: 'bg-pink-50' },
-    Carpentry:   { icon: 'handyman',      color: 'text-amber-600',  bg: 'bg-amber-50' },
-    Landscaping: { icon: 'yard',          color: 'text-green-600',  bg: 'bg-green-50' },
-    Other:       { icon: 'build',         color: 'text-gray-500',   bg: 'bg-gray-100' },
+    Plumbing:              { icon: 'water_drop',             color: 'text-blue-500',   bg: 'bg-blue-50' },
+    Electrical:            { icon: 'bolt',                   color: 'text-yellow-500', bg: 'bg-yellow-50' },
+    'Furniture (Carpentry)': { icon: 'chair',                  color: 'text-amber-600',  bg: 'bg-amber-50' },
+    Cleaning:              { icon: 'cleaning_services',       color: 'text-cyan-500',   bg: 'bg-cyan-50' },
+    Painting:              { icon: 'format_paint',           color: 'text-pink-500',   bg: 'bg-pink-50' },
+    HVAC:                  { icon: 'ac_unit',                color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    Moving:                { icon: 'local_shipping',         color: 'text-indigo-500', bg: 'bg-indigo-50' },
+    Roofing:               { icon: 'roofing',                color: 'text-slate-600',  bg: 'bg-slate-50' },
+    'Appliance Repair':    { icon: 'kitchen',                color: 'text-red-500',    bg: 'bg-red-50' },
+    Landscaping:           { icon: 'yard',                   color: 'text-green-600',  bg: 'bg-green-50' },
+    Laundry:               { icon: 'local_laundry_service',  color: 'text-purple-500', bg: 'bg-purple-50' },
 };
 
-function CategorySelect({ value, onChange, disabled }) {
+function CategorySelect({ value, onChange, disabled, availableCategories = [] }) {
     const [open, setOpen] = useState(false);
     const ref = useRef();
 
@@ -207,16 +213,18 @@ function CategorySelect({ value, onChange, disabled }) {
                         {CATEGORIES.map(cat => {
                             const meta = CATEGORY_META[cat];
                             const sel = value === cat;
+                            const isAvail = availableCategories.includes(cat.toLowerCase());
                             return (
-                                <button key={cat} type="button"
+                                <button key={cat} type="button" disabled={!isAvail}
                                     onClick={() => { onChange(cat); setOpen(false); }}
                                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                                        sel ? 'bg-green-50 text-[#10B981]' : 'text-gray-700 hover:bg-gray-50'
+                                        sel ? 'bg-green-50 text-[#10B981]' : isAvail ? 'text-gray-700 hover:bg-gray-50' : 'text-gray-400 bg-gray-50 cursor-not-allowed opacity-70'
                                     }`}>
-                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${meta.bg}`}>
-                                        <span className={`material-icons-outlined text-[15px] ${meta.color}`}>{meta.icon}</span>
+                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${isAvail ? meta.bg : 'bg-gray-200'}`}>
+                                        <span className={`material-icons-outlined text-[15px] ${isAvail ? meta.color : 'text-gray-400'}`}>{meta.icon}</span>
                                     </div>
                                     <span className={`font-medium ${sel ? 'text-[#10B981]' : ''}`}>{cat}</span>
+                                    {!isAvail && <span className="ml-auto text-[10px] uppercase font-bold text-gray-400">No providers</span>}
                                     {sel && <span className="ml-auto material-icons-outlined text-[#10B981] text-[16px]">check</span>}
                                 </button>
                             );
@@ -238,11 +246,12 @@ function PostRequestForm({ onClose, isModal }) {
     const providerName = location.state?.providerName || editingRequest?.providerName;
     const initialCategory = location.state?.category || editingRequest?.category;
 
-    const { createRequest } = useData();
+    const { createRequest, getAvailableCategories } = useData();
     const { currentUser } = useAuth();
     const { checkImage } = useImageModeration();
 
     const [loading, setLoading] = useState(false);
+    const [availableCats, setAvailableCats] = useState([]);
     const [title, setTitle] = useState(editingRequest?.title || '');
     const [description, setDescription] = useState(editingRequest?.description || '');
     const [category, setCategory] = useState(initialCategory || '');
@@ -253,6 +262,10 @@ function PostRequestForm({ onClose, isModal }) {
     const [address, setAddress] = useState(editingRequest?.location || currentUser?.location_name || '');
     const [coordinates, setCoordinates] = useState(null); // { lat, lng }
     const fileInputRef = useRef();
+
+    useEffect(() => {
+        getAvailableCategories().then(cats => setAvailableCats(cats));
+    }, [getAvailableCategories]);
 
     const initImages = () => {
         const existing = editingRequest?.images || [];
@@ -410,7 +423,7 @@ function PostRequestForm({ onClose, isModal }) {
                     </div>
                     <div>
                         <label className={LABEL}>Category</label>
-                        <CategorySelect value={category} onChange={setCategory} disabled={!!initialCategory} />
+                        <CategorySelect value={category} onChange={setCategory} disabled={!!initialCategory} availableCategories={availableCats} />
                         {initialCategory && <p className="text-xs text-gray-400 mt-1.5">Category is pre-set for this provider.</p>}
                     </div>
                 </div>

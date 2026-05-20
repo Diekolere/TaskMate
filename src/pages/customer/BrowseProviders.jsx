@@ -5,13 +5,15 @@ import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { supabase } from '../../lib/supabase';
 
 const BrowseProviders = () => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const { getProviders, savedProviderIds, toggleSavedProvider } = useData();
+    const { getProviders, savedProviderIds, toggleSavedProvider, getAvailableCategories } = useData();
     const [providers, setProviders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [availableCats, setAvailableCats] = useState([]);
     
     // Filters States
     const [searchQuery, setSearchQuery] = useState('');
@@ -24,8 +26,8 @@ const BrowseProviders = () => {
     const [showMobileFilters, setShowMobileFilters] = useState(false);
 
     const categories = [
-        "Electrical", "Plumbing", "Carpentry", "Painting & Decorating", 
-        "Cleaning Services", "HVAC & AC Repair", "Home Security", "Interior Design"
+        "Plumbing", "Electrical", "Furniture (Carpentry)", "Cleaning", "Painting",
+        "HVAC", "Moving", "Roofing", "Appliance Repair", "Landscaping", "Laundry"
     ];
 
     const toggleCategory = (cat) => {
@@ -40,6 +42,8 @@ const BrowseProviders = () => {
         const fetchProviders = async () => {
             setLoading(true);
             const data = await getProviders('All');
+            const avail = await getAvailableCategories();
+            setAvailableCats(avail);
             
             const enrichedData = data.map(p => ({
                 ...p,
@@ -64,10 +68,26 @@ const BrowseProviders = () => {
             } else if (sortFilter === 'Most Jobs Done') {
                 filteredData.sort((a, b) => (b.completedJobs || 0) - (a.completedJobs || 0));
             } else if (sortFilter === 'Nearest') {
-                // Mock proximity: stable sort using provider id hash so "nearest" feels consistent
+                // Real proximity: Haversine distance using actual coordinates
+                const customerLat = currentUser?.latitude || 6.5095; // Default to Yaba if null
+                const customerLng = currentUser?.longitude || 3.3711;
+                
+                const getDistance = (lat1, lon1, lat2, lon2) => {
+                    if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
+                    const R = 6371; // km
+                    const dLat = (lat2 - lat1) * Math.PI / 180;
+                    const dLon = (lon2 - lon1) * Math.PI / 180;
+                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                              Math.sin(dLon/2) * Math.sin(dLon/2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                    return R * c;
+                };
+
                 filteredData.sort((a, b) => {
-                    const hashId = (id) => String(id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-                    return (hashId(a.id) % 50) - (hashId(b.id) % 50);
+                    const distA = getDistance(customerLat, customerLng, a.latitude, a.longitude);
+                    const distB = getDistance(customerLat, customerLng, b.latitude, b.longitude);
+                    return distA - distB;
                 });
             }
 
@@ -76,6 +96,28 @@ const BrowseProviders = () => {
         };
         fetchProviders();
     }, [selectedCategories, sortFilter, ratingFilter, getProviders]);
+
+    useEffect(() => {
+        const channel = supabase
+            .channel('provider-profiles-browse-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'provider_profiles'
+                },
+                async () => {
+                    const avail = await getAvailableCategories();
+                    setAvailableCats(avail);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [getAvailableCategories]);
 
     return (
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
@@ -127,18 +169,24 @@ const BrowseProviders = () => {
                                     </button>
                                     {isCategoryOpen && (
                                         <div className="absolute top-full left-0 mt-2 w-[calc(100vw-2rem)] sm:w-[280px] bg-white border border-gray-100 rounded-xl shadow-lg py-2 z-10 max-h-[350px] overflow-y-auto">
-                                            {categories.map(cat => (
-                                                <div 
-                                                    key={cat}
-                                                    onClick={() => toggleCategory(cat)}
-                                                    className="w-full flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors group"
-                                                >
-                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedCategories.includes(cat) ? 'bg-[#10B981] border-[#10B981]' : 'border-gray-300 group-hover:border-[#34D399]'}`}>
-                                                        {selectedCategories.includes(cat) && <span className="material-icons text-[12px] text-white font-bold">check</span>}
+                                            {categories.map(cat => {
+                                                const isAvail = availableCats.includes(cat.toLowerCase());
+                                                return (
+                                                    <div 
+                                                        key={cat}
+                                                        onClick={() => isAvail && toggleCategory(cat)}
+                                                        className={`w-full flex items-center justify-between gap-3 px-5 py-2.5 transition-colors group ${isAvail ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-60 cursor-not-allowed bg-gray-50'}`}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedCategories.includes(cat) ? 'bg-[#10B981] border-[#10B981]' : isAvail ? 'border-gray-300 group-hover:border-[#34D399]' : 'border-gray-200'}`}>
+                                                                {selectedCategories.includes(cat) && <span className="material-icons text-[12px] text-white font-bold">check</span>}
+                                                            </div>
+                                                            <span className={`text-[13px] font-bold ${selectedCategories.includes(cat) ? 'text-gray-900' : 'text-gray-600'}`}>{cat}</span>
+                                                        </div>
+                                                        {!isAvail && <span className="text-[10px] uppercase font-bold text-gray-400">No Providers</span>}
                                                     </div>
-                                                    <span className={`text-[13px] font-bold ${selectedCategories.includes(cat) ? 'text-gray-900' : 'text-gray-600'}`}>{cat}</span>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                             {selectedCategories.length > 0 && (
                                                 <div className="px-5 pt-3 pb-1 mt-2 border-t border-gray-100">
                                                     <button onClick={() => { setSelectedCategories([]); setIsCategoryOpen(false); }} className="text-[11px] font-bold text-red-500 hover:text-red-700">Clear Selections</button>
