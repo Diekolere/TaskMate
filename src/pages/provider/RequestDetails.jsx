@@ -59,10 +59,6 @@ const RequestDetails = () => {
 
                 if (jobData) {
                     setRequest(jobData);
-                    // If explicitly assigned as worker
-                    if (jobData.worker_id === currentUser.id) {
-                        setAccepted(true);
-                    }
                 }
 
                 // 2. Fetch Application Status (The true "Accepted" state for providers)

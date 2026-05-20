@@ -390,7 +390,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {loading ? <FullPageLoader /> : children}
+      {children}
     </AuthContext.Provider>
   );
 };
