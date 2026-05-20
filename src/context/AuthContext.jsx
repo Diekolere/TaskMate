@@ -12,6 +12,7 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deletedAccount, setDeletedAccount] = useState(false);
   // Guard against concurrent fetchProfile calls (e.g. login() + onAuthStateChange both fire at once)
   const fetchingRef = useRef(false);
 
@@ -51,7 +52,7 @@ export function AuthProvider({ children }) {
     }
     fetchingRef.current = true;
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('profiles')
         .select(`
           *,
@@ -66,13 +67,70 @@ export function AuthProvider({ children }) {
         throw error;
       }
 
+      if (!data) {
+        const pendingRole = sessionStorage.getItem('pending_oauth_role');
+        const effectiveRole = pendingRole || user.user_metadata?.role || 'customer';
+        console.warn(`[Auth] No profile row found for user ${user.id}. Self-healing for role: ${effectiveRole}`);
+        try {
+          // Use upsert to avoid unique-constraint violations if the trigger partially ran
+          const { error: profileUpsertErr } = await supabase.from('profiles').upsert({
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+            role: effectiveRole,
+          }, { onConflict: 'id' });
+
+          // A 23503 FK violation means the user was deleted from auth.users
+          // but their Supabase session is still cached locally.
+          // Sign them out and show the deleted-account modal.
+          if (profileUpsertErr?.code === '23503') {
+            console.warn('[Auth] User deleted from auth.users — signing out stale session.');
+            await supabase.auth.signOut();
+            setCurrentUser(null);
+            setDeletedAccount(true);
+            setLoading(false);
+            fetchingRef.current = false;
+            return null;
+          }
+          if (profileUpsertErr) console.error('[Auth] Profile upsert failed:', profileUpsertErr);
+
+          if (effectiveRole === 'provider') {
+            const { error: ppErr } = await supabase.from('provider_profiles').upsert({ id: user.id }, { onConflict: 'id' });
+            if (ppErr) console.error('[Auth] provider_profiles upsert failed:', ppErr);
+          } else {
+            const { error: cpErr } = await supabase.from('customer_profiles').upsert({ id: user.id }, { onConflict: 'id' });
+            if (cpErr) console.error('[Auth] customer_profiles upsert failed:', cpErr);
+          }
+
+          // Re-fetch the now-created profile
+          const { data: refetchedData } = await supabase
+            .from('profiles')
+            .select(`
+              *,
+              provider_profiles (*),
+              customer_profiles (*)
+            `)
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (refetchedData) {
+            data = refetchedData;
+          }
+        } catch (healErr) {
+          console.error('[Auth] Self-healing profile creation failed:', healErr);
+        }
+      }
+
       if (data) {
         // Use sub-profile EXISTENCE as the authoritative role source.
         // This is a safety net for accounts where profiles.role column may be
         // stale, incorrectly set, or the trigger wasn't deployed to production.
+        const hasProviderProfile = data.provider_profiles && (Array.isArray(data.provider_profiles) ? data.provider_profiles.length > 0 : true);
+        const hasCustomerProfile = data.customer_profiles && (Array.isArray(data.customer_profiles) ? data.customer_profiles.length > 0 : true);
+
         let effectiveRole = data.role;
-        if (data.provider_profiles) effectiveRole = 'provider';
-        else if (data.customer_profiles) effectiveRole = 'customer';
+        if (hasProviderProfile) effectiveRole = 'provider';
+        else if (hasCustomerProfile) effectiveRole = 'customer';
 
         // SELF-HEALING: Fix database if trigger defaulted to customer but user intended provider
         const intendedRole = user.user_metadata?.role;
@@ -84,14 +142,11 @@ export function AuthProvider({ children }) {
             await supabase.from('profiles').update({ role: intendedRole }).eq('id', user.id);
             if (intendedRole === 'provider') {
               await supabase.from('provider_profiles').upsert({ id: user.id }, { onConflict: 'id' });
-              await supabase.from('customer_profiles').delete().eq('id', user.id);
             } else {
-              await supabase.from('customer_profiles').upsert({ id: user.id }, { onConflict: 'id' });
               await supabase.from('provider_profiles').delete().eq('id', user.id);
             }
-            effectiveRole = intendedRole;
-          } catch (healErr) {
-            console.error('[Auth] Self-healing failed:', healErr);
+          } catch (e) {
+            console.error('[Auth] Self-healing failed:', e);
           }
         }
 
@@ -105,21 +160,27 @@ export function AuthProvider({ children }) {
           displayName: data.full_name,
           photoURL: data.avatar_url,
           // Flatten provider_profiles for easy access
-          ...(data.provider_profiles ? {
-            kycCompleted: data.provider_profiles.kyc_completed,
-            bvnVerified: data.provider_profiles.bvn_verified,
-            bankName: data.provider_profiles.bank_name,
-            bankCode: data.provider_profiles.bank_code,
-            accountNumber: data.provider_profiles.account_number,
-            accountName: data.provider_profiles.account_name,
-            isVerified: data.provider_profiles.verification_status === 'verified',
-            transactionPin: data.provider_profiles.transaction_pin,
-            tradeCategory: data.provider_profiles.trade_category || [],
-          } : {}),
+          ...(hasProviderProfile ? (() => {
+            const pProfile = Array.isArray(data.provider_profiles) ? (data.provider_profiles[0] || {}) : data.provider_profiles;
+            return {
+              kycCompleted: pProfile.kyc_completed,
+              bvnVerified: pProfile.bvn_verified,
+              bankName: pProfile.bank_name,
+              bankCode: pProfile.bank_code,
+              accountNumber: pProfile.account_number,
+              accountName: pProfile.account_name,
+              isVerified: pProfile.verification_status === 'verified',
+              transactionPin: pProfile.transaction_pin,
+              tradeCategory: pProfile.trade_category || [],
+            };
+          })() : {}),
           // Flatten customer_profiles
-          ...(data.customer_profiles ? {
-            saved_workers: data.customer_profiles.saved_workers || [],
-          } : {}),
+          ...(hasCustomerProfile ? (() => {
+            const cProfile = Array.isArray(data.customer_profiles) ? (data.customer_profiles[0] || {}) : data.customer_profiles;
+            return {
+              saved_workers: cProfile.saved_workers || [],
+            };
+          })() : {}),
         };
         setCurrentUser(shimmedUser);
         return shimmedUser;
@@ -159,33 +220,11 @@ export function AuthProvider({ children }) {
   // Awaits fetchProfile so the returned user always has the real DB role.
   // intentRole: the role the user SELECTED on the login page, used as
   // a last-resort fallback if the DB and user_metadata are both unreliable.
-  const login = async (emailOrPhone, password, intentRole) => {
-    let credentials = {};
-    const input = emailOrPhone.trim();
-
-    // Check if it's an email (contains '@') or a phone number
-    if (input.includes('@')) {
-      // It's an email. But what if this email belongs to a provider whose primary auth is phone?
-      // Let's query profiles to check if this user has a phone_number and their role is 'provider'.
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('phone_number, role')
-        .eq('email', input)
-        .maybeSingle();
-
-      if (profile && profile.role === 'provider' && profile.phone_number) {
-        // Log in using phone since that's their primary Auth credential
-        credentials = { phone: profile.phone_number, password };
-      } else {
-        // Log in using email
-        credentials = { email: input, password };
-      }
-    } else {
-      // It's a phone number. Log in using phone.
-      credentials = { phone: input, password };
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword(credentials);
+  const login = async (email, password, intentRole) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
     if (error) throw error;
 
     const fullUser = await fetchProfile(data.user);
@@ -236,56 +275,40 @@ export function AuthProvider({ children }) {
   };
 
   // ── Register ────────────────────────────────────────────
-  const register = async (emailOrPhone, password, name, role, optionalEmail = null) => {
-    let signUpParams = {};
-    
-    if (role === 'provider') {
-      signUpParams = {
-        phone: emailOrPhone,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            role: role,
-            email: optionalEmail
-          }
+  const register = async (email, password, name, role) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+          role: role,
         }
-      };
-    } else {
-      signUpParams = {
-        email: emailOrPhone,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            role: role,
-          }
-        }
-      };
-    }
-
-    const { data, error } = await supabase.auth.signUp(signUpParams);
+      }
+    });
     if (error) throw error;
 
     // Safety net: manually upsert profile rows immediately.
-    // The DB trigger may not be deployed to production.
-    // upsert is idempotent — safe even if the trigger DID run.
+    // The DB trigger (handle_new_user) should handle this via SECURITY DEFINER,
+    // but if it isn't deployed, the user's first login would find no profile row.
+    // RLS may block these calls if email isn't confirmed yet — that's fine,
+    // the self-healing in fetchProfile() will catch it on first login.
     if (data.user) {
       try {
-        await supabase.from('profiles').upsert({
+        const { error: profErr } = await supabase.from('profiles').upsert({
           id: data.user.id,
-          email: role === 'provider' ? optionalEmail : emailOrPhone,
-          phone_number: role === 'provider' ? emailOrPhone : null,
+          email: email,
           full_name: name,
           role: role,
         }, { onConflict: 'id' });
+        if (profErr) console.warn('[Auth] Profile upsert after register:', profErr.message);
 
         if (role === 'provider') {
-          await supabase.from('provider_profiles').upsert({ id: data.user.id }, { onConflict: 'id' });
-          await supabase.from('customer_profiles').delete().eq('id', data.user.id);
+          const { error: ppErr } = await supabase.from('provider_profiles').upsert({ id: data.user.id }, { onConflict: 'id' });
+          if (ppErr) console.warn('[Auth] provider_profiles upsert after register:', ppErr.message);
         } else {
-          await supabase.from('customer_profiles').upsert({ id: data.user.id }, { onConflict: 'id' });
-          await supabase.from('provider_profiles').delete().eq('id', data.user.id);
+          const { error: cpErr } = await supabase.from('customer_profiles').upsert({ id: data.user.id }, { onConflict: 'id' });
+          if (cpErr) console.warn('[Auth] customer_profiles upsert after register:', cpErr.message);
         }
       } catch (profileErr) {
         // Non-fatal: RLS may block this until email is confirmed.
@@ -294,9 +317,7 @@ export function AuthProvider({ children }) {
       }
     }
 
-    if (role === 'customer') {
-      toast.success('Account created! Check your email to verify.');
-    }
+    toast.success('Account created! Check your email to verify.');
     return data.user;
   };
 
@@ -381,18 +402,25 @@ export function AuthProvider({ children }) {
     if (!currentUser) return;
 
     try {
+      // Use upsert instead of update: if the provider_profiles row was never
+      // created (e.g. RLS blocked it during registration), a plain .update()
+      // would succeed with 0 rows affected, silently losing the user's data.
       const { error } = await supabase
         .from('provider_profiles')
-        .update(data)
-        .eq('id', currentUser.id);
+        .upsert({ id: currentUser.id, ...data }, { onConflict: 'id' });
 
       if (error) throw error;
 
       setCurrentUser(prev => {
-        const updatedProviderProfiles = { ...prev.provider_profiles, ...data };
+        const rawPProfile = Array.isArray(prev.provider_profiles) 
+          ? (prev.provider_profiles[0] || {}) 
+          : (prev.provider_profiles || {});
+        const updatedProviderProfiles = { ...rawPProfile, ...data };
         return {
           ...prev,
-          provider_profiles: updatedProviderProfiles,
+          provider_profiles: Array.isArray(prev.provider_profiles) 
+            ? [updatedProviderProfiles] 
+            : updatedProviderProfiles,
           // Sync flattened fields for immediate UI updates
           kycCompleted: updatedProviderProfiles.kyc_completed,
           bvnVerified: updatedProviderProfiles.bvn_verified,
@@ -421,9 +449,13 @@ export function AuthProvider({ children }) {
     toast.success('Password updated!');
   };
 
+  const clearDeletedAccount = () => setDeletedAccount(false);
+
   const value = {
     currentUser,
     loading,
+    deletedAccount,
+    clearDeletedAccount,
     login,
     loginWithGoogle,
     logout,

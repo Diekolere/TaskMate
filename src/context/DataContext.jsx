@@ -800,21 +800,29 @@ export function DataProvider({ children }) {
 
   const getProviders = useCallback(async (category = null) => {
     try {
+      let selectStr = '*, provider_profiles(*)';
+      if (category && category !== 'All') {
+        selectStr = '*, provider_profiles!inner(*)';
+      }
       let query = supabase
         .from('profiles')
-        .select('*, provider_profiles(*)')
+        .select(selectStr)
         .eq('role', 'provider')
         .eq('is_active', true);
 
       if (category && category !== 'All') {
-        query = query.contains('provider_profiles.trade_category', [category.toLowerCase()]);
+        const capitalized = category.charAt(0).toUpperCase() + category.slice(1);
+        const lower = category.toLowerCase();
+        query = query.or(`trade_category.cs.{"${capitalized}"},trade_category.cs.{"${lower}"}`, { foreignTable: 'provider_profiles' });
       }
 
       const { data, error } = await query;
       if (error) throw error;
 
       return (data || []).map(p => {
-        const profile = p.provider_profiles?.[0] || {};
+        const profile = Array.isArray(p.provider_profiles)
+          ? (p.provider_profiles[0] || {})
+          : (p.provider_profiles || {});
         return {
           ...p,
           ...profile,
@@ -843,7 +851,9 @@ export function DataProvider({ children }) {
       if (error) throw error;
       if (!data) return null;
 
-      const profile = data.provider_profiles?.[0] || {};
+      const profile = Array.isArray(data.provider_profiles)
+        ? (data.provider_profiles[0] || {})
+        : (data.provider_profiles || {});
       return {
         ...data,
         ...profile,
@@ -887,7 +897,9 @@ export function DataProvider({ children }) {
       if (provError) throw provError;
 
       return (providers || []).map(p => {
-        const profile = p.provider_profiles?.[0] || {};
+        const profile = Array.isArray(p.provider_profiles)
+          ? (p.provider_profiles[0] || {})
+          : (p.provider_profiles || {});
         return {
           ...p,
           ...profile,
