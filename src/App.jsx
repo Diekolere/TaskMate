@@ -29,6 +29,7 @@ import KYCGate from './components/provider/KYCGate';
 import ProviderDashboard from './pages/provider/Dashboard';
 import RequestDetails from './pages/provider/RequestDetails';
 import Schedule from './pages/provider/Schedule';
+import CategoryGate from './components/provider/CategoryGate';
 
 import Requests from './pages/provider/Requests';
 import MyJobs from './pages/provider/MyJobs';
@@ -100,25 +101,25 @@ function AnimatedRoutes() {
         <Route path="/provider/onboarding/*" element={<Navigate to="/provider/dashboard" replace />} />
 
         {/* Provider Routes — Dashboard is always accessible */}
-        <Route path="/provider/dashboard" element={<ProtectedRoute allowedRoles={['provider']}><ProviderDashboard /></ProtectedRoute>} />
+        <Route path="/provider/dashboard" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><ProviderDashboard /></CategoryGate></ProtectedRoute>} />
 
         {/* Provider Feature Routes — gated behind KYC */}
-        <Route path="/provider/requests" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><Requests /></KYCGate></ProtectedRoute>} />
-        <Route path="/provider/requests/:id" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><RequestDetails /></KYCGate></ProtectedRoute>} />
-        <Route path="/provider/jobs" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><MyJobs /></KYCGate></ProtectedRoute>} />
-        <Route path="/provider/jobs/:id" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><JobDetails /></KYCGate></ProtectedRoute>} />
-        <Route path="/provider/negotiation/:id" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><JobDetails /></KYCGate></ProtectedRoute>} />
-        <Route path="/provider/earnings" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><Earnings /></KYCGate></ProtectedRoute>} />
-        <Route path="/provider/profile" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><MyProfile /></KYCGate></ProtectedRoute>} />
-        <Route path="/provider/settings" element={<ProtectedRoute allowedRoles={['provider']}><ProviderSettings /></ProtectedRoute>} />
-        <Route path="/provider/settings/password" element={<ProtectedRoute allowedRoles={['provider']}><ChangePassword /></ProtectedRoute>} />
-        <Route path="/provider/posts/new" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><CreateServicePost /></KYCGate></ProtectedRoute>} />
+        <Route path="/provider/requests" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><Requests /></KYCGate></CategoryGate></ProtectedRoute>} />
+        <Route path="/provider/requests/:id" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><RequestDetails /></KYCGate></CategoryGate></ProtectedRoute>} />
+        <Route path="/provider/jobs" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><MyJobs /></KYCGate></CategoryGate></ProtectedRoute>} />
+        <Route path="/provider/jobs/:id" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><JobDetails /></KYCGate></CategoryGate></ProtectedRoute>} />
+        <Route path="/provider/negotiation/:id" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><JobDetails /></KYCGate></CategoryGate></ProtectedRoute>} />
+        <Route path="/provider/earnings" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><Earnings /></KYCGate></CategoryGate></ProtectedRoute>} />
+        <Route path="/provider/profile" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><MyProfile /></KYCGate></CategoryGate></ProtectedRoute>} />
+        <Route path="/provider/settings" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><ProviderSettings /></CategoryGate></ProtectedRoute>} />
+        <Route path="/provider/settings/password" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><ChangePassword /></CategoryGate></ProtectedRoute>} />
+        <Route path="/provider/posts/new" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><CreateServicePost /></KYCGate></CategoryGate></ProtectedRoute>} />
         <Route path="/provider/support" element={<Support />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
-        <Route path="/provider/schedule" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><Schedule /></KYCGate></ProtectedRoute>} />
-        <Route path="/provider/invite" element={<ProtectedRoute allowedRoles={['provider']}><ProviderInviteFriends /></ProtectedRoute>} />
-        <Route path="/provider/job-start/:jobId" element={<ProtectedRoute allowedRoles={['provider']}><KYCGate><JobStart /></KYCGate></ProtectedRoute>} />
+        <Route path="/provider/schedule" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><Schedule /></KYCGate></CategoryGate></ProtectedRoute>} />
+        <Route path="/provider/invite" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><ProviderInviteFriends /></CategoryGate></ProtectedRoute>} />
+        <Route path="/provider/job-start/:jobId" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><JobStart /></KYCGate></CategoryGate></ProtectedRoute>} />
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
