@@ -202,18 +202,18 @@ const Login = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-[#1a2b3c] mb-2">
-                Email Address
+                {isProvider ? 'Phone Number' : 'Email Address'}
               </label>
               <input
                 id="email"
                 name="email"
-                type="email"
-                autoComplete="email"
+                type={isProvider ? 'text' : 'email'}
+                autoComplete={isProvider ? 'tel' : 'email'}
                 required
                 value={formData.email}
                 onChange={handleChange}
                 className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-xl placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7AC142]/40 focus:border-[#7AC142] transition-colors text-[#1a2b3c]"
-                placeholder="you@example.com"
+                placeholder={isProvider ? 'e.g. +2348000000000' : 'you@example.com'}
               />
             </div>
 
