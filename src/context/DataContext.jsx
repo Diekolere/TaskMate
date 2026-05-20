@@ -496,11 +496,11 @@ export function DataProvider({ children }) {
     if (job?.worker_id) {
       await sendNotification(job.worker_id, {
         type: 'payment',
-        title: 'Payment Secured — Ready to Start',
-        body: `The customer has paid for "${job.title}". You can now start the job.`,
-        icon: 'account_balance_wallet', iconBg: 'bg-green-50', iconColor: 'text-[#10B981]',
-        ctaPath: `/provider/jobs/${jobId}`,
-        ctaLabel: 'Start Work'
+        title: 'Payment Secured — Go Get OTP!',
+        body: `Payment for "${job.title}" is locked in escrow. Head to the location and ask the customer for the 4-digit OTP to start the job.`,
+        icon: 'lock', iconBg: 'bg-green-50', iconColor: 'text-[#10B981]',
+        ctaPath: `/provider/job-start/${jobId}`,
+        ctaLabel: 'Enter OTP'
       });
     }
   };
@@ -917,6 +917,16 @@ export function DataProvider({ children }) {
     } else {
       newSavedIds.push(providerId);
       toast.success('Provider saved!');
+      
+      // Notify the provider anonymously
+      sendNotification(providerId, {
+        type: 'system',
+        title: 'New Profile Save!',
+        body: 'A customer has saved your profile to their favorites.',
+        icon: 'favorite',
+        iconBg: 'bg-red-50',
+        iconColor: 'text-red-500'
+      }).catch(console.error);
     }
 
     const { error } = await supabase
@@ -940,6 +950,18 @@ export function DataProvider({ children }) {
       }]);
       if (error) throw error;
       toast.success('Review submitted!');
+
+      // Notify the provider
+      sendNotification(providerId, {
+        type: 'review',
+        title: `You received a ${rating}-star review!`,
+        body: comment ? (comment.length > 50 ? comment.substring(0, 50) + '...' : comment) : 'A customer just reviewed your work.',
+        icon: 'star',
+        iconBg: 'bg-amber-50',
+        iconColor: 'text-amber-500',
+        ctaPath: '/provider/profile',
+        ctaLabel: 'View Profile'
+      }).catch(console.error);
     } catch (error) {
       console.error('Submit review error:', error);
       toast.error('Failed to submit review');
