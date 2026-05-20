@@ -114,6 +114,7 @@ export function AuthProvider({ children }) {
             accountName: data.provider_profiles.account_name,
             isVerified: data.provider_profiles.verification_status === 'verified',
             transactionPin: data.provider_profiles.transaction_pin,
+            tradeCategory: data.provider_profiles.trade_category || [],
           } : {}),
           // Flatten customer_profiles
           ...(data.customer_profiles ? {
@@ -158,8 +159,33 @@ export function AuthProvider({ children }) {
   // Awaits fetchProfile so the returned user always has the real DB role.
   // intentRole: the role the user SELECTED on the login page, used as
   // a last-resort fallback if the DB and user_metadata are both unreliable.
-  const login = async (email, password, intentRole) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const login = async (emailOrPhone, password, intentRole) => {
+    let credentials = {};
+    const input = emailOrPhone.trim();
+
+    // Check if it's an email (contains '@') or a phone number
+    if (input.includes('@')) {
+      // It's an email. But what if this email belongs to a provider whose primary auth is phone?
+      // Let's query profiles to check if this user has a phone_number and their role is 'provider'.
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone_number, role')
+        .eq('email', input)
+        .maybeSingle();
+
+      if (profile && profile.role === 'provider' && profile.phone_number) {
+        // Log in using phone since that's their primary Auth credential
+        credentials = { phone: profile.phone_number, password };
+      } else {
+        // Log in using email
+        credentials = { email: input, password };
+      }
+    } else {
+      // It's a phone number. Log in using phone.
+      credentials = { phone: input, password };
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword(credentials);
     if (error) throw error;
 
     const fullUser = await fetchProfile(data.user);
@@ -210,18 +236,35 @@ export function AuthProvider({ children }) {
   };
 
   // ── Register ────────────────────────────────────────────
-  const register = async (email, password, name, role) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: name,
-          role: role,   // saved to user_metadata for trigger + fallbacks
+  const register = async (emailOrPhone, password, name, role, optionalEmail = null) => {
+    let signUpParams = {};
+    
+    if (role === 'provider') {
+      signUpParams = {
+        phone: emailOrPhone,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            role: role,
+            email: optionalEmail
+          }
         }
-      }
-    });
+      };
+    } else {
+      signUpParams = {
+        email: emailOrPhone,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            role: role,
+          }
+        }
+      };
+    }
 
+    const { data, error } = await supabase.auth.signUp(signUpParams);
     if (error) throw error;
 
     // Safety net: manually upsert profile rows immediately.
@@ -231,7 +274,8 @@ export function AuthProvider({ children }) {
       try {
         await supabase.from('profiles').upsert({
           id: data.user.id,
-          email: email,
+          email: role === 'provider' ? optionalEmail : emailOrPhone,
+          phone_number: role === 'provider' ? emailOrPhone : null,
           full_name: name,
           role: role,
         }, { onConflict: 'id' });
@@ -250,7 +294,9 @@ export function AuthProvider({ children }) {
       }
     }
 
-    toast.success('Account created! Check your email to verify.');
+    if (role === 'customer') {
+      toast.success('Account created! Check your email to verify.');
+    }
     return data.user;
   };
 
@@ -356,6 +402,7 @@ export function AuthProvider({ children }) {
           accountName: updatedProviderProfiles.account_name,
           isVerified: updatedProviderProfiles.verification_status === 'verified',
           transactionPin: updatedProviderProfiles.transaction_pin,
+          tradeCategory: updatedProviderProfiles.trade_category || [],
         };
       });
       toast.success('Provider profile updated');

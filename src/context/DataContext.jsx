@@ -1146,8 +1146,25 @@ export function DataProvider({ children }) {
     toast.success(`Verification ${status}`);
   };
 
-  const updateUserStatus = async (userId, isActive) => {
+  const getAvailableCategories = async () => {
+    try {
+      const providers = await getProviders('All');
+      const available = new Set();
+      providers.forEach(p => {
+        if (p.trade_category && Array.isArray(p.trade_category)) {
+          p.trade_category.forEach(cat => available.add(cat.toLowerCase()));
+        } else if (p.category) {
+          available.add(p.category.toLowerCase());
+        }
+      });
+      return Array.from(available);
+    } catch (err) {
+      console.error('Error fetching available categories:', err);
+      return [];
+    }
+  };
 
+  const updateUserStatus = async (userId, isActive) => {
     const { error } = await supabase.from('profiles')
       .update({ is_active: isActive, status: isActive ? 'Active' : 'Suspended' })
       .eq('id', userId);
@@ -1165,7 +1182,7 @@ export function DataProvider({ children }) {
     releasePayment, getProviders, getProviderProfile, getInterestedProviders, savedProviderIds, toggleSavedProvider,
     submitReview, markNotificationRead, markAllNotificationsRead,
     createServicePost, updateServicePost, deleteServicePost, getServicePosts, getAllServicePosts, createSupportTicket,
-    submitVerification, updateVerificationStatus, updateUserStatus,
+    submitVerification, updateVerificationStatus, updateUserStatus, getAvailableCategories,
     // Messaging
     messages, fetchMessages, sendMessage, subscribeToMessages,
     // Notifications (exposed for components to send directly)
