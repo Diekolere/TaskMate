@@ -9,6 +9,25 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { uploadFile, generateFilePath } from '../../lib/supabase';
 
+const CATEGORIES_LIST = [
+  "Plumbing", "Electrical", "Furniture (Carpentry)", "Cleaning", "Painting",
+  "HVAC", "Moving", "Roofing", "Appliance Repair", "Landscaping", "Laundry"
+];
+
+const CATEGORY_STYLES = {
+  'Plumbing': { text: 'text-blue-600', bg: 'bg-blue-50 border-blue-200/60' },
+  'Electrical': { text: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200/60' },
+  'Furniture (Carpentry)': { text: 'text-amber-700', bg: 'bg-amber-50 border-amber-200/60' },
+  'Cleaning': { text: 'text-cyan-600', bg: 'bg-cyan-50 border-cyan-200/60' },
+  'Painting': { text: 'text-pink-600', bg: 'bg-pink-50 border-pink-200/60' },
+  'HVAC': { text: 'text-[#10B981]', bg: 'bg-emerald-50 border-emerald-200/60' },
+  'Moving': { text: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-200/60' },
+  'Roofing': { text: 'text-slate-700', bg: 'bg-slate-50 border-slate-200/60' },
+  'Appliance Repair': { text: 'text-red-600', bg: 'bg-red-50 border-red-200/60' },
+  'Landscaping': { text: 'text-green-700', bg: 'bg-green-50 border-green-200/60' },
+  'Laundry': { text: 'text-purple-600', bg: 'bg-purple-50 border-purple-200/60' }
+};
+
 const Profile = () => {
   const { currentUser, updateUserProfile } = useAuth();
   const { getServicePosts, deleteServicePost: deleteServicePostDb } = useData();
@@ -49,7 +68,7 @@ const Profile = () => {
         banner: currentUser.banner || null,
                 reviews: currentUser.reviews || [],
                 servicesList: currentUser.services || [],
-                skills: currentUser.skills || [],
+                skills: currentUser.tradeCategory || [],
                 servicePosts: [], // Will be fetched separately
             });
             
@@ -353,53 +372,50 @@ const Profile = () => {
                                         <div className="border-t border-gray-100 pt-5">
                                             <div className="flex items-center justify-between mb-3">
                                                 <h4 className="font-bold text-gray-900 uppercase tracking-wide text-xs">Specialties</h4>
-                                                {isEditing && (
-              <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            if (newSkill.trim()) {
-                                                                setProfile(prev => ({ ...prev, skills: [...prev.skills, newSkill] }));
-                                                                setNewSkill('');
-                                                            }
-                                                        }}
-                                                        className="text-[#10B981] hover:text-green-600 text-xs font-semibold"
-                                                    >
-                                                        + Add
-              </button>
-                                                )}
-                  </div>
-                    {isEditing ? (
-                        <input 
-                                                    type="text"
-                                                    value={newSkill}
-                                                    onChange={e => setNewSkill(e.target.value)}
-                                                    placeholder="Add a specialty…"
-                                                    className="w-full p-2 border border-gray-200 rounded-lg focus:border-[#10B981] outline-none text-xs mb-2"
-                                                    onKeyPress={e => {
-                                                        if (e.key === 'Enter' && newSkill.trim()) {
-                                                            setProfile(prev => ({ ...prev, skills: [...prev.skills, newSkill] }));
-                                                            setNewSkill('');
-                                                        }
-                                                    }}
-                                                />
-                                            ) : null}
+                                            </div>
                                             <div className="flex flex-wrap gap-2">
-                                                {profile.skills.map((skill, idx) => (
-                                                    <div key={idx} className="px-3 py-1 bg-[#10B981]/10 text-[#10B981] rounded-full text-xs font-semibold border border-[#10B981]/20 flex items-center gap-2">
-                                                        {skill}
-                                                        {isEditing && (
+                                                {isEditing ? (
+                                                    CATEGORIES_LIST.map((catName) => {
+                                                        const isSelected = profile.skills.includes(catName);
+                                                        const style = CATEGORY_STYLES[catName] || { text: 'text-gray-700', bg: 'bg-gray-50 border-gray-200/60' };
+                                                        return (
                                                             <button
                                                                 type="button"
-                                                                onClick={() => setProfile(prev => ({ ...prev, skills: prev.skills.filter((_, i) => i !== idx) }))}
-                                                                className="hover:text-green-700"
+                                                                key={catName}
+                                                                onClick={() => {
+                                                                    setProfile(prev => {
+                                                                        const nextSkills = prev.skills.includes(catName)
+                                                                            ? prev.skills.filter(s => s !== catName)
+                                                                            : [...prev.skills, catName];
+                                                                        return { ...prev, skills: nextSkills };
+                                                                    });
+                                                                }}
+                                                                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                                                                    isSelected
+                                                                        ? `${style.bg} ${style.text}`
+                                                                        : 'bg-gray-50 text-gray-400 border-gray-200/60 hover:bg-gray-100 hover:text-gray-600'
+                                                                }`}
                                                             >
-                                                                <span className="material-icons-outlined text-xs">close</span>
+                                                                {catName}
                                                             </button>
-                    )}
-                  </div>
-                                                ))}
-                  </div>
-                </div>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    profile.skills.length > 0 ? (
+                                                        profile.skills.map((skill, idx) => {
+                                                            const style = CATEGORY_STYLES[skill] || { text: 'text-gray-700', bg: 'bg-gray-50 border-gray-200/60' };
+                                                            return (
+                                                                <div key={idx} className={`px-3 py-1 ${style.bg} ${style.text} rounded-full text-xs font-semibold border flex items-center gap-2`}>
+                                                                    {skill}
+                                                                </div>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <p className="text-xs text-gray-500">No specialties listed.</p>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
 
                                         <div className="border-t border-gray-100 pt-5 space-y-3">
                                             <div>
