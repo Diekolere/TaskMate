@@ -187,6 +187,31 @@ const Register = () => {
             </div>
           </button>
         </div>
+        
+        {/* Context hint */}
+        <AnimatePresence mode="wait">
+          {formData.userType && (
+            <motion.div
+              key={formData.userType}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.2 }}
+              className={`mb-6 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm ${
+                formData.userType === 'provider'
+                  ? 'bg-[#0F172A]/[0.03] border-[#0F172A]/10 text-[#0F172A]/70'
+                  : 'bg-[#7AC142]/[0.06] border-[#7AC142]/20 text-[#1a2b3c]/70'
+              }`}
+            >
+              <span className={`material-icons-outlined text-base shrink-0 ${formData.userType === 'provider' ? 'text-[#10B981]' : 'text-[#7AC142]'}`}>
+                {formData.userType === 'provider' ? 'verified' : 'check_circle'}
+              </span>
+              {formData.userType === 'provider'
+                ? "You'll be registered as a Service Pro to find jobs and manage earnings."
+                : "You'll be registered as a Customer to hire pros and post jobs."}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Form Container */}
         <div className="w-full mt-8">
@@ -267,7 +292,7 @@ const Register = () => {
                     <div>
                       <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Password</label>
                       <div className="relative">
-                        <input name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:border-[#0F172A] focus:ring-1 focus:ring-[#0F172A] pr-10 ${errors.password ? 'border-red-300' : 'border-gray-200'}`} />
+                        <input name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:border-[#0F172A] focus:ring-1 focus:ring-[#0F172A] pr-10 ${errors.password ? 'border-red-300' : 'border-gray-200'}`} placeholder="Create a password" />
                         <button type="button" className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400" onClick={() => setShowPassword(!showPassword)}>
                             {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                         </button>
@@ -276,7 +301,7 @@ const Register = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Confirm Password</label>
-                      <input name="confirmPassword" type={showPassword ? "text" : "password"} value={formData.confirmPassword} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:border-[#0F172A] focus:ring-1 focus:ring-[#0F172A] ${errors.confirmPassword ? 'border-red-300' : 'border-gray-200'}`} />
+                      <input name="confirmPassword" type={showPassword ? "text" : "password"} value={formData.confirmPassword} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:border-[#0F172A] focus:ring-1 focus:ring-[#0F172A] ${errors.confirmPassword ? 'border-red-300' : 'border-gray-200'}`} placeholder="Confirm your password" />
                       {errors.confirmPassword && <p className="mt-1.5 text-xs text-red-500">{errors.confirmPassword}</p>}
                     </div>
                   </div>

@@ -198,7 +198,7 @@ const Login = () => {
         </AnimatePresence>
 
         {/* Form shell */}
-        <div className="bg-white py-2 px-0 sm:py-8 sm:px-8 sm:shadow-[0_8px_30px_rgb(0,0,0,0.05)] sm:rounded-2xl sm:border sm:border-gray-100">
+        <div className="w-full mt-4">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-[#1a2b3c] mb-2">
