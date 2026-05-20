@@ -2,15 +2,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import EmailVerificationModal from '../../components/auth/EmailVerificationModal';
 
-const CATEGORIES = [
-  'Plumbing', 'Electrical', 'Furniture (Carpentry)', 'Cleaning', 'Painting',
-  'HVAC', 'Moving', 'Roofing', 'Appliance Repair', 'Landscaping', 'Laundry'
-];
+
 
 const Register = () => {
   const navigate = useNavigate();
@@ -20,21 +16,16 @@ const Register = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    phone: '',
     password: '',
     confirmPassword: '',
     userType: null,
   });
-  
-  const [step, setStep] = useState(1); // For providers: 1=Form, 2=OTP
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [errors, setErrors] = useState({});
-
-  const [otpValue, setOtpValue] = useState('');
 
   const validateCustomerForm = () => {
     let newErrors = {};
@@ -50,11 +41,11 @@ const Register = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const validateProviderStep1 = () => {
+  const validateProviderForm = () => {
     let newErrors = {};
     if (!formData.fullName.trim()) newErrors.fullName = "Full name is required";
-    if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email is invalid";
+    if (!formData.email.trim()) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email is invalid";
     if (!formData.password) newErrors.password = "Password is required";
     else if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
@@ -71,7 +62,6 @@ const Register = () => {
 
   const handleUserTypeChange = (type) => {
     setFormData(prev => ({ ...prev, userType: type }));
-    setStep(1);
     setErrors({});
   }
 
@@ -92,52 +82,20 @@ const Register = () => {
     }
   };
 
-  // Handle Provider Next Steps
-  const nextProviderStep = () => {
-    if (step === 1 && !validateProviderStep1()) return;
-    
-    if (step === 1) {
-      setStep(2);
-      toast.success('Mock OTP Sent! (Enter 123456 to verify)');
-    }
-  };
-
-  // Handle Provider Mock OTP Verify
-  const handleProviderVerifyOTP = async () => {
-    if (otpValue !== '123456') {
-      toast.error('Invalid OTP. Use 123456 for testing.');
-      return;
-    }
-    
+  // Handle Provider Submit
+  const handleProviderSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateProviderForm()) return;
     setIsLoading(true);
     try {
-      await register(formData.phone, formData.password, formData.fullName, 'provider', formData.email || null);
-      
-      // Attempt to retrieve session (if phone confirmation is disabled)
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      
-      if (userId) {
-        // Save phone, name, role directly
-        await supabase.from('profiles').update({
-          phone_number: formData.phone,
-          full_name: formData.fullName,
-          role: 'provider'
-        }).eq('id', userId);
-        
-        await supabase.from('provider_profiles').upsert({
-          id: userId
-        });
-      }
-
-      toast.success('Provider account created successfully!');
-      navigate('/provider/dashboard');
-      
+        await register(formData.email, formData.password, formData.fullName, 'provider');
+        setShowVerificationModal(true);
     } catch (error) {
-      console.error(error);
-      toast.error(error.message || 'Registration failed.');
+        let msg = error.message || "Registration failed";
+        if (error.code === 'auth/email-already-in-use') msg = "Email is already registered.";
+        toast.error(msg);
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   };
 
@@ -145,7 +103,7 @@ const Register = () => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
       className="min-h-screen flex flex-col items-center justify-center bg-white py-12 px-4 sm:px-6 lg:px-8 font-sans">
       
-      <div className="max-w-xl w-full">
+      <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
@@ -226,37 +184,33 @@ const Register = () => {
           {/* CUSTOMER FLOW */}
           {formData.userType === 'customer' && (
             <form onSubmit={handleCustomerSubmit} className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Full Name</label>
-                  <input name="fullName" type="text" value={formData.fullName} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7AC142]/50 focus:border-[#7AC142] transition-colors ${errors.fullName ? 'border-red-300' : 'border-gray-200'}`} placeholder="John Doe" />
-                  {errors.fullName && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.fullName}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Email Address</label>
-                  <input name="email" type="email" value={formData.email} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7AC142]/50 focus:border-[#7AC142] transition-colors ${errors.email ? 'border-red-300' : 'border-gray-200'}`} placeholder="you@example.com" />
-                  {errors.email && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.email}</p>}
-                </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Full Name</label>
+                <input name="fullName" type="text" value={formData.fullName} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7AC142]/50 focus:border-[#7AC142] transition-colors ${errors.fullName ? 'border-red-300' : 'border-gray-200'}`} placeholder="John Doe" />
+                {errors.fullName && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.fullName}</p>}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Password</label>
-                  <div className="relative">
-                    <input name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7AC142]/50 focus:border-[#7AC142] transition-colors pr-10 ${errors.password ? 'border-red-300' : 'border-gray-200'}`} placeholder="Create a password" />
-                    <button type="button" className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 hover:text-gray-600" onClick={() => setShowPassword(!showPassword)}>
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                  </div>
-                   {errors.password && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.password}</p>}
-                </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Email Address</label>
+                <input name="email" type="email" value={formData.email} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7AC142]/50 focus:border-[#7AC142] transition-colors ${errors.email ? 'border-red-300' : 'border-gray-200'}`} placeholder="you@example.com" />
+                {errors.email && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.email}</p>}
+              </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Confirm Password</label>
-                  <input name="confirmPassword" type={showPassword ? "text" : "password"} value={formData.confirmPassword} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7AC142]/50 focus:border-[#7AC142] transition-colors ${errors.confirmPassword ? 'border-red-300' : 'border-gray-200'}`} placeholder="Confirm your password" />
-                  {errors.confirmPassword && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.confirmPassword}</p>}
+              <div>
+                <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Password</label>
+                <div className="relative">
+                  <input name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7AC142]/50 focus:border-[#7AC142] transition-colors pr-10 ${errors.password ? 'border-red-300' : 'border-gray-200'}`} placeholder="Create a password" />
+                  <button type="button" className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 hover:text-gray-600" onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
+                 {errors.password && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.password}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Confirm Password</label>
+                <input name="confirmPassword" type={showPassword ? "text" : "password"} value={formData.confirmPassword} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7AC142]/50 focus:border-[#7AC142] transition-colors ${errors.confirmPassword ? 'border-red-300' : 'border-gray-200'}`} placeholder="Confirm your password" />
+                {errors.confirmPassword && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.confirmPassword}</p>}
               </div>
 
               <button type="submit" disabled={isLoading} className="w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-xl text-sm font-bold text-white bg-[#1a2b3c] hover:bg-[#7AC142] transition-all disabled:opacity-70 shadow-lg mt-4">
@@ -265,78 +219,46 @@ const Register = () => {
             </form>
           )}
 
-          {/* PROVIDER FLOW (Multi-Step) */}
+          {/* PROVIDER FLOW */}
           {formData.userType === 'provider' && (
-            <div className="space-y-6">
+            <form onSubmit={handleProviderSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Full Name</label>
+                <input name="fullName" type="text" value={formData.fullName} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0F172A]/50 focus:border-[#0F172A] transition-colors ${errors.fullName ? 'border-red-300' : 'border-gray-200'}`} placeholder="Jane Doe" />
+                {errors.fullName && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.fullName}</p>}
+              </div>
 
-              {step === 1 && (
-                <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                      <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Full Name</label>
-                      <input name="fullName" type="text" value={formData.fullName} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:border-[#0F172A] focus:ring-1 focus:ring-[#0F172A] ${errors.fullName ? 'border-red-300' : 'border-gray-200'}`} placeholder="Jane Doe" />
-                      {errors.fullName && <p className="mt-1.5 text-xs text-red-500">{errors.fullName}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Phone Number</label>
-                      <input name="phone" type="tel" value={formData.phone} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:border-[#0F172A] focus:ring-1 focus:ring-[#0F172A] ${errors.phone ? 'border-red-300' : 'border-gray-200'}`} placeholder="+234 800 000 0000" />
-                      {errors.phone && <p className="mt-1.5 text-xs text-red-500">{errors.phone}</p>}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Email Address <span className="text-gray-400 font-normal">(Optional)</span></label>
-                    <input name="email" type="email" value={formData.email} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:border-[#0F172A] focus:ring-1 focus:ring-[#0F172A] ${errors.email ? 'border-red-300' : 'border-gray-200'}`} placeholder="you@example.com" />
-                    {errors.email && <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                      <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Password</label>
-                      <div className="relative">
-                        <input name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:border-[#0F172A] focus:ring-1 focus:ring-[#0F172A] pr-10 ${errors.password ? 'border-red-300' : 'border-gray-200'}`} placeholder="Create a password" />
-                        <button type="button" className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400" onClick={() => setShowPassword(!showPassword)}>
-                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                        </button>
-                      </div>
-                      {errors.password && <p className="mt-1.5 text-xs text-red-500">{errors.password}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Confirm Password</label>
-                      <input name="confirmPassword" type={showPassword ? "text" : "password"} value={formData.confirmPassword} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:border-[#0F172A] focus:ring-1 focus:ring-[#0F172A] ${errors.confirmPassword ? 'border-red-300' : 'border-gray-200'}`} placeholder="Confirm your password" />
-                      {errors.confirmPassword && <p className="mt-1.5 text-xs text-red-500">{errors.confirmPassword}</p>}
-                    </div>
-                  </div>
-                  <button onClick={nextProviderStep} disabled={isLoading} className="w-full flex justify-center items-center gap-2 bg-[#0F172A] text-white font-bold py-3.5 rounded-xl hover:bg-slate-800 transition-colors mt-6 disabled:opacity-70">
-                    {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : 'Register & Verify Phone'}
+              <div>
+                <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Email Address</label>
+                <input name="email" type="email" value={formData.email} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0F172A]/50 focus:border-[#0F172A] transition-colors ${errors.email ? 'border-red-300' : 'border-gray-200'}`} placeholder="you@example.com" />
+                {errors.email && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.email}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Password</label>
+                <div className="relative">
+                  <input name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0F172A]/50 focus:border-[#0F172A] transition-colors pr-10 ${errors.password ? 'border-red-300' : 'border-gray-200'}`} placeholder="Create a password" />
+                  <button type="button" className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 hover:text-gray-600" onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
-                </motion.div>
-              )}
+                </div>
+                 {errors.password && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.password}</p>}
+              </div>
 
-              {step === 2 && (
-                <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-5 text-center">
-                  <h3 className="text-2xl font-bold text-[#1a2b3c] mb-2">Verify Phone</h3>
-                  <p className="text-sm text-gray-500">We've sent a code to <span className="font-bold text-gray-800">{formData.phone}</span></p>
-                  
-                  <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-xs p-3 rounded-xl mt-4 mb-6 text-left">
-                    <strong>Note:</strong> SMS verification is currently simulated. Please enter <strong>123456</strong> to complete testing.
-                  </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#1a2b3c] mb-1.5">Confirm Password</label>
+                <input name="confirmPassword" type={showPassword ? "text" : "password"} value={formData.confirmPassword} onChange={handleChange} className={`appearance-none block w-full px-4 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0F172A]/50 focus:border-[#0F172A] transition-colors ${errors.confirmPassword ? 'border-red-300' : 'border-gray-200'}`} placeholder="Confirm your password" />
+                {errors.confirmPassword && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.confirmPassword}</p>}
+              </div>
 
-                  <div>
-                    <input type="text" maxLength={6} value={otpValue} onChange={e => setOtpValue(e.target.value.replace(/\D/g, ''))} className="tracking-[0.5em] text-center text-3xl font-bold block w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:border-[#0F172A] outline-none transition-colors" placeholder="------" />
-                  </div>
-                  
-                  <button onClick={handleProviderVerifyOTP} disabled={isLoading || otpValue.length < 6} className="w-full flex justify-center items-center gap-2 bg-[#0F172A] text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50 mt-4">
-                    {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : 'Complete Registration'}
-                  </button>
-                  
-                  <button onClick={() => setStep(1)} className="text-sm font-semibold text-gray-400 hover:text-gray-800 mt-4 underline">Back</button>
-                </motion.div>
-              )}
-
-            </div>
+              <button type="submit" disabled={isLoading} className="w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-xl text-sm font-bold text-white bg-[#0F172A] hover:bg-slate-800 transition-all disabled:opacity-70 shadow-lg mt-4">
+                {isLoading ? <Loader2 className="animate-spin h-4 w-4" /> : 'Create Service Pro Account'}
+              </button>
+            </form>
           )}
 
           {/* Google Auth Option */}
-          {formData.userType && step === 1 && (
+          {formData.userType && (
             <div className="mt-8">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">

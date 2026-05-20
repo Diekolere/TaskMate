@@ -82,7 +82,7 @@ export default function OAuthCallback() {
         // Final navigation logic - exact match for the DB role
         const targetPath = role === 'provider' ? '/provider/dashboard' 
                          : role === 'admin' ? '/admin/dashboard' 
-                         : '/customer/dashboard';
+                         : '/dashboard';
         
         // Use a hard browser redirect instead of React Router's navigate().
         // This guarantees that AuthContext completely re-mounts and fetches the 
