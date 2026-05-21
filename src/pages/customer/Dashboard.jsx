@@ -367,15 +367,22 @@ const Dashboard = () => {
                                                 />
                                                 <div className="min-w-0">
                                                     <h3 className="font-extrabold text-[15px] text-gray-900 group-hover:text-[#10B981] transition-colors truncate">{artisan.displayName || artisan.name || 'Provider'}</h3>
-                                                    <span className="inline-block mt-0.5 bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider truncate max-w-full">
-                                                        {artisan.category || 'None'}
-                                                    </span>
+                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                        {(() => {
+                                                            const cats = artisan.trade_category && artisan.trade_category.length > 0 ? artisan.trade_category : (artisan.category && artisan.category !== 'None' ? [artisan.category] : null);
+                                                            if (!cats) return <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">None</span>;
+                                                            return (<>
+                                                                <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider truncate max-w-[120px]">{cats[0]}</span>
+                                                                {cats.length > 1 && <span className="bg-[#10B981] text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0">+{cats.length - 1}</span>}
+                                                            </>);
+                                                        })()}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="text-right shrink-0 ml-2">
                                                 <div className="flex items-center gap-1 justify-end">
                                                     <span className="material-icons text-yellow-500 text-[16px]">star</span>
-                                                    <span className="text-[13px] font-black text-gray-900">{artisan.rating ? Number(artisan.rating).toFixed(1) : 'New'}</span>
+                                                    <span className="text-[13px] font-black text-gray-900">{artisan.rating != null ? Number(artisan.rating).toFixed(1) : '0.0'}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-md border border-gray-100 mt-1 justify-end">
                                                     <span className="material-icons-outlined text-[11px] text-gray-300">task_alt</span>
