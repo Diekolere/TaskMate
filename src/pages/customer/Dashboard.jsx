@@ -367,13 +367,13 @@ const Dashboard = () => {
                                                 />
                                                 <div className="min-w-0">
                                                     <h3 className="font-extrabold text-[15px] text-gray-900 group-hover:text-[#10B981] transition-colors truncate">{artisan.displayName || artisan.name || 'Provider'}</h3>
-                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                    <div className="flex items-center mt-0.5">
                                                         {(() => {
                                                             const cats = artisan.trade_category && artisan.trade_category.length > 0 ? artisan.trade_category : (artisan.category && artisan.category !== 'None' ? [artisan.category] : null);
-                                                            if (!cats) return <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">None</span>;
+                                                            if (!cats) return <span className="text-gray-500 text-[11px] font-bold uppercase tracking-wider">None</span>;
                                                             return (<>
-                                                                <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider truncate max-w-[120px]">{cats[0]}</span>
-                                                                {cats.length > 1 && <span className="bg-[#10B981] text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0">+{cats.length - 1}</span>}
+                                                                <span className="text-gray-900 text-[11px] font-bold uppercase tracking-wider truncate max-w-[120px]">{cats[0]}</span>
+                                                                {cats.length > 1 && <span className="bg-[#10B981] text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0 ml-1">+{cats.length - 1}</span>}
                                                             </>);
                                                         })()}
                                                     </div>
@@ -386,7 +386,7 @@ const Dashboard = () => {
                                                 </div>
                                                 <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-md border border-gray-100 mt-1 justify-end">
                                                     <span className="material-icons-outlined text-[11px] text-gray-300">task_alt</span>
-                                                    {artisan.completed_jobs || 0} jobs
+                                                    {artisan.completed_jobs_count || 0} jobs
                                                 </div>
                                             </div>
                                         </div>

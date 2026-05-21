@@ -100,12 +100,19 @@ const BrowseProviders = () => {
             }
 
             try {
+                const mappedCategories = selectedCategories.map(c => {
+                    const low = c.toLowerCase();
+                    if (low.includes('furniture') || low.includes('carpentry')) return 'carpentry';
+                    if (low.includes('appliance')) return 'appliance repair';
+                    return low;
+                });
+
                 // Call the new RPC
                 const { data, error } = await supabase.rpc('get_providers_in_radius', {
                     user_lat: userLocation.lat,
                     user_lng: userLocation.lng,
                     radius_meters: 50000, // 50km
-                    category_filters: selectedCategories.length > 0 ? selectedCategories : null,
+                    category_filters: mappedCategories.length > 0 ? mappedCategories : null,
                     min_rating: rpcMinRating,
                     sort_by: rpcSort
                 });
@@ -357,10 +364,10 @@ const BrowseProviders = () => {
                                                 <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5 truncate">
                                                     {(() => {
                                                         const cats = provider.trade_category && provider.trade_category.length > 0 ? provider.trade_category : (provider.category && provider.category !== 'None' ? [provider.category] : null);
-                                                        if (!cats) return <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">None</span>;
+                                                        if (!cats) return <span>Uncategorized</span>;
                                                         return (<>
-                                                            <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0">{cats[0]}</span>
-                                                            {cats.length > 1 && <span className="bg-[#10B981] text-white px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">+{cats.length - 1}</span>}
+                                                            <span className="truncate font-bold text-gray-700 capitalize">{cats[0].toLowerCase()}</span>
+                                                            {cats.length > 1 && <span className="bg-[#10B981] text-white px-1.5 py-0.5 rounded-md text-[9px] font-bold shrink-0 ml-1">+{cats.length - 1}</span>}
                                                         </>);
                                                     })()}
                                                     <span className="text-gray-200">·</span>
