@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const NetworkStatus = () => {
     const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -11,30 +10,32 @@ const NetworkStatus = () => {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
+        // Periodically check just in case events are missed
+        const interval = setInterval(() => {
+            if (navigator.onLine === isOffline) {
+                setIsOffline(!navigator.onLine);
+            }
+        }, 3000);
+
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
+            clearInterval(interval);
         };
-    }, []);
+    }, [isOffline]);
+
+    if (!isOffline) return null;
 
     return (
-        <AnimatePresence>
-            {isOffline && (
-                <motion.div
-                    initial={{ y: -50 }}
-                    animate={{ y: 0 }}
-                    exit={{ y: -50 }}
-                    className="fixed top-0 left-0 right-0 z-[10000] w-full"
-                >
-                    <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-center gap-3 shadow-lg">
-                        <span className="material-icons text-lg animate-pulse">cloud_off</span>
-                        <p className="text-xs sm:text-sm font-bold tracking-wide">
-                            YOU ARE OFFLINE. <span className="opacity-80 font-medium ml-1 hidden sm:inline">Please check your internet connection to continue.</span>
-                        </p>
-                    </div>
-                </motion.div>
-            )}
-        </AnimatePresence>
+        <div 
+            style={{ zIndex: 9999999 }} 
+            className="fixed top-0 left-0 right-0 w-full bg-red-500 text-white px-4 py-3 flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(239,68,68,0.4)] transition-all duration-300"
+        >
+            <span className="material-icons text-xl animate-pulse">cloud_off</span>
+            <p className="text-sm font-extrabold tracking-wide">
+                YOU ARE OFFLINE. <span className="font-medium ml-1">Please check your internet connection.</span>
+            </p>
+        </div>
     );
 };
 
