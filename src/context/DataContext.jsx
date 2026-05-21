@@ -1134,6 +1134,77 @@ export function DataProvider({ children }) {
     }
   };
 
+  // ── Matching Service ────────────────────────────────────
+
+  const getJobMatches = async (jobId) => {
+    try {
+      const { data, error } = await supabase
+        .from('job_matches')
+        .select(`
+          *,
+          provider:profiles!job_matches_provider_id_fkey(full_name, avatar_url)
+        `)
+        .eq('job_id', jobId)
+        .order('match_score', { ascending: false });
+
+      if (error) throw error;
+      
+      if (!data || data.length === 0) return [];
+
+      const providerIds = data.map(m => m.provider_id);
+      
+      const { data: providerProfiles } = await supabase
+        .from('provider_profiles')
+        .select('id, average_rating, completed_jobs_count, trade_category')
+        .in('id', providerIds);
+
+      const profileMap = (providerProfiles || []).reduce((acc, p) => {
+        acc[p.id] = p;
+        return acc;
+      }, {});
+
+      return data.map(m => ({
+        ...m,
+        provider_profile: profileMap[m.provider_id] || {}
+      }));
+    } catch (error) {
+      console.error('Failed to get job matches:', error);
+      return [];
+    }
+  };
+
+  const inviteMatchedProvider = async (jobId, providerId, jobTitle) => {
+    try {
+      // 1. Insert an application record with status 'invited'
+      const { error: appError } = await supabase.from('job_applications').upsert({
+        job_id: jobId,
+        provider_id: providerId,
+        status: 'invited',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'job_id,provider_id' });
+      
+      if (appError) throw appError;
+
+      // 2. Notify the provider
+      await sendNotification(providerId, {
+        type: 'job_update',
+        title: 'You were invited to a Job!',
+        body: `${currentUser.full_name || 'A customer'} invited you to: ${jobTitle}`,
+        icon: 'person_add',
+        iconBg: 'bg-emerald-100',
+        iconColor: 'text-emerald-600',
+        ctaPath: `/provider/requests/${jobId}`
+      });
+
+      toast.success('Provider invited successfully!');
+      return true;
+    } catch (error) {
+      console.error('Failed to invite provider:', error);
+      toast.error('Failed to invite provider');
+      return false;
+    }
+  };
+
   // ── Verifications (KYC) ─────────────────────────────────
 
   const submitVerification = async (verificationData) => {
@@ -1220,6 +1291,8 @@ export function DataProvider({ children }) {
     submitReview, markNotificationRead, markAllNotificationsRead,
     createServicePost, updateServicePost, deleteServicePost, getServicePosts, getAllServicePosts, createSupportTicket,
     submitVerification, updateVerificationStatus, updateUserStatus, getAvailableCategories,
+    // Phase 2 Matching Service
+    getJobMatches, inviteMatchedProvider,
     // Messaging
     messages, fetchMessages, sendMessage, subscribeToMessages,
     // Notifications (exposed for components to send directly)
