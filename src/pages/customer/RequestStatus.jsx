@@ -416,7 +416,7 @@ const RequestStatus = () => {
     const normalizedStatus = String(request.status || '').toLowerCase();
     const releaseEnabled = normalizedStatus === 'completed';
     const STATUS_LABEL = { open: 'Open', interested: 'Providers Interested', negotiating: 'Negotiating', awaiting_payment: 'Awaiting Payment', payment_secured: 'Payment Secured', in_progress: 'In Progress', payment_released: 'Payment Released', completed: 'Completed' };
-    const STATUS_COLOR = { open: 'bg-blue-50 text-blue-700 border-blue-100', interested: 'bg-amber-50 text-amber-700 border-amber-100', negotiating: 'bg-purple-50 text-purple-700 border-purple-100', awaiting_payment: 'bg-orange-50 text-orange-700 border-orange-100', payment_secured: 'bg-green-50 text-green-700 border-green-100', in_progress: 'bg-blue-50 text-blue-700 border-blue-100', completed: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
+    const STATUS_COLOR = { open: 'bg-gray-50 text-gray-500 border-gray-200', interested: 'bg-amber-50 text-amber-700 border-amber-200', negotiating: 'bg-purple-50 text-purple-700 border-purple-200', awaiting_payment: 'bg-orange-50 text-orange-700 border-orange-200', payment_secured: 'bg-green-50 text-green-700 border-green-200', in_progress: 'bg-blue-50 text-blue-700 border-blue-200', payment_released: 'bg-emerald-50 text-emerald-700 border-emerald-200', completed: 'bg-amber-50 text-amber-800 border-amber-200', cancelled: 'bg-red-50 text-red-700 border-red-200', rejected: 'bg-red-50 text-red-700 border-red-200' };
 
     const handleRelease = async () => {
         try {
@@ -758,12 +758,19 @@ const RequestStatus = () => {
                                                     </div>
                                                     <div className="flex sm:hidden items-center gap-0.5 shrink-0">
                                                         <span className="material-icons text-yellow-500 text-[14px]">star</span>
-                                                        <span className="text-[12px] font-bold text-gray-500">{p.rating || '5.0'}</span>
+                                                        <span className="text-[12px] font-bold text-gray-500">{p.rating != null ? Number(p.rating).toFixed(1) : '0.0'}</span>
                                                     </div>
                                                 </div>
                                                 <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5 truncate">
-                                                    <span className="text-gray-700 font-semibold">{p.category || 'General Service'}</span> 
-                                                    <span className="text-gray-200">·</span> 
+                                                    {(() => {
+                                                        const cats = p.trade_category && p.trade_category.length > 0 ? p.trade_category : (p.category && p.category !== 'None' ? [p.category] : null);
+                                                        if (!cats) return <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">None</span>;
+                                                        return (<>
+                                                            <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0">{cats[0]}</span>
+                                                            {cats.length > 1 && <span className="bg-[#10B981] text-white px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">+{cats.length - 1}</span>}
+                                                        </>);
+                                                    })()}
+                                                    <span className="text-gray-200">·</span>
                                                     <span className="truncate">{p.location || 'Lagos, Nigeria'}</span>
                                                 </p>
                                                 <div className="flex items-center gap-2 mt-1.5">
@@ -778,7 +785,7 @@ const RequestStatus = () => {
                                                 <div className="flex items-center gap-3 shrink-0">
                                                     <div className="hidden sm:flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100">
                                                         <span className="material-icons text-yellow-500 text-[14px]">star</span>
-                                                        <span className="font-bold text-[12px] text-gray-900">{p.rating || '5.0'}</span>
+                                                        <span className="font-bold text-[12px] text-gray-900">{p.rating != null ? Number(p.rating).toFixed(1) : '0.0'}</span>
                                                     </div>
                                                     
                                                     {request.request_type === 'private' ? null : (

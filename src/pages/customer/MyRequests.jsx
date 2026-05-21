@@ -188,7 +188,6 @@ const MyRequests = () => {
                                                 const st = String(req.status || '').toLowerCase();
                                                 if (req.status === 'awaiting_payment' || st === 'awaiting_payment') navigate(`/customer/payment/${req.id}`);
                                                 else if (st === 'completed') navigate(`/customer/confirm/${req.id}`);
-                                                else if (st === 'payment_released') navigate(`/customer/service-review/${req.id}`);
                                                 else navigate(`/customer/request-status/${req.id}`);
                                             }}
                                             className={`py-5 cursor-pointer group hover:bg-gray-50/60 transition-colors rounded-xl px-1 -mx-1 ${

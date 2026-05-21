@@ -141,18 +141,25 @@ const RequestDetails = () => {
             : 'Recently';
 
     const normalizedStatus = String(request.status || 'open').toLowerCase();
-    const statusColors = {
-        open: 'bg-blue-50 text-blue-600 border-blue-100',
-        pending: 'bg-amber-50 text-amber-600 border-amber-100',
-        in_progress: 'bg-purple-50 text-purple-600 border-purple-100',
-        completed: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    const statusColors = { 
+        open: 'bg-gray-50 text-gray-500 border-gray-200', 
+        pending: 'bg-gray-50 text-gray-500 border-gray-200',
+        interested: 'bg-amber-50 text-amber-700 border-amber-200', 
+        negotiating: 'bg-purple-50 text-purple-700 border-purple-200', 
+        awaiting_payment: 'bg-orange-50 text-orange-700 border-orange-200', 
+        payment_secured: 'bg-green-50 text-green-700 border-green-200', 
+        in_progress: 'bg-blue-50 text-blue-700 border-blue-200', 
+        payment_released: 'bg-emerald-50 text-emerald-700 border-emerald-200', 
+        completed: 'bg-amber-50 text-amber-800 border-amber-200', 
+        cancelled: 'bg-red-50 text-red-700 border-red-200', 
+        rejected: 'bg-red-50 text-red-700 border-red-200' 
     };
 
     const images = Array.isArray(request.images) ? request.images.filter(Boolean) : [];
 
     const detailPairs = [
         [
-            { icon: 'handyman', label: 'Category', value: request.category || 'General Service' },
+            { icon: 'handyman', label: 'Category', value: request.category || 'None' },
             { icon: 'location_on', label: 'Location', value: request.location || request.location_name || 'Not specified' },
         ],
         [
@@ -236,7 +243,7 @@ const RequestDetails = () => {
                         <div className="mb-10 pb-8 border-b border-gray-100">
                             {/* Category + date + location row — wraps as single unit */}
                             <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                                {request.category && <span className="text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">{request.category}</span>}
+                                {request.category && <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">{request.category}</span>}
                                 {(request.category || dateStr || request.location || request.location_name) && <span className="text-gray-200">·</span>}
                                 <span className="text-xs text-gray-400 whitespace-nowrap">{dateStr}</span>
                                 {(request.location || request.location_name) && (
@@ -324,7 +331,7 @@ const RequestDetails = () => {
                                                                 </div>
                                                                 <div>
                                                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Category</p>
-                                                                    <p className="text-sm font-bold text-gray-900">{request.category || 'General Service'}</p>
+                                                                    <p className="text-sm font-bold text-gray-900">{request.category || 'None'}</p>
                                                                 </div>
                                                             </div>
                                                             <div className="p-5 flex items-center gap-4">

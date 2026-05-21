@@ -16,7 +16,7 @@ const Requests = () => {
                 ...req,
                 customer: req.customerName || req.displayName || 'Unknown Customer',
                 provider: req.providerName || (req.providerId ? 'Assigned' : 'Unassigned'),
-                service: req.serviceType || req.title || 'General Service',
+                service: req.serviceType || req.title || 'None',
                 status: req.status || 'Open',
                 amount: req.budget ? `₦${Number(req.budget).toLocaleString()}` : 'Negotiable',
                 date: req.createdAt instanceof Date ? req.createdAt.toLocaleDateString() : (req.createdAt?.toDate ? req.createdAt.toDate().toLocaleDateString() : 'N/A')
