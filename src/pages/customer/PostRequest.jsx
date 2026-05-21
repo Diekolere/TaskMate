@@ -167,7 +167,7 @@ const CATEGORY_META = {
     Laundry:               { icon: 'local_laundry_service',  color: 'text-purple-500', bg: 'bg-purple-50' },
 };
 
-function CategorySelect({ value, onChange, disabled, availableCategories = [] }) {
+function CategorySelect({ value, onChange, disabled, availableCategories = [], isPrivate = false }) {
     const [open, setOpen] = useState(false);
     const ref = useRef();
 
@@ -210,7 +210,7 @@ function CategorySelect({ value, onChange, disabled, availableCategories = [] })
                         style={{ transformOrigin: 'top' }}
                         className="absolute z-30 top-[calc(100%+6px)] left-0 right-0 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden"
                     >
-                        {CATEGORIES.map(cat => {
+                        {(isPrivate ? CATEGORIES.filter(cat => availableCategories.includes(cat.toLowerCase())) : CATEGORIES).map(cat => {
                             const meta = CATEGORY_META[cat];
                             const sel = value === cat;
                             const isAvail = availableCategories.includes(cat.toLowerCase());
@@ -246,7 +246,7 @@ function PostRequestForm({ onClose, isModal }) {
     const providerName = location.state?.providerName || editingRequest?.providerName;
     const initialCategory = location.state?.category || editingRequest?.category;
 
-    const { createRequest, getAvailableCategories } = useData();
+    const { createRequest, getAvailableCategories, getProviderProfile } = useData();
     const { currentUser } = useAuth();
     const { checkImage } = useImageModeration();
 
@@ -264,8 +264,29 @@ function PostRequestForm({ onClose, isModal }) {
     const fileInputRef = useRef();
 
     useEffect(() => {
-        getAvailableCategories().then(cats => setAvailableCats(cats));
-    }, [getAvailableCategories]);
+        const fetchCategories = async () => {
+            if (providerId) {
+                // Private request — show ONLY what this specific provider offers
+                const profile = await getProviderProfile(providerId);
+                if (profile && profile.trade_category && profile.trade_category.length > 0) {
+                    // Store as lowercase so CategorySelect isAvail check passes
+                    const providerCats = profile.trade_category.map(c => c.toLowerCase());
+                    setAvailableCats(providerCats);
+                    // Auto-select if only one option
+                    if (providerCats.length === 1 && !category) {
+                        // Find the properly-cased name from CATEGORIES list to set as value
+                        const match = CATEGORIES.find(c => c.toLowerCase() === providerCats[0]);
+                        if (match) setCategory(match);
+                    }
+                    return;
+                }
+            }
+            // Public request — show all categories that have at least one active provider
+            const allCats = await getAvailableCategories();
+            setAvailableCats(allCats);
+        };
+        fetchCategories();
+    }, [getAvailableCategories, providerId, getProviderProfile]);
 
     const initImages = () => {
         const existing = editingRequest?.images || [];
@@ -423,8 +444,8 @@ function PostRequestForm({ onClose, isModal }) {
                     </div>
                     <div>
                         <label className={LABEL}>Category</label>
-                        <CategorySelect value={category} onChange={setCategory} disabled={!!initialCategory} availableCategories={availableCats} />
-                        {initialCategory && <p className="text-xs text-gray-400 mt-1.5">Category is pre-set for this provider.</p>}
+                        <CategorySelect value={category} onChange={setCategory} availableCategories={availableCats} isPrivate={!!providerId} />
+                        {providerId && availableCats.length === 1 && <p className="text-xs text-gray-400 mt-1.5">This is the only service this provider offers.</p>}
                     </div>
                 </div>
 
