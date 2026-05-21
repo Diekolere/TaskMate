@@ -7,7 +7,7 @@ import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
-import { uploadFile, generateFilePath } from '../../lib/supabase';
+import { uploadFile, generateFilePath, supabase } from '../../lib/supabase';
 
 const CATEGORIES_LIST = [
   "Plumbing", "Electrical", "Furniture (Carpentry)", "Cleaning", "Painting",
@@ -47,6 +47,18 @@ const Profile = () => {
         avatar: '', banner: null, reviews: [], servicesList: [], skills: [], servicePosts: [],
     });
   const [servicePosts, setServicePosts] = useState([]);
+  const [liveReviews, setLiveReviews] = useState([]);
+
+  // Fetch reviews from DB whenever currentUser loads
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    supabase
+      .from('reviews')
+      .select('*, reviewer:profiles!reviewer_id(full_name, avatar_url)')
+      .eq('provider_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { if (data) setLiveReviews(data); });
+  }, [currentUser?.id]);
 
   useEffect(() => {
     if (currentUser) {
@@ -161,7 +173,7 @@ const Profile = () => {
     const tabs = [
         { id: 'details', label: 'Details' },
         { id: 'services', label: 'Service posts' },
-        { id: 'reviews', label: 'Reviews' },
+        { id: 'reviews', label: `Reviews${liveReviews.length > 0 ? ` (${liveReviews.length})` : ''}` },
     ];
 
     const postMetaTime = (post) => {
@@ -527,28 +539,39 @@ const Profile = () => {
               </motion.div>
             )}
 
-            {activeTab === 'reviews' && (
+                        {activeTab === 'reviews' && (
                                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                    {profile.reviews && profile.reviews.length > 0 ? (
-                        profile.reviews.map((review, idx) => (
-                                                <div key={idx} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                    {liveReviews.length > 0 ? (
+                        liveReviews.map((review, idx) => (
+                                                <div key={idx} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
-                                                            <div className="h-10 w-10 rounded-full bg-[#10B981]/10 flex items-center justify-center text-[#10B981] font-bold text-sm border border-[#10B981]/10">
-                                                                {(review.user || 'C').charAt(0).toUpperCase()}
-                                        </div>
+                                                            <div className="h-10 w-10 rounded-full bg-[#10B981]/10 flex items-center justify-center text-[#10B981] font-bold text-sm border border-[#10B981]/10 overflow-hidden shrink-0">
+                                                                {review.reviewer?.avatar_url ? (
+                                                                    <img src={review.reviewer.avatar_url} alt="Reviewer" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    (review.reviewer?.full_name || 'C').charAt(0).toUpperCase()
+                                                                )}
+                                                            </div>
                                         <div>
-                                                                <p className="font-bold text-gray-900 text-sm">{review.user || 'Customer'}</p>
-                                                                <p className="text-xs text-gray-400">{review.date || (review.createdAt && new Date(review.createdAt).toLocaleDateString())}</p>
+                                                                <p className="font-bold text-gray-900 text-sm">{review.reviewer?.full_name || 'Customer'}</p>
+                                                                <p className="text-xs text-gray-400">{review.created_at ? new Date(review.created_at).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Recent'}</p>
                                                             </div>
                                                         </div>
                                                         <div className="flex">
                                                             {[...Array(5)].map((_, i) => (
-                                                                <span key={i} className={`material-icons-outlined text-sm ${i < (review.rating || 0) ? 'text-amber-400' : 'text-gray-200'}`}>star</span>
+                                                                <span key={i} className={`material-icons text-sm ${i < (review.rating || 0) ? 'text-amber-400' : 'text-gray-200'}`}>star</span>
                                                             ))}
                                                         </div>
                                                     </div>
-                                                    <p className="text-sm text-gray-600 leading-relaxed">{review.comment || review.text}</p>
+                                                    {review.comment && <p className="text-sm text-gray-600 leading-relaxed mb-3">{review.comment}</p>}
+                                                    {review.tags && review.tags.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {review.tags.map((tag, i) => (
+                                                                <span key={i} className="px-2.5 py-1 bg-gray-50 border border-gray-100 rounded-full text-[10px] font-bold text-gray-500 uppercase tracking-widest">{tag}</span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))
                                         ) : (

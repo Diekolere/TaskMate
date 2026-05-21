@@ -68,12 +68,19 @@ const ConfirmCompletion = () => {
     const { jobId } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const { releasePayment } = useData();
+    const { releasePayment, submitReview } = useData();
 
     const [job, setJob] = useState(null);
     const [loading, setLoading] = useState(true);
     const [secondsLeft, setSecondsLeft] = useState(DEMO_SECONDS_LEFT);
     const [phase, setPhase] = useState('pending');
+    
+    // Rating State
+    const [showRatingModal, setShowRatingModal] = useState(false);
+    const [rating, setRating] = useState(0);
+    const [feedback, setFeedback] = useState('');
+    const [reviewTags, setReviewTags] = useState([]);
+    const [submittingReview, setSubmittingReview] = useState(false);
     
     // AI Dispute Assistant state
     const [disputeStep, setDisputeStep] = useState(0); 
@@ -125,13 +132,38 @@ const ConfirmCompletion = () => {
             // Call the real releasePayment method from context
             await releasePayment(jobId);
             setPhase('released');
-            setTimeout(() => navigate('/customer/dashboard'), 3000);
+            setTimeout(() => setShowRatingModal(true), 2500); // Wait a bit then show rating
         } catch (err) {
             console.error('Release failed:', err);
             toast.error('Payment release failed. Please try again.');
             setPhase('pending');
         }
     };
+
+    const handleTagToggle = (tag) => {
+        setReviewTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+    };
+
+    const handleSubmitReview = async () => {
+        if (rating === 0) {
+            toast.error('Please select a rating');
+            return;
+        }
+        setSubmittingReview(true);
+        try {
+            const providerId = job?.provider_id || job?.providerId || job?.worker_id;
+            await submitReview(jobId, providerId, rating, feedback, reviewTags);
+            toast.success('Thank you for your feedback!');
+            navigate('/customer/dashboard');
+        } catch (error) {
+            console.error('Error submitting review:', error);
+            toast.error('Failed to submit review');
+        } finally {
+            setSubmittingReview(false);
+        }
+    };
+
+    const skipReview = () => navigate('/customer/dashboard');
 
     const handleDispute = async () => {
         setPhase('disputed');
@@ -441,6 +473,65 @@ const ConfirmCompletion = () => {
                                 </motion.div>
                             )}
 
+                        </AnimatePresence>
+                        
+                        {/* Rating Modal */}
+                        <AnimatePresence>
+                            {showRatingModal && (
+                                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                                    <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                        className="relative bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                                        <div className="p-6 sm:p-8 overflow-y-auto">
+                                            <div className="text-center mb-8">
+                                                <h2 className="text-2xl font-black text-gray-900 tracking-tight">Rate the Service</h2>
+                                                <p className="text-sm text-gray-500 mt-2">How was your experience with the provider?</p>
+                                            </div>
+                                            
+                                            <div className="flex justify-center gap-2 mb-8">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <button key={star} type="button" onClick={() => setRating(star)} className="focus:outline-none transition-transform hover:scale-110 active:scale-95">
+                                                        <span className={`material-icons text-[40px] drop-shadow-sm ${star <= rating ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-300'}`}>star</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            <div className="mb-6">
+                                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">What stood out?</label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['Punctuality', 'Professionalism', 'Quality of Work', 'Communication', 'Value'].map((tag) => {
+                                                        const isSelected = reviewTags.includes(tag);
+                                                        return (
+                                                            <button key={tag} onClick={() => handleTagToggle(tag)} className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${isSelected ? 'bg-[#0F172A] text-white border-[#0F172A]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
+                                                                {tag}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Optional Feedback</label>
+                                                <textarea 
+                                                    value={feedback} 
+                                                    onChange={(e) => setFeedback(e.target.value)} 
+                                                    rows="3" 
+                                                    placeholder="Share details of your experience..." 
+                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] resize-none transition-all"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="p-4 sm:p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
+                                            <button onClick={skipReview} disabled={submittingReview} className="flex-1 py-3 text-sm font-bold text-gray-500 hover:bg-gray-200/50 bg-gray-200/30 rounded-xl transition-colors">
+                                                Skip
+                                            </button>
+                                            <button onClick={handleSubmitReview} disabled={submittingReview || rating === 0} className="flex-[2] py-3 bg-[#10B981] hover:bg-[#059669] disabled:opacity-50 disabled:hover:bg-[#10B981] text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-[#10B981]/20">
+                                                {submittingReview ? 'Submitting...' : 'Submit Review'}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            )}
                         </AnimatePresence>
                     </div>
                 </main>
