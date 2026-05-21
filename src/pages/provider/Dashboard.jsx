@@ -10,13 +10,7 @@ import { useData } from '../../context/DataContext';
 import { useLocationHeartbeat } from '../../hooks/useLocationHeartbeat';
 import { supabase } from '../../lib/supabase';
 
-const categoryIcon = (cat) => {
-    const c = (cat || '').toLowerCase();
-    if (c.includes('plumb')) return 'plumbing';
-    if (c.includes('clean')) return 'cleaning_services';
-    if (c.includes('elec')) return 'electrical_services';
-    return 'handyman';
-};
+import { getCategoryIcon, getCategoryColors } from '../../lib/utils';
 
 const ProviderDashboard = () => {
     const { currentUser } = useAuth();
@@ -114,6 +108,7 @@ const ProviderDashboard = () => {
                     <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-6">
 
                         {/* Account Review Banner */}
+                        {/* eslint-disable-next-line no-constant-binary-expression */}
                         {false && (
                             <motion.div
                                 initial={{ opacity: 0, y: -10 }}
@@ -252,8 +247,8 @@ const ProviderDashboard = () => {
                                                     className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50/70 transition-colors group"
                                                 >
                                                     {/* Icon */}
-                                                    <div className="size-9 rounded-xl bg-[#10B981]/10 text-[#10B981] shrink-0 flex items-center justify-center">
-                                                        <span className="material-icons-outlined text-base">{categoryIcon(job.category)}</span>
+                                                    <div className={`size-9 rounded-xl shrink-0 flex items-center justify-center border ${getCategoryColors(job.category).bg} ${getCategoryColors(job.category).color} ${getCategoryColors(job.category).border}`}>
+                                                        <span className="material-icons-outlined text-base">{getCategoryIcon(job.category)}</span>
                                                     </div>
 
                                                     {/* Info */}
