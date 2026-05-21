@@ -84,7 +84,12 @@ serve(async (req) => {
     if (action === "enhance-description") {
       const { title, description, category, urgency } = body;
       try {
-        const prompt = `Task: Professional task estimation for TaskMate (Nigeria). 
+        const prompt = `Task: You are an editor for TaskMate. Your job is to improve the grammar, spelling, and clarity of the user's task description.
+        CRITICAL RULES:
+        1. DO NOT add any new details, assumptions, or tools that the user did not explicitly mention.
+        2. Keep it natural and sounding like a real human wrote it.
+        3. Just fix typos and improve sentence structure.
+        
         Data: Title: ${title}, Desc: ${description}, Category: ${category}, Urgency: ${urgency}.
         Return JSON ONLY: { "enhanced_description": "string", "suggested_price": number }`;
         
