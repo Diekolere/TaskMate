@@ -6,6 +6,7 @@ import { useData } from '../../context/DataContext';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
+import { supabase } from '../../lib/supabase';
 
 const ProviderProfile = () => {
     const { id } = useParams();
@@ -23,7 +24,7 @@ const ProviderProfile = () => {
                 const data = allProviders.find(p => p.id === id || p.uid === id);
                 
                 if (data) {
-                    const firstService = (data.services && data.services[0]?.name) || data.category || 'Professional';
+                    const firstService = (data.services && data.services[0]?.name) || (data.category !== 'None' ? data.category : null) || 'Professional';
                     const years = data.provider_profiles?.years_experience ?? data.jobsCompleted ?? 0;
                     const fallbackTagline = `${firstService} • ${years}+ years exp.`;
 
@@ -32,15 +33,15 @@ const ProviderProfile = () => {
                         name: data.displayName || data.full_name || 'Provider',
                         email: data.email || '',
                         phone: data.phoneNumber || data.phone_number || '',
-                        role: data.category || 'Service Provider',
+                        role: data.category || 'None',
                         verified: data.isVerified || false,
                         location: data.location_name || data.address || 'Location Hidden',
                         distance: 'Nearby', 
                         avatar: data.photoURL || data.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.displayName || 'Provider')}&background=f0fdf4&color=15803d&size=200`,
                         banner: data.banner || null,
                         tagline: (data.tagline && String(data.tagline).trim()) || fallbackTagline,
-                        rating: data.rating || 0,
-                        reviewCount: data.reviews?.length || 0,
+                        rating: data.rating ?? null,
+                        reviewCount: Array.isArray(data.reviews) ? data.reviews.length : 0,
                         jobsCompleted: data.jobsCompleted || 0,
                         successRate: data.successRate || 96,
                         memberSince: data.createdAt ? new Date(data.createdAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'long' }) : '—',
@@ -48,7 +49,7 @@ const ProviderProfile = () => {
                         bio: data.description || data.bio || "No bio provided.",
                         skills: data.skills || (data.services ? data.services.map(s => s.name) : (data.trade_category || [])),
                         yearsOfExperience: data.years_experience || data.yearsOfExperience || 'N/A',
-                        category: data.category || 'Service Provider',
+                        category: data.category || 'None',
                         reviews: data.reviews || [], 
                         servicePosts: [] // Will be fetched separately
                     });
@@ -65,6 +66,18 @@ const ProviderProfile = () => {
                             }))
                         }));
                     });
+
+                    // Fetch reviews
+                    supabase
+                        .from('reviews')
+                        .select('*, reviewer:profiles!reviewer_id(full_name, avatar_url)')
+                        .eq('provider_id', data.id || data.uid)
+                        .order('created_at', { ascending: false })
+                        .then(({ data: liveReviews }) => {
+                            if (liveReviews) {
+                                setProvider(prev => ({ ...prev, reviews: liveReviews, reviewCount: liveReviews.length }));
+                            }
+                        });
                 }
             } catch (error) {
                 console.error("Error fetching provider details:", error);
@@ -113,7 +126,7 @@ const ProviderProfile = () => {
     const tabs = [
         { id: 'details', label: 'Details' },
         { id: 'services', label: 'Service posts' },
-        { id: 'reviews', label: 'Reviews' },
+        { id: 'reviews', label: `Reviews${provider.reviewCount > 0 ? ` (${provider.reviewCount})` : ''}` },
     ];
 
     const postMetaTime = (post) => {
@@ -190,15 +203,15 @@ const ProviderProfile = () => {
                                     </div>
 
                                     <div className="grid grid-cols-3 gap-2 max-w-lg mx-auto">
-                                        <div className="text-center p-2.5 bg-gray-50 rounded-lg">
-                                            <p className="text-lg font-bold text-gray-900">{provider.rating === 0 ? 'New' : parseFloat(provider.rating).toFixed(1)}</p>
+                                        <div className="text-center p-2.5 bg-white rounded-lg">
+                                            <p className="text-lg font-bold text-gray-900">{provider.rating != null ? parseFloat(provider.rating).toFixed(1) : '0.0'}</p>
                                             <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Rating</p>
                                         </div>
-                                        <div className="text-center p-2.5 bg-gray-50 rounded-lg">
+                                        <div className="text-center p-2.5 bg-white rounded-lg">
                                             <p className="text-lg font-bold text-gray-900">{provider.jobsCompleted}</p>
                                             <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Tasks</p>
                                         </div>
-                                        <div className="text-center p-2.5 bg-gray-50 rounded-lg">
+                                        <div className="text-center p-2.5 bg-white rounded-lg">
                                             <p className="text-lg font-bold text-gray-900">{provider.successRate}%</p>
                                             <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Success</p>
                                         </div>
@@ -316,12 +329,16 @@ const ProviderProfile = () => {
                                                 <div key={idx} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                                                     <div className="flex items-center justify-between mb-3">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="h-10 w-10 rounded-full bg-[#10B981]/10 flex items-center justify-center text-[#10B981] font-bold text-sm border border-[#10B981]/10">
-                                                                {(review.user || 'C').charAt(0).toUpperCase()}
+                                                            <div className="h-10 w-10 rounded-full bg-[#10B981]/10 flex items-center justify-center text-[#10B981] font-bold text-sm border border-[#10B981]/10 overflow-hidden shrink-0">
+                                                                {review.reviewer?.avatar_url ? (
+                                                                    <img src={review.reviewer.avatar_url} alt="Reviewer" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    (review.reviewer?.full_name || review.user || 'C').charAt(0).toUpperCase()
+                                                                )}
                                                             </div>
                                                             <div>
-                                                                <p className="font-bold text-gray-900 text-sm">{review.user || 'Customer'}</p>
-                                                                <p className="text-xs text-gray-400">{review.date || (review.createdAt && new Date(review.createdAt).toLocaleDateString()) || 'Recent'}</p>
+                                                                <p className="font-bold text-gray-900 text-sm">{review.reviewer?.full_name || review.user || 'Customer'}</p>
+                                                                <p className="text-xs text-gray-400">{review.date || (review.created_at && new Date(review.created_at).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })) || 'Recent'}</p>
                                                             </div>
                                                         </div>
                                                         <div className="flex">
@@ -330,7 +347,16 @@ const ProviderProfile = () => {
                                                             ))}
                                                         </div>
                                                     </div>
-                                                    <p className="text-sm text-gray-600 leading-relaxed">{review.comment || review.text}</p>
+                                                    <p className="text-sm text-gray-600 leading-relaxed mb-3">{review.comment || review.text}</p>
+                                                    {review.tags && review.tags.length > 0 && (
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {review.tags.map((tag, i) => (
+                                                                <span key={i} className="px-2 py-1 bg-gray-50 border border-gray-100 rounded-md text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                                                    {tag}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))
                                         ) : (

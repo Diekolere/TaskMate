@@ -104,12 +104,10 @@ const SavedProviders = () => {
                                         </div>
 
                                         {/* Rating */}
-                                        {provider.rating && (
-                                            <div className="flex items-center gap-1 bg-yellow-50 px-2.5 py-1 rounded-lg border border-yellow-100 shrink-0">
-                                                <span className="material-icons text-yellow-500 text-[16px]">star</span>
-                                                <span className="font-bold text-[13px] text-gray-900">{provider.rating}</span>
-                                            </div>
-                                        )}
+                                        <div className="flex items-center gap-1 bg-yellow-50 px-2.5 py-1 rounded-lg border border-yellow-100 shrink-0">
+                                            <span className="material-icons text-yellow-500 text-[16px]">star</span>
+                                            <span className="font-bold text-[13px] text-gray-900">{provider.rating != null ? Number(provider.rating).toFixed(1) : '0.0'}</span>
+                                        </div>
 
                                         {/* Chevron */}
                                         <span

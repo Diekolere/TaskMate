@@ -224,7 +224,7 @@ export default function JobDetails() {
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2 text-xs font-bold text-gray-400 mt-2 uppercase tracking-widest">
-                                        <span>{job.category || 'Service'}</span>
+                                        <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">{job.category || 'None'}</span>
                                         <span className="text-gray-200">·</span>
                                         <span className="flex items-center gap-1">
                                             <span className="material-icons-outlined text-sm">location_on</span>
@@ -284,7 +284,7 @@ export default function JobDetails() {
                                                                         <span className="material-icons-outlined text-gray-400 text-lg">build</span>
                                                                         <div>
                                                                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Category</p>
-                                                                            <p className="text-sm font-bold text-gray-900">{job.category || 'General Service'}</p>
+                                                                            <p className="text-sm font-bold text-gray-900">{job.category || 'None'}</p>
                                                                         </div>
                                                                     </div>
                                                                     <div className="py-5 sm:pl-8 flex items-center gap-4">
