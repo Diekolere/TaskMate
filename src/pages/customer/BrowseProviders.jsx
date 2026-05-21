@@ -15,7 +15,10 @@ const BrowseProviders = () => {
     const [loading, setLoading] = useState(true);
     const [availableCats, setAvailableCats] = useState([]);
     
-    // Filters States
+    const [userLocation, setUserLocation] = useState(null);
+    const [locationError, setLocationError] = useState(null);
+    
+    // ... existing filters states ...
     const [searchQuery, setSearchQuery] = useState('');
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
     const [isSortOpen, setIsSortOpen] = useState(false);
@@ -38,64 +41,111 @@ const BrowseProviders = () => {
         }
     };
 
+    // 1. Get User Location on Mount
+    useEffect(() => {
+        // Use user's saved coordinates if available, otherwise prompt browser
+        if (currentUser?.latitude && currentUser?.longitude) {
+            setUserLocation({ lat: currentUser.latitude, lng: currentUser.longitude });
+        } else if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setUserLocation({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    });
+                    setLocationError(null);
+                },
+                (error) => {
+                    console.warn("Geolocation denied or error:", error);
+                    setLocationError("Please enable location services to find providers near you.");
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+            );
+        } else {
+            setLocationError("Geolocation is not supported by your browser.");
+        }
+    }, [currentUser]);
+
+    // 2. Fetch Providers using PostGIS RPC
     useEffect(() => {
         const fetchProviders = async () => {
             setLoading(true);
-            const data = await getProviders('All');
+            
+            // Still get available categories for the dropdown
             const avail = await getAvailableCategories();
             setAvailableCats(avail);
-            
-            const enrichedData = data.map(p => ({
-                ...p,
-                completedJobs: p.completed_jobs || 0,
-                skills: p.trade_category || [p.category]
-            }));
-            
-            // Apply category filter if any selected
-            let filteredData = selectedCategories.length > 0 
-                ? enrichedData.filter(p => p.skills && p.skills.some(skill => selectedCategories.includes(skill)))
-                : enrichedData;
 
-            // Apply rating filter
+            // Wait for location. If error, we can't search by proximity easily, but we can still show a message or empty state.
+            if (!userLocation && !locationError) {
+                // Still waiting for location permission/fetch
+                return;
+            }
+
+            if (locationError) {
+                // If location failed, we might fallback to empty or show the error.
+                setProviders([]);
+                setLoading(false);
+                return;
+            }
+
+            // Map Sort Filter to RPC format
+            let rpcSort = 'rating';
+            if (sortFilter === 'Nearest') rpcSort = 'distance';
+            if (sortFilter === 'Most Jobs Done') rpcSort = 'jobs';
+
+            // Map Rating Filter
+            let rpcMinRating = 0;
             if (ratingFilter !== 'Any Rating') {
-                const minRating = parseFloat(ratingFilter.split('+')[0]);
-                filteredData = filteredData.filter(p => (p.rating || 0) >= minRating);
+                rpcMinRating = parseFloat(ratingFilter.split('+')[0]);
             }
 
-            // Apply sorting
-            if (sortFilter === 'Highest Rated') {
-                filteredData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-            } else if (sortFilter === 'Most Jobs Done') {
-                filteredData.sort((a, b) => (b.completedJobs || 0) - (a.completedJobs || 0));
-            } else if (sortFilter === 'Nearest') {
-                // Real proximity: Haversine distance using actual coordinates
-                const customerLat = currentUser?.latitude || 6.5095; // Default to Yaba if null
-                const customerLng = currentUser?.longitude || 3.3711;
-                
-                const getDistance = (lat1, lon1, lat2, lon2) => {
-                    if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
-                    const R = 6371; // km
-                    const dLat = (lat2 - lat1) * Math.PI / 180;
-                    const dLon = (lon2 - lon1) * Math.PI / 180;
-                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                              Math.sin(dLon/2) * Math.sin(dLon/2);
-                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                    return R * c;
-                };
-
-                filteredData.sort((a, b) => {
-                    const distA = getDistance(customerLat, customerLng, a.latitude, a.longitude);
-                    const distB = getDistance(customerLat, customerLng, b.latitude, b.longitude);
-                    return distA - distB;
+            try {
+                // Call the new RPC
+                const { data, error } = await supabase.rpc('get_providers_in_radius', {
+                    user_lat: userLocation.lat,
+                    user_lng: userLocation.lng,
+                    radius_meters: 50000, // 50km
+                    category_filters: selectedCategories.length > 0 ? selectedCategories : null,
+                    min_rating: rpcMinRating,
+                    sort_by: rpcSort
                 });
-            }
 
-            setProviders(filteredData);
-            setLoading(false);
+                if (error) throw error;
+
+                // Client-side text search (since text search wasn't easily combinable in simple RPC, though could be added)
+                let finalData = data || [];
+                if (searchQuery.trim()) {
+                    const q = searchQuery.toLowerCase();
+                    finalData = finalData.filter(p => 
+                        (p.display_name?.toLowerCase().includes(q)) ||
+                        (p.full_name?.toLowerCase().includes(q)) ||
+                        (p.bio?.toLowerCase().includes(q))
+                    );
+                }
+
+                // Format data to match previous component structure expectations
+                const formatted = finalData.map(p => ({
+                    ...p,
+                    displayName: p.display_name,
+                    photoURL: p.photo_url,
+                    completedJobs: p.completed_jobs,
+                    skills: p.trade_category || [p.category]
+                }));
+
+                setProviders(formatted);
+            } catch (err) {
+                console.error("Error fetching providers:", err);
+                setProviders([]);
+            } finally {
+                setLoading(false);
+            }
         };
-        fetchProviders();
-    }, [selectedCategories, sortFilter, ratingFilter, getProviders]);
+
+        // Only run fetch if we have location or an error state
+        if (userLocation || locationError) {
+            fetchProviders();
+        }
+    }, [selectedCategories, sortFilter, ratingFilter, searchQuery, userLocation, locationError, getAvailableCategories]);
 
     useEffect(() => {
         const channel = supabase
@@ -251,13 +301,29 @@ const BrowseProviders = () => {
                                 <div className="py-20 flex justify-center">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                                 </div>
+                            ) : locationError ? (
+                                <div className="py-20 text-center px-4">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-50 mb-4 text-red-500">
+                                        <span className="material-icons-outlined text-3xl">location_off</span>
+                                    </div>
+                                    <h3 className="text-lg font-extrabold text-gray-900">Location Access Required</h3>
+                                    <p className="text-[14px] font-medium text-gray-500 mt-1.5 max-w-sm mx-auto">{locationError}</p>
+                                    <button 
+                                        onClick={() => window.location.reload()}
+                                        className="mt-6 bg-[#0F172A] text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors"
+                                    >
+                                        Try Again
+                                    </button>
+                                </div>
                             ) : providers.length === 0 ? (
                                 <div className="py-20 text-center">
                                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-4">
                                         <span className="material-icons-outlined text-gray-300 text-3xl">search_off</span>
                                     </div>
-                                    <h3 className="text-lg font-extrabold text-gray-900">No providers found</h3>
-                                    <p className="text-[14px] font-medium text-gray-500 mt-1.5">Try adjusting your filters or search terms.</p>
+                                    <h3 className="text-lg font-extrabold text-gray-900">No nearby providers found</h3>
+                                    <p className="text-[14px] font-medium text-gray-500 mt-1.5 max-w-sm mx-auto">
+                                        We scan for providers within a 50km radius and none was found. Try adjusting your filters or search terms.
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="flex flex-col relative">
