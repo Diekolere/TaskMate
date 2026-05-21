@@ -59,12 +59,12 @@ const BrowseProviders = () => {
             // Apply rating filter
             if (ratingFilter !== 'Any Rating') {
                 const minRating = parseFloat(ratingFilter.split('+')[0]);
-                filteredData = filteredData.filter(p => (p.rating || 4.5) >= minRating);
+                filteredData = filteredData.filter(p => (p.rating || 0) >= minRating);
             }
 
             // Apply sorting
             if (sortFilter === 'Highest Rated') {
-                filteredData.sort((a, b) => (b.rating || 4.5) - (a.rating || 4.5));
+                filteredData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
             } else if (sortFilter === 'Most Jobs Done') {
                 filteredData.sort((a, b) => (b.completedJobs || 0) - (a.completedJobs || 0));
             } else if (sortFilter === 'Nearest') {
@@ -285,12 +285,19 @@ const BrowseProviders = () => {
                                                     </div>
                                                     <div className="flex sm:hidden items-center gap-0.5 shrink-0">
                                                         <span className="material-icons text-yellow-500 text-[14px]">star</span>
-                                                        <span className="text-[12px] font-bold text-gray-500">{provider.rating ? Number(provider.rating).toFixed(1) : 'New'}</span>
+                                                        <span className="text-[12px] font-bold text-gray-500">{provider.rating != null ? Number(provider.rating).toFixed(1) : '0.0'}</span>
                                                     </div>
                                                 </div>
                                                 <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5 truncate">
-                                                    <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">{provider.category || 'None'}</span> 
-                                                    <span className="text-gray-200">·</span> 
+                                                    {(() => {
+                                                        const cats = provider.trade_category && provider.trade_category.length > 0 ? provider.trade_category : (provider.category && provider.category !== 'None' ? [provider.category] : null);
+                                                        if (!cats) return <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">None</span>;
+                                                        return (<>
+                                                            <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0">{cats[0]}</span>
+                                                            {cats.length > 1 && <span className="bg-[#10B981] text-white px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">+{cats.length - 1}</span>}
+                                                        </>);
+                                                    })()}
+                                                    <span className="text-gray-200">·</span>
                                                     <span className="truncate">{provider.location || 'Lagos, Nigeria'}</span>
                                                 </p>
                                                 <div className="flex items-center gap-2 mt-1.5">
@@ -305,7 +312,7 @@ const BrowseProviders = () => {
                                             <div className="flex items-center gap-2 shrink-0">
                                                 <div className="hidden sm:flex items-center gap-1 bg-yellow-50 px-2.5 py-1 rounded-lg border border-yellow-100">
                                                     <span className="material-icons text-yellow-500 text-[16px]">star</span>
-                                                    <span className="font-bold text-[13px] text-gray-900">{provider.rating ? Number(provider.rating).toFixed(1) : 'New'}</span>
+                                                    <span className="font-bold text-[13px] text-gray-900">{provider.rating != null ? Number(provider.rating).toFixed(1) : '0.0'}</span>
                                                 </div>
                                                 <span className="material-icons text-[18px] text-gray-300 group-hover:text-gray-400 transition-colors shrink-0">chevron_right</span>
                                             </div>
