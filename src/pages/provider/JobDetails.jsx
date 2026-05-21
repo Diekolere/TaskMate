@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { supabase } from '../../lib/supabase';
+import { getCategoryIcon, getCategoryColors } from '../../lib/utils';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
@@ -224,7 +225,7 @@ export default function JobDetails() {
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2 text-xs font-bold text-gray-400 mt-2 uppercase tracking-widest">
-                                        <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">{job.category || 'None'}</span>
+                                        <span className="text-gray-700 text-[13px] font-bold capitalize whitespace-nowrap">{job.category || 'Uncategorized'}</span>
                                         <span className="text-gray-200">·</span>
                                         <span className="flex items-center gap-1">
                                             <span className="material-icons-outlined text-sm">location_on</span>
@@ -281,7 +282,9 @@ export default function JobDetails() {
                                                             <div className="divide-y divide-gray-100 border-y border-gray-100 mt-4">
                                                                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
                                                                     <div className="py-5 flex items-center gap-4">
-                                                                        <span className="material-icons-outlined text-gray-400 text-lg">build</span>
+                                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${getCategoryColors(job.category).bg} ${getCategoryColors(job.category).color} ${getCategoryColors(job.category).border}`}>
+                                                                            <span className="material-icons-outlined text-lg">{getCategoryIcon(job.category)}</span>
+                                                                        </div>
                                                                         <div>
                                                                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Category</p>
                                                                             <p className="text-sm font-bold text-gray-900">{job.category || 'None'}</p>

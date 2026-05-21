@@ -8,6 +8,8 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import { getCategoryIcon, getCategoryColors } from '../../lib/utils';
+import { supabase } from '../../lib/supabase';
 
 import { getPriceRange, getFairnessLabel, getSmartPriceLabel } from '../../lib/aiData';
 
@@ -297,9 +299,11 @@ const RequestStatus = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { currentUser } = useAuth();
-    const { requests, getProviders, getProviderProfile, getInterestedProviders, releasePayment } = useData();
+    const { requests, getProviders, getProviderProfile, getInterestedProviders, releasePayment, getJobMatches, inviteMatchedProvider } = useData();
     const [request, setRequest] = useState(null);
     const [interestedProviders, setInterestedProviders] = useState([]);
+    const [aiMatchedProviders, setAiMatchedProviders] = useState([]);
+    const [invitedPros, setInvitedPros] = useState(new Set());
     const [loading, setLoading] = useState(true);
     const [negotiatingWith, setNegotiatingWith] = useState(null);
     const [expandedProviderId, setExpandedProviderId] = useState(null);
@@ -349,8 +353,23 @@ const RequestStatus = () => {
         if (isPublicOpen) {
             // For public+open: Fetch providers who accepted from job_applications
             getInterestedProviders(req.id)
-                .then(interestedProvs => setInterestedProviders(interestedProvs))
+                .then(interestedProvs => {
+                    setInterestedProviders(interestedProvs);
+                })
                 .catch(() => setInterestedProviders([]));
+            
+            supabase.from('job_applications')
+                .select('provider_id')
+                .eq('job_id', req.id)
+                .eq('status', 'invited')
+                .then(({data}) => {
+                    if (data) setInvitedPros(new Set(data.map(d => d.provider_id)));
+                });
+            
+            // Also fetch AI Matched Providers
+            getJobMatches(req.id)
+                .then(matches => setAiMatchedProviders(matches))
+                .catch(() => setAiMatchedProviders([]));
         } else if (req.worker_id) {
             // For private or finalized public: Show only assigned provider
             getProviderProfile(req.worker_id).then(assigned => {
@@ -367,10 +386,11 @@ const RequestStatus = () => {
         } else {
             // No worker assigned and not public+open
             setInterestedProviders([]);
+            setAiMatchedProviders([]);
         }
 
         setLoading(false);
-    }, [id, requests, getProviders, getInterestedProviders]);
+    }, [id, requests, getProviders, getInterestedProviders, getJobMatches]);
 
     // ── Polling for interested providers (real-time updates) ─────────────────
     useEffect(() => {
@@ -648,8 +668,8 @@ const RequestStatus = () => {
                                                         {/* Row 1 */}
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
                                                             <div className="p-5 flex items-center gap-4">
-                                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
-                                                                    <span className="material-icons-outlined text-lg">build</span>
+                                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${getCategoryColors(request.category).bg} ${getCategoryColors(request.category).color} ${getCategoryColors(request.category).border}`}>
+                                                                    <span className="material-icons-outlined text-lg">{getCategoryIcon(request.category)}</span>
                                                                 </div>
                                                                 <div>
                                                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Category</p>
@@ -715,6 +735,108 @@ const RequestStatus = () => {
                                 </AnimatePresence>
                             </div>
                         </div>
+
+                        {/* ── AI Recommended Providers ──────────────── */}
+                        {request.request_type === 'public' && normalizedStatus === 'open' && aiMatchedProviders.length > 0 && (
+                            <div className="mt-8 mb-8">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="material-icons text-[#10B981]">auto_awesome</span>
+                                    <h3 className="text-[13px] font-black text-gray-900 tracking-wide">
+                                        Recommended Matches
+                                    </h3>
+                                </div>
+                                <div className="space-y-0">
+                                    {aiMatchedProviders.map((match, idx) => {
+                                        const p = match.provider || {};
+                                        const pp = match.provider_profile || {};
+                                        return (
+                                            <div key={match.id} className="py-5 border-b border-gray-100 last:border-0 relative">
+                                                <div className="flex items-start gap-4">
+                                                    {/* Avatar */}
+                                                    <div className="w-12 h-12 rounded-full border border-gray-200 overflow-hidden shrink-0">
+                                                        <img 
+                                                            src={p.photoURL || p.avatar_url || `https://ui-avatars.com/api/?name=${p.full_name || 'Artisan'}&background=random&color=334155`} 
+                                                            alt={p.full_name} 
+                                                            className="w-full h-full object-cover" 
+                                                        />
+                                                    </div>
+
+                                                    {/* Info */}
+                                                    <div className="flex-1 min-w-0 pr-0 sm:pr-24">
+                                                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                                <h3 className="text-[15px] font-bold text-gray-900 truncate">
+                                                                    {p.full_name}
+                                                                </h3>
+                                                                <span className="material-icons text-[#10B981] text-[15px] shrink-0" title="Verified">verified</span>
+                                                                <div className="flex items-center bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100 shrink-0 ml-1">
+                                                                    <span className="font-bold text-[10px] text-emerald-600 uppercase tracking-wide">{match.match_score}% Match</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex sm:hidden items-center gap-0.5 shrink-0">
+                                                                <span className="material-icons text-yellow-500 text-[14px]">star</span>
+                                                                <span className="text-[12px] font-bold text-gray-500">{pp.average_rating != null ? Number(pp.average_rating).toFixed(1) : '0.0'}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Category & Location */}
+                                                        <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5 truncate mt-1">
+                                                            {(() => {
+                                                                const cats = pp.trade_category || [];
+                                                                if (!cats.length) return <span>Uncategorized</span>;
+                                                                return (<>
+                                                                    <span className="truncate font-bold text-gray-700 capitalize">{cats[0].toLowerCase()}</span>
+                                                                    {cats.length > 1 && <span className="bg-[#10B981] text-white px-1.5 py-0.5 rounded-md text-[9px] font-bold shrink-0 ml-1">+{cats.length - 1}</span>}
+                                                                </>);
+                                                            })()}
+                                                            <span className="text-gray-200">·</span>
+                                                            <span className="truncate">{p.location || 'Lagos, Nigeria'}</span>
+                                                        </p>
+
+                                                        {/* Jobs & Rationale */}
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 mt-2.5">
+                                                            <div className="flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0 self-start">
+                                                                <span className="material-icons-outlined text-[12px] text-gray-400">task_alt</span>
+                                                                {pp.completed_jobs_count || '0'} jobs
+                                                            </div>
+                                                            <span className="text-[12px] text-gray-700 sm:truncate leading-snug">
+                                                                <span className="font-bold text-gray-900 mr-1">Rationale:</span>
+                                                                {match.ai_rationale}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* Desktop Star Rating */}
+                                                    <div className="hidden sm:flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100 shrink-0">
+                                                        <span className="material-icons text-yellow-500 text-[14px]">star</span>
+                                                        <span className="font-bold text-[12px] text-gray-900">{pp.average_rating != null ? Number(pp.average_rating).toFixed(1) : '0.0'}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Invite Button */}
+                                                <div className="mt-3 sm:mt-0 sm:absolute sm:bottom-5 sm:right-0">
+                                                    <button 
+                                                        disabled={invitedPros.has(match.provider_id)}
+                                                        onClick={async () => {
+                                                            const success = await inviteMatchedProvider(request.id, match.provider_id, request.title);
+                                                            if (success) {
+                                                                setInvitedPros(prev => new Set(prev).add(match.provider_id));
+                                                            }
+                                                        }}
+                                                        className="w-full sm:w-auto py-2 sm:py-1.5 px-4 bg-[#10B981] text-white text-xs font-bold rounded-xl sm:rounded-lg hover:bg-[#059669] disabled:opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                                                    >
+                                                        <span className="material-icons text-[14px]">
+                                                            {invitedPros.has(match.provider_id) ? 'check' : 'person_add'}
+                                                        </span>
+                                                        {invitedPros.has(match.provider_id) ? 'Invited' : 'Invite'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         {/* ── Interested / Targeted Providers ──────────────── */}
                         {(request.request_type === 'public' || request.request_type === 'private') && 

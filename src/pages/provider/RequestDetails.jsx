@@ -5,6 +5,8 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { supabase } from '../../lib/supabase';
+import { getCategoryIcon, getCategoryColors } from '../../lib/utils';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import ProviderNegotiationDrawer from '../../components/provider/ProviderNegotiationDrawer';
@@ -25,6 +27,7 @@ const RequestDetails = () => {
     const [loading, setLoading] = useState(true);
     const [request, setRequest] = useState(null);
     const [accepted, setAccepted] = useState(false);
+    const [isInvited, setIsInvited] = useState(false);
     const [accepting, setAccepting] = useState(false);
     const [showNegotiation, setShowNegotiation] = useState(false);
     const [negotiating, setNegotiating] = useState(false);
@@ -73,6 +76,9 @@ const RequestDetails = () => {
                     const isAccepted = ['accepted', 'negotiating', 'finalized'].includes(appData.status);
                     if (isAccepted) {
                         setAccepted(true);
+                    }
+                    if (appData.status === 'invited') {
+                        setIsInvited(true);
                     }
                 }
 
@@ -236,14 +242,26 @@ const RequestDetails = () => {
             <main className="flex-1 overflow-hidden flex flex-col min-w-0">
                 <TopNavbar breadcrumbs={['Job Requests', 'Details']} />
 
-                <div className="flex-1 overflow-y-auto bg-white">
-                    <div className="max-w-[800px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-10 pb-24 md:pb-10">
+                <div className="flex-1 overflow-y-auto pb-24 md:pb-0 bg-white">
+                    <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+                        {/* Invited Banner */}
+                        {isInvited && !accepted && (
+                            <div className="mb-6 bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-start gap-3">
+                                <div className="bg-emerald-100 text-emerald-600 w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
+                                    <span className="material-icons-outlined">star</span>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-emerald-900 text-sm">You were specifically invited to this job!</h3>
+                                    <p className="text-emerald-700 text-xs mt-0.5">The customer thinks you're a great fit. Accept the job below to start negotiating.</p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* ── Header ── */}
                         <div className="mb-10 pb-8 border-b border-gray-100">
                             {/* Category + date + location row — wraps as single unit */}
                             <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                                {request.category && <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">{request.category}</span>}
+                                {request.category && <span className="text-gray-700 text-[13px] font-bold capitalize whitespace-nowrap">{request.category.toLowerCase()}</span>}
                                 {(request.category || dateStr || request.location || request.location_name) && <span className="text-gray-200">·</span>}
                                 <span className="text-xs text-gray-400 whitespace-nowrap">{dateStr}</span>
                                 {(request.location || request.location_name) && (
@@ -326,8 +344,8 @@ const RequestDetails = () => {
                                                     <div className="divide-y divide-gray-100 border-y border-gray-100 rounded-xl overflow-hidden border-x">
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
                                                             <div className="p-5 flex items-center gap-4">
-                                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
-                                                                    <span className="material-icons-outlined text-lg">build</span>
+                                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${getCategoryColors(request.category).bg} ${getCategoryColors(request.category).color} ${getCategoryColors(request.category).border}`}>
+                                                                    <span className="material-icons-outlined text-lg">{getCategoryIcon(request.category)}</span>
                                                                 </div>
                                                                 <div>
                                                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Category</p>

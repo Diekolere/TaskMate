@@ -7,12 +7,23 @@ import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 const InboundRequests = () => {
     const { currentUser } = useAuth();
     const { jobs } = useData();
     const [search, setSearch] = useState('');
-    const [tab, setTab] = useState('all'); // 'all' | 'upcoming' | 'private' | 'public'
+    const [tab, setTab] = useState('all'); // 'all' | 'upcoming' | 'private' | 'public' | 'invited'
+    const [invitedJobs, setInvitedJobs] = useState(new Set());
+
+    React.useEffect(() => {
+        if (!currentUser?.id) return;
+        const fetchInvites = async () => {
+            const { data } = await supabase.from('job_applications').select('job_id').eq('provider_id', currentUser.id).eq('status', 'invited');
+            if (data) setInvitedJobs(new Set(data.map(d => d.job_id)));
+        };
+        fetchInvites();
+    }, [currentUser?.id]);
 
     const requests = jobs.filter(j => {
         const s = String(j.status || '').toLowerCase();
@@ -33,6 +44,7 @@ const InboundRequests = () => {
             tab === 'upcoming' ? !!r.scheduledDate :
             tab === 'private' ? type === 'private' :
             tab === 'public' ? type === 'public' :
+            tab === 'invited' ? invitedJobs.has(r.id) :
             true;
         if (!matchesTab) return false;
         if (!search) return true;
@@ -97,6 +109,17 @@ const InboundRequests = () => {
                                 {privateCount > 0 && (
                                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'private' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
                                         {privateCount}
+                                    </span>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => setTab('invited')}
+                                className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'invited' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
+                            >
+                                Invited
+                                {invitedJobs.size > 0 && (
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'invited' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
+                                        {invitedJobs.size}
                                     </span>
                                 )}
                             </button>
