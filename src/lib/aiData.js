@@ -12,7 +12,7 @@ export const PRICE_RANGES = {
     'HVAC & AC Repair':{ min: 15000, max: 55000, avg: 28000 },
     'Home Security':   { min: 20000, max: 80000, avg: 40000 },
     'Interior Design': { min: 30000, max: 200000,avg: 80000 },
-    'General Service': { min: 5000,  max: 30000, avg: 12000 },
+    'None': { min: 5000,  max: 30000, avg: 12000 },
     Other:             { min: 5000,  max: 50000, avg: 20000 },
 };
 
@@ -75,7 +75,7 @@ const CATEGORY_FALLBACKS = {
     'HVAC & AC Repair':'AC & HVAC servicing',
     'Home Security':   'security installation',
     'Interior Design': 'interior design',
-    'General Service': 'general services',
+    'None': 'general services',
     Other:             'this service type',
 };
 
@@ -119,33 +119,15 @@ export const getMatchScore = (provider, category) => {
 
 // Smart description enrichment — returns an improved description based on raw input
 export const enrichDescription = (rawText, category) => {
-    const cat = category || 'the service';
-    const sentences = rawText.trim().split(/[.!?]+/).filter(Boolean);
-    const core = sentences[0]?.trim() || rawText.trim();
-
-    const templates = {
-        Plumbing: [
-            `${core}. The issue requires a qualified plumber to inspect and replace any damaged pipes, fixtures, or seals.`,
-            'Please bring standard plumbing tools. The water supply may need to be shut off during the repair.',
-        ],
-        Electrical: [
-            `${core}. A certified electrician is needed to diagnose the fault, ensure safety compliance, and restore proper function.`,
-            'Please note that the area may require isolation from the main power supply before work begins.',
-        ],
-        Cleaning: [
-            `${core}. A thorough clean of the specified area is required, including all surfaces, floors, and fixtures.`,
-            'Cleaning supplies may need to be provided. Please confirm before the job starts.',
-        ],
-        Carpentry: [
-            `${core}. A skilled carpenter is needed to assess, measure, and complete the woodwork to a professional finish.`,
-            'Please specify any material preferences or dimensions when you arrive.',
-        ],
-    };
-
-    const extra = templates[category] || [
-        `${core}. Please arrive with all necessary tools and equipment to complete the job efficiently.`,
-        'If any materials are required, kindly confirm in advance so the customer can prepare.',
-    ];
-
-    return extra.join(' ');
+    // We no longer add performative templates. 
+    // We just ensure it starts with a capital letter and ends with punctuation.
+    const text = rawText.trim();
+    if (!text) return text;
+    
+    let improved = text.charAt(0).toUpperCase() + text.slice(1);
+    if (!['.', '!', '?'].includes(improved.slice(-1))) {
+        improved += '.';
+    }
+    
+    return improved;
 };

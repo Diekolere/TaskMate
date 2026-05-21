@@ -17,7 +17,7 @@ import PostRequest from './pages/customer/PostRequest';
 import BrowseProviders from './pages/customer/BrowseProviders';
 import ProviderProfile from './pages/customer/ProviderProfile';
 import RequestStatus from './pages/customer/RequestStatus';
-import ServiceReview from './pages/customer/ServiceReview';
+
 import Settings from './pages/customer/Settings';
 import SavedProviders from './pages/customer/SavedProviders';
 import MyRequests from './pages/customer/MyRequests';
@@ -90,7 +90,7 @@ function AnimatedRoutes() {
         <Route path="/customer/payment/:requestId" element={<ProtectedRoute allowedRoles={['customer']}><PaymentCheckout /></ProtectedRoute>} />
         <Route path="/customer/provider/:id" element={<ProtectedRoute allowedRoles={['customer']}><ProviderProfile /></ProtectedRoute>} />
         <Route path="/customer/service-review" element={<ProtectedRoute allowedRoles={['customer']}><Navigate to="/customer/dashboard" replace /></ProtectedRoute>} />
-        <Route path="/customer/service-review/:id" element={<ProtectedRoute allowedRoles={['customer']}><ServiceReview /></ProtectedRoute>} />
+
         <Route path="/customer/settings" element={<ProtectedRoute allowedRoles={['customer']}><Settings /></ProtectedRoute>} />
         <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer']}><Settings /></ProtectedRoute>} />
         <Route path="/customer/saved" element={<ProtectedRoute allowedRoles={['customer']}><SavedProviders /></ProtectedRoute>} />
