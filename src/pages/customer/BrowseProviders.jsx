@@ -53,7 +53,7 @@ const BrowseProviders = () => {
             
             // Apply category filter if any selected
             let filteredData = selectedCategories.length > 0 
-                ? enrichedData.filter(p => selectedCategories.includes(p.category))
+                ? enrichedData.filter(p => p.skills && p.skills.some(skill => selectedCategories.includes(skill)))
                 : enrichedData;
 
             // Apply rating filter
@@ -285,11 +285,11 @@ const BrowseProviders = () => {
                                                     </div>
                                                     <div className="flex sm:hidden items-center gap-0.5 shrink-0">
                                                         <span className="material-icons text-yellow-500 text-[14px]">star</span>
-                                                        <span className="text-[12px] font-bold text-gray-500">{provider.rating || '4.8'}</span>
+                                                        <span className="text-[12px] font-bold text-gray-500">{provider.rating ? Number(provider.rating).toFixed(1) : 'New'}</span>
                                                     </div>
                                                 </div>
                                                 <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5 truncate">
-                                                    <span className="text-gray-700 font-semibold">{provider.category || 'General Service'}</span> 
+                                                    <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">{provider.category || 'None'}</span> 
                                                     <span className="text-gray-200">·</span> 
                                                     <span className="truncate">{provider.location || 'Lagos, Nigeria'}</span>
                                                 </p>
@@ -305,7 +305,7 @@ const BrowseProviders = () => {
                                             <div className="flex items-center gap-2 shrink-0">
                                                 <div className="hidden sm:flex items-center gap-1 bg-yellow-50 px-2.5 py-1 rounded-lg border border-yellow-100">
                                                     <span className="material-icons text-yellow-500 text-[16px]">star</span>
-                                                    <span className="font-bold text-[13px] text-gray-900">{provider.rating || '4.8'}</span>
+                                                    <span className="font-bold text-[13px] text-gray-900">{provider.rating ? Number(provider.rating).toFixed(1) : 'New'}</span>
                                                 </div>
                                                 <span className="material-icons text-[18px] text-gray-300 group-hover:text-gray-400 transition-colors shrink-0">chevron_right</span>
                                             </div>

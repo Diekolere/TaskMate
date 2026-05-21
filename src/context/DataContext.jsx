@@ -3,6 +3,17 @@ import { supabase, uploadFile, generateFilePath } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 
+const formatProviderCategory = (tradeCategoryArray, fallbackCategory) => {
+  if (tradeCategoryArray && Array.isArray(tradeCategoryArray) && tradeCategoryArray.length > 0) {
+    if (tradeCategoryArray.length === 1) return tradeCategoryArray[0];
+    return `${tradeCategoryArray[0]} + ${tradeCategoryArray.length - 1}`;
+  }
+  if (fallbackCategory && fallbackCategory !== 'General Service' && fallbackCategory !== 'None') {
+    return fallbackCategory;
+  }
+  return 'None';
+};
+
 const DataContext = createContext({
     requests: [],
     jobs: [],
@@ -829,7 +840,7 @@ export function DataProvider({ children }) {
           uid: p.id,
           displayName: p.full_name,
           photoURL: p.avatar_url,
-          category: profile.trade_category?.[0] || profile.category || 'General Service',
+          category: formatProviderCategory(profile.trade_category, profile.category),
           isVerified: profile.verification_status === 'verified'
         };
       });
@@ -844,7 +855,7 @@ export function DataProvider({ children }) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*, provider_profiles(*)')
+        .select('*, provider_profiles(*), reviews:reviews!provider_id(*, reviewer:profiles!reviewer_id(full_name, avatar_url))')
         .eq('id', providerId)
         .single();
 
@@ -860,7 +871,7 @@ export function DataProvider({ children }) {
         uid: data.id,
         displayName: data.full_name,
         photoURL: data.avatar_url,
-        category: profile.trade_category?.[0] || profile.category || 'General Service',
+        category: formatProviderCategory(profile.trade_category, profile.category),
         isVerified: profile.verification_status === 'verified'
       };
     } catch (error) {
@@ -906,7 +917,7 @@ export function DataProvider({ children }) {
           uid: p.id,
           displayName: p.full_name,
           photoURL: p.avatar_url,
-          category: profile.trade_category?.[0] || profile.category || 'General Service',
+          category: formatProviderCategory(profile.trade_category, profile.category),
           proposed_price: providerMap.get(p.id),
           isVerified: profile.verification_status === 'verified'
         };
@@ -961,6 +972,14 @@ export function DataProvider({ children }) {
         rating, comment, tags
       }]);
       if (error) throw error;
+
+      // Recalculate average rating
+      const { data: allReviews } = await supabase.from('reviews').select('rating').eq('provider_id', providerId);
+      if (allReviews && allReviews.length > 0) {
+        const avg = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+        await supabase.from('provider_profiles').update({ rating: avg.toFixed(1) }).eq('id', providerId);
+      }
+
       toast.success('Review submitted!');
 
       // Notify the provider

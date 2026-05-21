@@ -242,12 +242,12 @@ const Dashboard = () => {
                                                                 ? `${post.caption.slice(0, 120)}...` 
                                                                 : post.caption}
                                                         </span>
-                                                        {post.caption?.length > 120 && !expandedPosts[post.id] && (
+                                                        {post.caption?.length > 120 && (
                                                             <button 
-                                                                onClick={() => setExpandedPosts(prev => ({ ...prev, [post.id]: true }))}
-                                                                className="text-gray-500 font-bold ml-1 hover:text-gray-700"
+                                                                onClick={() => setExpandedPosts(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
+                                                                className="text-gray-500 font-bold ml-1 hover:text-gray-700 transition-colors"
                                                             >
-                                                                more
+                                                                {expandedPosts[post.id] ? 'view less' : 'more'}
                                                             </button>
                                                         )}
                                                     </p>
@@ -337,7 +337,7 @@ const Dashboard = () => {
                         {/* Right Sidebar - Recommended (Hidden on Mobile) */}
                         <div className="hidden xl:block w-full xl:w-[350px] shrink-0">
                             {/* Need a Pro Card */}
-                            <div className="bg-[#0F172A] rounded-2xl sm:rounded-3xl p-6 sm:p-8 mb-6 sm:mb-8 shadow-lg relative overflow-hidden group">
+                            <div className="bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#020617] rounded-2xl sm:rounded-3xl p-6 sm:p-8 mb-6 sm:mb-8 shadow-lg relative overflow-hidden group">
                                 <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all"></div>
                                 <h2 className="text-[22px] sm:text-[28px] font-black text-white mb-3 sm:mb-4 tracking-tight">Need a Pro?</h2>
                                 <p className="text-gray-300 text-sm leading-relaxed mb-8 font-medium">Describe your task and let our verified professionals send you their best offers.</p>
@@ -358,22 +358,29 @@ const Dashboard = () => {
                                 </div>
                                 <div className="space-y-8">
                                     {recommendedArtisans.map((artisan, idx) => (
-                                        <div key={idx} className="flex items-center justify-between group cursor-pointer">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-lime-400 rounded-full flex items-center justify-center font-black text-[#0F172A] text-sm shrink-0 border-2 border-white shadow-sm group-hover:scale-110 transition-transform">
-                                                    {(artisan.name || artisan.displayName || 'P').split(' ').map(n => n[0]).join('')}
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-extrabold text-[15px] text-gray-900 group-hover:text-[#10B981] transition-colors">{artisan.name || artisan.displayName || 'Provider'}</h3>
-                                                    <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide">{artisan.category}</p>
+                                        <div key={idx} className="flex items-center justify-between group cursor-pointer" onClick={() => navigate(`/customer/provider/${artisan.id}`)}>
+                                            <div className="flex items-center gap-4 min-w-0">
+                                                <img 
+                                                    src={artisan.photoURL || artisan.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(artisan.displayName || artisan.name || 'Provider')}&background=random`}
+                                                    alt={artisan.displayName || artisan.name}
+                                                    className="w-11 h-11 rounded-full object-cover border border-gray-200 shadow-sm group-hover:border-[#10B981] transition-colors shrink-0"
+                                                />
+                                                <div className="min-w-0">
+                                                    <h3 className="font-extrabold text-[15px] text-gray-900 group-hover:text-[#10B981] transition-colors truncate">{artisan.displayName || artisan.name || 'Provider'}</h3>
+                                                    <span className="inline-block mt-0.5 bg-[#0F172A] text-white px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider truncate max-w-full">
+                                                        {artisan.category || 'None'}
+                                                    </span>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="material-icons text-yellow-400 text-[16px]">star</span>
-                                                    <span className="text-[13px] font-black text-gray-900">{artisan.rating}</span>
+                                            <div className="text-right shrink-0 ml-2">
+                                                <div className="flex items-center gap-1 justify-end">
+                                                    <span className="material-icons text-yellow-500 text-[16px]">star</span>
+                                                    <span className="text-[13px] font-black text-gray-900">{artisan.rating ? Number(artisan.rating).toFixed(1) : 'New'}</span>
                                                 </div>
-                                                <p className="text-[10px] font-bold text-gray-400 uppercase">{artisan.jobs} jobs</p>
+                                                <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-md border border-gray-100 mt-1 justify-end">
+                                                    <span className="material-icons-outlined text-[11px] text-gray-300">task_alt</span>
+                                                    {artisan.completed_jobs || 0} jobs
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
