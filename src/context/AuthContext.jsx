@@ -172,6 +172,7 @@ export function AuthProvider({ children }) {
               isVerified: pProfile.verification_status === 'verified',
               transactionPin: pProfile.transaction_pin,
               tradeCategory: pProfile.trade_category || [],
+              rating: pProfile.average_rating ?? null,
             };
           })() : {}),
           // Flatten customer_profiles
@@ -431,6 +432,7 @@ export function AuthProvider({ children }) {
           isVerified: updatedProviderProfiles.verification_status === 'verified',
           transactionPin: updatedProviderProfiles.transaction_pin,
           tradeCategory: updatedProviderProfiles.trade_category || [],
+          rating: updatedProviderProfiles.average_rating ?? null,
         };
       });
       toast.success('Provider profile updated');

@@ -841,6 +841,8 @@ export function DataProvider({ children }) {
           displayName: p.full_name,
           photoURL: p.avatar_url,
           category: formatProviderCategory(profile.trade_category, profile.category),
+          trade_category: profile.trade_category || [],
+          rating: profile.average_rating ?? null,
           isVerified: profile.verification_status === 'verified'
         };
       });
@@ -872,6 +874,8 @@ export function DataProvider({ children }) {
         displayName: data.full_name,
         photoURL: data.avatar_url,
         category: formatProviderCategory(profile.trade_category, profile.category),
+        trade_category: profile.trade_category || [],
+        rating: profile.average_rating ?? null,
         isVerified: profile.verification_status === 'verified'
       };
     } catch (error) {
@@ -918,6 +922,8 @@ export function DataProvider({ children }) {
           displayName: p.full_name,
           photoURL: p.avatar_url,
           category: formatProviderCategory(profile.trade_category, profile.category),
+          trade_category: profile.trade_category || [],
+          rating: profile.average_rating ?? null,
           proposed_price: providerMap.get(p.id),
           isVerified: profile.verification_status === 'verified'
         };
@@ -973,11 +979,11 @@ export function DataProvider({ children }) {
       }]);
       if (error) throw error;
 
-      // Recalculate average rating
+      // Recalculate average rating from all reviews for this provider
       const { data: allReviews } = await supabase.from('reviews').select('rating').eq('provider_id', providerId);
       if (allReviews && allReviews.length > 0) {
         const avg = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
-        await supabase.from('provider_profiles').update({ rating: avg.toFixed(1) }).eq('id', providerId);
+        await supabase.from('provider_profiles').update({ average_rating: parseFloat(avg.toFixed(1)) }).eq('id', providerId);
       }
 
       toast.success('Review submitted!');
