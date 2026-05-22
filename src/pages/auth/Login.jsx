@@ -31,18 +31,9 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      // login() awaits fetchProfile internally. fullUser.role is the
-      // real DB value.
+      // login() awaits fetchProfile internally. fullUser.role is the real DB value.
       const fullUser = await login(formData.email, formData.password, selectedRole);
       
-      // Mismatched Role Prevention:
-      // If the account's real role doesn't match what the user selected on the radio buttons,
-      // block the login and show an error.
-      if (fullUser?.role && fullUser.role !== selectedRole) {
-        setError(`This account is registered as a ${fullUser.role}. Please switch the toggle above to sign in.`);
-        return;
-      }
-
       const role = fullUser?.role || selectedRole;
       if (role === 'provider') navigate('/provider/dashboard', { replace: true });
       else if (role === 'admin') navigate('/admin/dashboard', { replace: true });
@@ -50,8 +41,10 @@ const Login = () => {
     } catch (err) {
       if (err.message === 'Email not confirmed') {
         setShowVerificationModal(true);
+      } else if (err.message.includes('registered as a')) {
+        setError(err.message);
       } else {
-        setError('Failed to sign in. Please check your credentials.');
+        setError(err.message || 'Failed to sign in. Please check your credentials.');
         toast.error('Sign in failed');
       }
       console.error(err);

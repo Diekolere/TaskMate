@@ -75,7 +75,10 @@ const Register = () => {
         setShowVerificationModal(true);
     } catch (error) {
         let msg = error.message || "Registration failed";
-        if (error.code === 'auth/email-already-in-use') msg = "Email is already registered.";
+        if (error.code === 'auth/email-already-in-use') {
+            msg = "This account already exists. Please sign in instead.";
+        }
+        setErrors(prev => ({ ...prev, email: msg }));
         toast.error(msg);
     } finally {
         setIsLoading(false);
@@ -92,7 +95,10 @@ const Register = () => {
         setShowVerificationModal(true);
     } catch (error) {
         let msg = error.message || "Registration failed";
-        if (error.code === 'auth/email-already-in-use') msg = "Email is already registered.";
+        if (error.code === 'auth/email-already-in-use') {
+            msg = "This account already exists. Please sign in instead.";
+        }
+        setErrors(prev => ({ ...prev, email: msg }));
         toast.error(msg);
     } finally {
         setIsLoading(false);

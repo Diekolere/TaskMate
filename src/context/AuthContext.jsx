@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
   const [deletedAccount, setDeletedAccount] = useState(false);
   // Guard against concurrent fetchProfile calls (e.g. login() + onAuthStateChange both fire at once)
   const fetchingRef = useRef(false);
+  const isLoggingInRef = useRef(false);
 
   // ── Session bootstrap ───────────────────────────────────
   useEffect(() => {
@@ -29,6 +30,7 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (isLoggingInRef.current) return;
         if (session) fetchProfile(session.user);
       } else if (event === 'SIGNED_OUT') {
         setCurrentUser(null);
@@ -43,7 +45,7 @@ export function AuthProvider({ children }) {
 
   // ── Fetch profile from DB ───────────────────────────────
   // Returns the fully-shimmed user object so callers can read .role immediately.
-  const fetchProfile = async (user) => {
+  const fetchProfile = async (user, skipSetUser = false) => {
     // Prevent duplicate concurrent calls (e.g. login() + onAuthStateChange)
     if (fetchingRef.current) {
       // Wait a bit and return the already-in-progress result via currentUser
@@ -86,7 +88,7 @@ export function AuthProvider({ children }) {
           if (profileUpsertErr?.code === '23503') {
             console.warn('[Auth] User deleted from auth.users — signing out stale session.');
             await supabase.auth.signOut();
-            setCurrentUser(null);
+            if (!skipSetUser) setCurrentUser(null);
             setDeletedAccount(true);
             setLoading(false);
             fetchingRef.current = false;
@@ -183,7 +185,7 @@ export function AuthProvider({ children }) {
             };
           })() : {}),
         };
-        setCurrentUser(shimmedUser);
+        if (!skipSetUser) setCurrentUser(shimmedUser);
         return shimmedUser;
       } else {
         // Profile row doesn't exist yet (brand-new account, etc.)
@@ -198,7 +200,7 @@ export function AuthProvider({ children }) {
           photoURL: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
           role: effectiveRole,
         };
-        setCurrentUser(fallbackUser);
+        if (!skipSetUser) setCurrentUser(fallbackUser);
         return fallbackUser;
       }
     } catch (error) {
@@ -209,10 +211,10 @@ export function AuthProvider({ children }) {
         displayName: user.user_metadata?.full_name || '',
         role: user.user_metadata?.role || 'customer',
       };
-      setCurrentUser(fallbackUser);
+      if (!skipSetUser) setCurrentUser(fallbackUser);
       return fallbackUser;
     } finally {
-      setLoading(false);
+      if (!skipSetUser) setLoading(false);
       fetchingRef.current = false;
     }
   };
@@ -222,16 +224,29 @@ export function AuthProvider({ children }) {
   // intentRole: the role the user SELECTED on the login page, used as
   // a last-resort fallback if the DB and user_metadata are both unreliable.
   const login = async (email, password, intentRole) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-    if (error) throw error;
+    isLoggingInRef.current = true;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw error;
 
-    const fullUser = await fetchProfile(data.user);
-    const resolvedUser = fullUser || { role: intentRole || 'customer' };
-    toast.success('Welcome back!');
-    return resolvedUser;
+      const fullUser = await fetchProfile(data.user, true); // true = skipSetUser
+      const resolvedUser = fullUser || { role: intentRole || 'customer' };
+      
+      // Prevent mismatched role sign in
+      if (intentRole && resolvedUser.role && resolvedUser.role !== intentRole) {
+        await supabase.auth.signOut();
+        throw new Error(`This account is registered as a ${resolvedUser.role === 'provider' ? 'Service Pro' : 'Regular User'}. Please select the correct account type to sign in.`);
+      }
+
+      toast.success('Welcome back!');
+      setCurrentUser(resolvedUser);
+      return resolvedUser;
+    } finally {
+      isLoggingInRef.current = false;
+    }
   };
 
   // ── Google OAuth ──────────────────────────────────
@@ -287,7 +302,18 @@ export function AuthProvider({ children }) {
         }
       }
     });
-    if (error) throw error;
+    
+    if (error) {
+      if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('already exists') || error.message.toLowerCase().includes('already in use')) {
+        throw new Error('This account already exists. Please sign in instead.');
+      }
+      throw error;
+    }
+    
+    // Sometimes Supabase returns a fake user on sign up if the email is already in use
+    if (data?.user?.identities?.length === 0) {
+      throw new Error('This account already exists. Please sign in instead.');
+    }
 
     // Safety net: manually upsert profile rows immediately.
     // The DB trigger (handle_new_user) should handle this via SECURITY DEFINER,
