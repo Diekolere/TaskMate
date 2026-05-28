@@ -299,7 +299,7 @@ CREATE INDEX idx_support_tickets_status ON support_tickets(status);
 
 CREATE TABLE platform_settings (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  commission_rate  NUMERIC(5,4) DEFAULT 0.10, -- 10%
+  commission_rate  NUMERIC(5,4) DEFAULT 0.06, -- 6%
   auto_release_hours INTEGER DEFAULT 48,
   updated_by       UUID REFERENCES profiles(id),
   updated_at       TIMESTAMPTZ DEFAULT NOW()
@@ -307,7 +307,7 @@ CREATE TABLE platform_settings (
 
 -- Insert default settings
 INSERT INTO platform_settings (commission_rate, auto_release_hours)
-VALUES (0.10, 48);
+VALUES (0.06, 48);
 
 -- ── 13. Triggers ──────────────────────────────────────────
 
@@ -428,7 +428,7 @@ BEGIN
   IF NEW.status = 'payment_released' AND OLD.status != 'payment_released' AND NEW.worker_id IS NOT NULL THEN
     SELECT commission_rate INTO v_commission_rate FROM platform_settings LIMIT 1;
     v_gross := COALESCE(NEW.agreed_price, NEW.final_budget, NEW.budget_estimate, 0);
-    v_commission := ROUND(v_gross * COALESCE(v_commission_rate, 0.10), 2);
+    v_commission := ROUND(v_gross * COALESCE(v_commission_rate, 0.06), 2);
     
     INSERT INTO earnings (provider_id, job_id, gross_amount, commission, net_amount, status)
     VALUES (NEW.worker_id, NEW.id, v_gross, v_commission, v_gross - v_commission, 'released');

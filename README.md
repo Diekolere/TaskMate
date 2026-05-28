@@ -57,10 +57,10 @@ The heart of TaskMate's trust system is its **Automated Escrow Engine**, integra
 ### How it Works:
 1. **Dynamic Virtual Accounts**: For every job, a unique, temporary Virtual Account (VA) is generated for the customer.
 2. **Platform Governance**: Funds are received by the platform and held in a `held` state in the escrow ledger.
-3. **Commission Automation**: A 10% platform fee is automatically calculated but hidden from the customer's checkout view.
+3. **Commission Automation**: A 6% platform fee is automatically calculated but hidden from the customer's checkout view.
 4. **Secured Release**: Once the customer taps "Confirm Completion," the platform triggers a server-side release:
    - **Provider receives 90%** directly into their platform wallet.
-   - **TaskMate retains 10%** as commission.
+   - **TaskMate retains 6%** as commission.
    - **Full Audit Trail**: Both events are logged in the transaction history for transparency.
 
 ---
@@ -86,7 +86,7 @@ TaskMate addresses every limitation by establishing:
 2. **Price Transparency** — Upfront hourly rates, minimum fees, emergency charges
 3. **Structured Reviews** — 5-star ratings, detailed feedback, quality tags
 4. **Intelligent Matching** — Automatic location, category, and availability filtering
-5. **Digital Payment Trail** — All transactions recorded with 10% commission tracking
+5. **Digital Payment Trail** — All transactions recorded with 6% commission tracking
 6. **Cloud-Native Scalability** — Supabase PostgreSQL + Vercel edge network
 7. **Trust & Safety** — OTP verification, provider reputation scores, admin oversight
 
@@ -181,7 +181,7 @@ functions/
 
 - **Payment Gateway:** Squad API for card/account payments
 - **Webhook Integration:** Secure signature verification of payment confirmations
-- **Commission Calculation:** Automatic 10% platform fee deducted at payment confirmation
+- **Commission Calculation:** Automatic 6% platform fee deducted at payment confirmation
 - **Payout Management:** Bank account registration and withdrawal tracking
 
 #### **4. AI/Automation Layer**
@@ -242,7 +242,7 @@ functions/
    ├─ Squad payment modal opens
    ├─ OTP verification completed
    ├─ Payment confirmed
-   ├─ Commission calculated (10%) and recorded
+   ├─ Commission calculated (6%) and recorded
    └─ Status: PAYMENT_SECURED
 
 6. Job Execution
@@ -313,7 +313,7 @@ functions/
 1. Payment Confirmed
    ├─ Job marked completed
    ├─ Final amount collected from customer
-   └─ Commission auto-calculated (10% of final amount)
+   └─ Commission auto-calculated (6% of final amount)
 
 2. Commission Recording
    ├─ Commission balance updated on provider profile
@@ -517,7 +517,7 @@ VITE_DOJAH_APP_ID=your-dojah-app-id
 # APPLICATION CONFIG
 # ============================================
 VITE_APP_NAME=TaskMate
-VITE_COMMISSION_RATE=0.10  # 10% commission
+VITE_COMMISSION_RATE=0.06  # 6% commission
 VITE_MIN_COMMISSION_DEBT=5000  # Naira
 ```
 

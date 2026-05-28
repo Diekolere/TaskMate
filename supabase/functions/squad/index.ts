@@ -385,8 +385,6 @@ serve(async (req) => {
 
         if (escrowVA) {
           const settledAmount = Number(amount);
-          const commission = Math.round(settledAmount * 0.10 * 100) / 100;
-          const netAmount = settledAmount - commission;
 
           // Write to escrow_ledger
           await supabaseClient.from("escrow_ledger").insert({
@@ -394,8 +392,8 @@ serve(async (req) => {
             provider_id: escrowVA.provider_id,
             entry_type: "held",
             gross_amount: settledAmount,
-            commission_amount: commission,
-            net_amount: netAmount,
+            commission_amount: 0,
+            net_amount: settledAmount,
             description: `(SIMULATED) Escrow held for job ${escrowVA.job_id}`
           });
 
@@ -508,7 +506,7 @@ serve(async (req) => {
       if (payload.event_type === "virtual-account.incoming_transfer") {
         const customerId = payload.customer_identifier;
         const settledAmount = parseFloat(payload.settled_amount);
-        const COMMISSION_RATE = 0.10;
+        const COMMISSION_RATE = 0.06;
 
         // ── Path A: Job Escrow VA (new escrow model) ──────────
         const { data: escrowVA } = await supabaseClient
@@ -519,8 +517,6 @@ serve(async (req) => {
 
         if (escrowVA) {
           const { job_id, provider_id } = escrowVA;
-          const commission = Math.round(settledAmount * COMMISSION_RATE * 100) / 100;
-          const netAmount = settledAmount - commission;
 
           // 1. Write to escrow_ledger
           await supabaseClient.from("escrow_ledger").insert({
@@ -528,8 +524,8 @@ serve(async (req) => {
             provider_id,
             entry_type: "held",
             gross_amount: settledAmount,
-            commission_amount: commission,
-            net_amount: netAmount,
+            commission_amount: 0,
+            net_amount: settledAmount,
             squad_reference: payload.transaction_reference,
             squad_response: payload,
             description: `Customer payment held in escrow for job ${job_id}`
@@ -712,7 +708,10 @@ serve(async (req) => {
         if (!va) throw new Error(`Escrow record not found for job ${jobId}`);
       }
 
-      const { provider_id, net_amount, gross_amount, commission_amount } = escrowEntry;
+      const { provider_id, gross_amount } = escrowEntry;
+      const COMMISSION_RATE = 0.06;
+      const commission_amount = Math.round(gross_amount * COMMISSION_RATE * 100) / 100;
+      const net_amount = gross_amount - commission_amount;
 
       // 1. Mark escrow as released
       await supabaseClient.from("escrow_ledger").insert({
@@ -729,44 +728,48 @@ serve(async (req) => {
       await supabaseClient.from("transactions").insert({
         reference: `REL_${jobId}_${Date.now()}`,
         provider_id: provider_id,
-        settled_amount: net_amount,
+        settled_amount: gross_amount,
         status: "completed",
         description: `Payment released from escrow for job ${jobId}`
       });
 
-      // 3. Credit provider's platform wallet (net amount, after commission)
+      // 3. Credit provider's platform wallet (gross amount first, then debit commission)
       const { data: providerProfile } = await supabaseClient
         .from("provider_profiles")
         .select("wallet_balance")
         .eq("id", provider_id)
         .single();
 
-      const newBalance = (Number(providerProfile?.wallet_balance || 0)) + net_amount;
+      let currentBalance = Number(providerProfile?.wallet_balance || 0);
+      let newBalance = currentBalance + gross_amount;
 
-      await supabaseClient
-        .from("provider_profiles")
-        .update({ wallet_balance: newBalance })
-        .eq("id", provider_id);
-
-      // Log the CREDIT to wallet_ledger
+      // Log the CREDIT to wallet_ledger (Gross)
       await supabaseClient.from("wallet_ledger").insert({
         provider_id: provider_id,
-        amount: net_amount,
+        amount: gross_amount,
         entry_type: "credit",
         description: `Job Payment: ${jobId} (Released from Escrow)`,
         balance_after: newBalance,
         metadata: { job_id: jobId, gross: gross_amount }
       });
 
+      // Deduct Commission
+      newBalance = newBalance - commission_amount;
+
       // Log the COMMISSION (for provider visibility)
       await supabaseClient.from("wallet_ledger").insert({
         provider_id: provider_id,
         amount: -commission_amount,
         entry_type: "debit",
-        description: `TaskMate Platform Fee (10%)`,
+        description: `TaskMate Platform Fee (6%)`,
         balance_after: newBalance,
         metadata: { job_id: jobId, type: 'commission' }
       });
+
+      await supabaseClient
+        .from("provider_profiles")
+        .update({ wallet_balance: newBalance })
+        .eq("id", provider_id);
 
       // 4. Update job status
       await supabaseClient.from("jobs").update({
@@ -775,16 +778,14 @@ serve(async (req) => {
         completed_at: new Date().toISOString()
       }).eq("id", jobId);
 
-      console.log(`[release-escrow] ₦${net_amount} released to provider ${provider_id} for job ${jobId}`);
-
-      console.log(`[release-escrow] ₦${net_amount} released to provider ${provider_id} for job ${jobId}`);
+      console.log(`[release-escrow] ₦${net_amount} released to provider ${provider_id} for job ${jobId} (Gross: ₦${gross_amount}, Fee: ₦${commission_amount})`);
 
       return new Response(JSON.stringify({
         success: true,
         message: "Escrow released successfully",
         net_amount,
         commission_amount,
-        new_wallet_balance: balanceAfter
+        new_wallet_balance: newBalance
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
