@@ -44,6 +44,7 @@ const Schedule = () => {
                 category: job.category || job.serviceType,
                 customer: job.customerName || 'Customer',
                 address: job.location || job.location_name || 'No address',
+                status: job.status,
             });
         });
         return Object.keys(groups)
@@ -62,6 +63,22 @@ const Schedule = () => {
     const historyJobs = myJobs.filter(j =>
         ['completed', 'cancelled', 'canceled', 'payment_released'].includes(st(j.status))
     );
+
+    const getStatusBadge = (status) => {
+        const s = st(status);
+        const map = {
+            open: { label: 'Open', classes: 'bg-gray-50 text-gray-500 border-gray-200' },
+            interested: { label: 'Interested', classes: 'bg-amber-50 text-amber-700 border-amber-200' },
+            negotiating: { label: 'Negotiating', classes: 'bg-purple-50 text-purple-700 border-purple-200' },
+            awaiting_payment: { label: 'Awaiting Payment', classes: 'bg-orange-50 text-orange-700 border-orange-200' },
+            payment_secured: { label: 'Locked', classes: 'bg-blue-50 text-blue-700 border-blue-200' },
+            in_progress: { label: 'In Progress', classes: 'bg-blue-50 text-blue-700 border-blue-200' },
+            completed: { label: 'Review', classes: 'bg-amber-50 text-amber-700 border-amber-200' },
+            payment_released: { label: 'Paid', classes: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+            cancelled: { label: 'Cancelled', classes: 'bg-red-50 text-red-700 border-red-200' }
+        };
+        return map[s] || { label: status || 'Unknown', classes: 'bg-gray-50 text-gray-500 border-gray-200' };
+    };
 
     const scheduleData = {
         upcoming: groupByDate(upcomingJobs),
@@ -172,8 +189,8 @@ const Schedule = () => {
                                                                 <span className="truncate text-gray-500">{job.address}</span>
                                                             </p>
                                                         </div>
-                                                        <span className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-semibold border border-blue-100">
-                                                            Open
+                                                        <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${getStatusBadge(job.status).classes}`}>
+                                                            {getStatusBadge(job.status).label}
                                                         </span>
                                                         <span className="material-icons text-gray-300 group-hover:text-gray-400 text-xl shrink-0">chevron_right</span>
                                                     </Link>
