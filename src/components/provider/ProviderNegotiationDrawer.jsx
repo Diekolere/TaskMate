@@ -4,6 +4,9 @@ import { format } from 'date-fns';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { supabase } from '../../lib/supabase';
+import VoiceRecorder from '../ui/VoiceRecorder';
+import AudioPlayer from '../ui/AudioPlayer';
+import RejectionModal from '../ui/RejectionModal';
 
 const NairaSVG = ({ className = 'w-4 h-4' }) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
@@ -28,6 +31,7 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
     const [agreed, setAgreed] = useState(false);
     const [finalized, setFinalized] = useState(false);
     const [rejected, setRejected] = useState(false);
+    const [showRejectionModal, setShowRejectionModal] = useState(false);
     const [customerProfile, setCustomerProfile] = useState(null);
 
     useEffect(() => {
@@ -122,9 +126,14 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
         await sendMessage(job.id, 'Provider declined the finalise request. Negotiation continues.', 'system', {}, currentUser.id);
     };
 
-    const handleReject = async () => {
+    const handleReject = () => {
+        setShowRejectionModal(true);
+    };
+
+    const submitRejection = async (reason) => {
         setRejected(true);
-        await sendMessage(job.id, 'Provider rejected the current offer.', 'system', {}, currentUser.id);
+        setShowRejectionModal(false);
+        await sendMessage(job.id, `Provider rejected the offer. Reason: ${reason}`, 'system', {}, currentUser.id);
     };
 
     return (
@@ -231,6 +240,10 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                                                     </div>
                                                 )}
                                             </div>
+                                        ) : message.type === 'voice' ? (
+                                            <div className={`px-4 py-2.5 rounded-2xl ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
+                                                <AudioPlayer src={message.metadata?.audioUrl} durationProp={message.metadata?.duration} isMe={isMe} />
+                                            </div>
                                         ) : (
                                             <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
                                                 {message.message}
@@ -288,13 +301,15 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                     </div>
                 )}
 
-                <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2 bg-white shrink-0">
-                    <button
-                        onClick={() => { setShowPriceInput(v => !v); setShowFinalizeInput(false); }}
-                        className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-[#10B981]"
-                    >
-                        <NairaSVG className="w-[18px] h-[18px]" />
-                    </button>
+                <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2 bg-white shrink-0 relative">
+                    {/* We replace the Naira icon with the VoiceRecorder */}
+                    <div className="shrink-0 flex items-center justify-center">
+                        <VoiceRecorder 
+                            onVoiceRecorded={async (audioUrl, duration) => {
+                                await sendMessage(job.id, 'Voice note', 'voice', { audioUrl, duration }, currentUser.id);
+                            }} 
+                        />
+                    </div>
                     <input
                         type="text"
                         value={input}
@@ -312,6 +327,12 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                     </button>
                 </div>
             </motion.div>
+
+            <RejectionModal 
+                isOpen={showRejectionModal} 
+                onClose={() => setShowRejectionModal(false)} 
+                onSubmit={submitRejection} 
+            />
         </>
     );
 }
