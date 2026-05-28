@@ -89,6 +89,12 @@ export default function AudioPlayer({ src, durationProp, isMe }) {
         if (isPlaying) {
             audioRef.current.pause();
         } else {
+            // Pause all other audio elements on the page before playing this one
+            document.querySelectorAll('audio').forEach(audioEl => {
+                if (audioEl !== audioRef.current) {
+                    audioEl.pause();
+                }
+            });
             audioRef.current.play().catch(err => console.error("Audio playback error:", err));
         }
     };

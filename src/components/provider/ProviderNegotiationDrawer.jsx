@@ -20,7 +20,7 @@ const NairaSVG = ({ className = 'w-4 h-4' }) => (
 
 export default function ProviderNegotiationDrawer({ job, onClose }) {
     const { currentUser } = useAuth();
-    const { messages: allMessages, fetchMessages, sendMessage, finalizeAgreement } = useData();
+    const { messages: allMessages, fetchMessages, sendMessage, finalizeAgreement, reopenNegotiation } = useData();
     const messagesEndRef = useRef(null);
 
     const [input, setInput] = useState('');
@@ -71,9 +71,19 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
         fetchMessages(job.id, currentUser.id);
     }, [job?.id, currentUser?.id, fetchMessages]);
 
+    // Sync state with message history
+    useEffect(() => {
+        const lastStatus = [...messages].reverse().find(m => m.type === 'system' && (m.message.includes('Job finalised') || m.message.includes('Price agreed') || m.message.includes('Provider rejected') || m.message.includes('reopened negotiation') || m.message.includes('Customer rejected')));
+        if (lastStatus) {
+            if (lastStatus.message.includes('Job finalised') || lastStatus.message.includes('Price agreed')) { setFinalized(true); setRejected(false); }
+            else if (lastStatus.message.includes('rejected')) { setRejected(true); setFinalized(false); }
+            else { setFinalized(false); setRejected(false); }
+        }
+    }, [messages.length]);
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [messages.length]);
 
     const formatTime = (value) => {
         try {
@@ -136,6 +146,14 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
         await sendMessage(job.id, `Provider rejected the offer. Reason: ${reason}`, 'system', {}, currentUser.id);
     };
 
+    const handleRenegotiate = async () => {
+        setFinalized(false);
+        setRejected(false);
+        setAgreed(false);
+        await reopenNegotiation(job.id, 'provider', customerProfile?.id || job.customer_id, job.title, currentUser.full_name || currentUser.displayName);
+        await sendMessage(job.id, 'Provider reopened negotiation.', 'system', {}, currentUser.id);
+    };
+
     return (
         <>
             <motion.div
@@ -183,7 +201,7 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                         const isSystem = message.type === 'system';
                         const price = Number(message.metadata?.price || message.metadata?.proposed_price || message.metadata?.budget || message.price || 0);
                         const isProposal = message.type === 'price_proposal' || message.type === 'budget_proposal';
-                        const finalizeRequestPrice = Number(message.metadata?.finalizePrice || message.metadata?.price || message.price || 0);
+                        const finalizeRequestPrice = Number(message.metadata?.finalizePrice || 0);
                         const isFinalizeRequest = message.type === 'finalize_request' || finalizeRequestPrice > 0;
 
                         return (
@@ -282,21 +300,24 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                         </motion.div>
                     )}
                 </AnimatePresence>
-
-                {!finalized && !rejected && (
+                {/* Glassmorphic Finalise / Reject bar */}
+                {(!finalized && !rejected && !agreed) ? (
                     <div className="flex shrink-0 border-t border-gray-100 overflow-hidden">
-                        <button
-                            onClick={() => { setShowFinalizeInput(true); setShowPriceInput(false); }}
-                            className="flex-1 py-3 text-sm font-bold text-emerald-600 bg-emerald-500/[0.07] hover:bg-emerald-500/[0.14] transition-colors"
-                        >
+                        <button onClick={() => { setShowFinalizeInput(true); setShowPriceInput(false); }}
+                            className="flex-1 py-3 text-sm font-bold text-emerald-600 bg-emerald-500/[0.07] backdrop-blur-sm hover:bg-emerald-500/[0.14] transition-colors">
                             Finalise
                         </button>
                         <div className="w-px bg-gray-200 shrink-0" />
-                        <button
-                            onClick={handleReject}
-                            className="flex-1 py-3 text-sm font-bold text-red-500 bg-red-500/[0.07] hover:bg-red-500/[0.14] transition-colors"
-                        >
+                        <button onClick={handleReject}
+                            className="flex-1 py-3 text-sm font-bold text-red-500 bg-red-500/[0.07] backdrop-blur-sm hover:bg-red-500/[0.14] transition-colors">
                             Reject
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex shrink-0 border-t border-gray-100 overflow-hidden">
+                        <button onClick={handleRenegotiate}
+                            className="flex-1 py-3 text-sm font-bold text-amber-600 bg-amber-500/[0.07] backdrop-blur-sm hover:bg-amber-500/[0.14] transition-colors">
+                            Renegotiate
                         </button>
                     </div>
                 )}
