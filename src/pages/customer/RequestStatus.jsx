@@ -546,37 +546,26 @@ const RequestStatus = () => {
                                         </button>
                                     )}
                                     {releaseEnabled && (
-                                        <button onClick={handleRelease}
+                                        <Link to={`/customer/confirm/${id}`}
                                             className="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-slate-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-md shadow-slate-900/10">
                                             <span className="material-icons text-base">payments</span>
-                                            Release Payment
-                                        </button>
+                                            Confirm & Release Payment
+                                        </Link>
                                     )}
                                 </div>
                             )}
 
                             {/* Job flow shortcuts */}
-                            {(normalizedStatus === 'payment_secured' || normalizedStatus === 'completed') && (
+                            {normalizedStatus === 'payment_secured' && (
                                 <div className="mt-8 py-3 px-4 flex flex-wrap items-center gap-4 bg-gray-50/50 rounded-xl border border-gray-100/80">
                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Actions</span>
-                                    {normalizedStatus === 'payment_secured' && (
-                                        <Link
-                                            to={`/customer/job-otp/${id}`}
-                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#10B981] hover:text-[#059669] transition-colors"
-                                        >
-                                            <span className="material-icons-outlined text-[18px]">vpn_key</span>
-                                            Get Job start code
-                                        </Link>
-                                    )}
-                                    {normalizedStatus === 'completed' && (
-                                        <Link
-                                            to={`/customer/confirm/${id}`}
-                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F172A] hover:text-slate-600 transition-colors"
-                                        >
-                                            <span className="material-icons-outlined text-[18px]">task_alt</span>
-                                            Confirm completion
-                                        </Link>
-                                    )}
+                                    <Link
+                                        to={`/customer/job-otp/${id}`}
+                                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#10B981] hover:text-[#059669] transition-colors"
+                                    >
+                                        <span className="material-icons-outlined text-[18px]">vpn_key</span>
+                                        Get Job start code
+                                    </Link>
                                 </div>
                             )}
 

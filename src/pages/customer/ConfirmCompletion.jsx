@@ -84,6 +84,7 @@ const ConfirmCompletion = () => {
     
     // AI Dispute Assistant state
     const [disputeStep, setDisputeStep] = useState(0); 
+    const [disputeCategory, setDisputeCategory] = useState(DISPUTE_CATEGORIES[0]);
     const [answers, setAnswers] = useState({});
     const [generatingSummary, setGeneratingSummary] = useState(false);
     const [generatedSummary, setGeneratedSummary] = useState('');

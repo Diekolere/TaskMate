@@ -713,6 +713,10 @@ serve(async (req) => {
       const commission_amount = Math.round(gross_amount * COMMISSION_RATE * 100) / 100;
       const net_amount = gross_amount - commission_amount;
 
+      // Fetch job title
+      const { data: jobData } = await supabaseClient.from("jobs").select("title").eq("id", jobId).single();
+      const jobTitle = jobData?.title || `Job ${jobId}`;
+
       // 1. Mark escrow as released
       await supabaseClient.from("escrow_ledger").insert({
         job_id: jobId,
@@ -721,7 +725,7 @@ serve(async (req) => {
         gross_amount,
         commission_amount,
         net_amount,
-        description: `Escrow released to provider for job ${jobId}`
+        description: `Escrow released to provider for ${jobTitle}`
       });
 
       // 2. Log transaction for history
@@ -730,7 +734,7 @@ serve(async (req) => {
         provider_id: provider_id,
         settled_amount: gross_amount,
         status: "completed",
-        description: `Payment released from escrow for job ${jobId}`
+        description: `Payment released from escrow for ${jobTitle}`
       });
 
       // 3. Credit provider's platform wallet (gross amount first, then debit commission)
@@ -748,7 +752,7 @@ serve(async (req) => {
         provider_id: provider_id,
         amount: gross_amount,
         entry_type: "credit",
-        description: `Job Payment: ${jobId} (Released from Escrow)`,
+        description: `Job Payment: ${jobTitle} (Released from Escrow)`,
         balance_after: newBalance,
         metadata: { job_id: jobId, gross: gross_amount }
       });
@@ -773,12 +777,12 @@ serve(async (req) => {
 
       // 4. Update job status
       await supabaseClient.from("jobs").update({
-        status: "completed",
+        status: "payment_released",
         escrow_status: "released",
         completed_at: new Date().toISOString()
       }).eq("id", jobId);
 
-      console.log(`[release-escrow] ₦${net_amount} released to provider ${provider_id} for job ${jobId} (Gross: ₦${gross_amount}, Fee: ₦${commission_amount})`);
+      console.log(`[release-escrow] ₦${net_amount} released to provider ${provider_id} for ${jobTitle} (Gross: ₦${gross_amount}, Fee: ₦${commission_amount})`);
 
       return new Response(JSON.stringify({
         success: true,
