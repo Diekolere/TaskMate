@@ -82,7 +82,7 @@ const Negotiation = () => {
     // Scroll to bottom on new message
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [messages.length]);
 
     // Map live messages to display format
     useEffect(() => {

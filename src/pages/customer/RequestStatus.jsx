@@ -27,8 +27,8 @@ const NairaSVG = ({ className = 'w-4 h-4' }) => (
 );
 
 /* ─── Negotiate slide-over panel ───────────────────────── */
-function NegotiatePanel({ provider, requestId, category, onClose, onFinalized }) {
-    const { messages: allMessages, fetchMessages, sendMessage, finalizeAgreement } = useData();
+function NegotiatePanel({ provider, requestId, request, category, onClose, onFinalized }) {
+    const { messages: allMessages, fetchMessages, sendMessage, finalizeAgreement, reopenNegotiation } = useData();
     const { currentUser } = useAuth();
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
@@ -63,9 +63,19 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
         fetchMessages(requestId, provider.id);
     }, [requestId, provider?.id, fetchMessages]);
 
+    // Sync state with message history to prevent "Yes, Confirm" from showing on previously finalized deals
+    useEffect(() => {
+        const lastStatus = [...messages].reverse().find(m => m.type === 'system' && (m.message.includes('Job finalised') || m.message.includes('Price agreed') || m.message.includes('Customer rejected') || m.message.includes('reopened negotiation') || m.message.includes('Provider rejected')));
+        if (lastStatus) {
+            if (lastStatus.message.includes('Job finalised') || lastStatus.message.includes('Price agreed')) { setFinalized(true); setRejected(false); }
+            else if (lastStatus.message.includes('rejected')) { setRejected(true); setFinalized(false); }
+            else { setFinalized(false); setRejected(false); }
+        }
+    }, [messages.length]);
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [messages.length]);
 
     useEffect(() => {
         inputRef.current?.focus();
@@ -134,6 +144,14 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
         setRejected(true);
         setShowRejectionModal(false);
         sendMessage(requestId, `Customer rejected the offer. Reason: ${reason}`, 'system', {}, provider.id);
+    };
+
+    const handleRenegotiate = async () => {
+        setFinalized(false);
+        setRejected(false);
+        setAgreed(false);
+        await reopenNegotiation(requestId, 'customer', provider.id, request.title, currentUser.full_name || currentUser.displayName);
+        await sendMessage(requestId, 'Customer reopened negotiation.', 'system', {}, provider.id);
     };
 
     return (
@@ -271,7 +289,7 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
                 </AnimatePresence>
 
                 {/* Glassmorphic Finalise / Reject bar */}
-                {!finalized && !rejected && (
+                {(!finalized && !rejected && !agreed) ? (
                     <div className="flex shrink-0 border-t border-gray-100 overflow-hidden">
                         <button onClick={triggerFinalize}
                             className="flex-1 py-3 text-sm font-bold text-emerald-600 bg-emerald-500/[0.07] backdrop-blur-sm hover:bg-emerald-500/[0.14] transition-colors">
@@ -281,6 +299,13 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
                         <button onClick={handleReject}
                             className="flex-1 py-3 text-sm font-bold text-red-500 bg-red-500/[0.07] backdrop-blur-sm hover:bg-red-500/[0.14] transition-colors">
                             Reject
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex shrink-0 border-t border-gray-100 overflow-hidden">
+                        <button onClick={handleRenegotiate}
+                            className="flex-1 py-3 text-sm font-bold text-amber-600 bg-amber-500/[0.07] backdrop-blur-sm hover:bg-amber-500/[0.14] transition-colors">
+                            Renegotiate
                         </button>
                     </div>
                 )}
@@ -340,16 +365,19 @@ const RequestStatus = () => {
     useEffect(() => {
         if (!request || !messages) return;
         const jobMessages = messages.filter(m => m.job_id === request.id);
-        const lastFinalizeMsg = [...jobMessages].reverse().find(m => m.type === 'system' && m.message.includes('✓ Job finalised at ₦'));
-        if (lastFinalizeMsg) {
-            const priceMatch = lastFinalizeMsg.message.match(/₦([\d,]+)/);
-            if (priceMatch && !finalizedDeal) {
+        const lastStatusMsg = [...jobMessages].reverse().find(m => m.type === 'system' && (m.message.includes('✓ Job finalised at ₦') || m.message.includes('reopened negotiation')));
+        
+        if (lastStatusMsg && lastStatusMsg.message.includes('✓ Job finalised at ₦')) {
+            const priceMatch = lastStatusMsg.message.match(/₦([\d,]+)/);
+            if (priceMatch) {
                 const price = parseInt(priceMatch[1].replace(/,/g, ''), 10);
-                const provId = lastFinalizeMsg.provider_id || lastFinalizeMsg.sender_id || request.worker_id;
+                const provId = lastStatusMsg.provider_id || lastStatusMsg.sender_id || request.worker_id;
                 setFinalizedDeal({ price, provider: { id: provId } });
             }
+        } else {
+            setFinalizedDeal(null);
         }
-    }, [messages, request, finalizedDeal]);
+    }, [messages, request]);
 
     useEffect(() => {
         if (location.state?.paymentConfirmed) {
@@ -1059,6 +1087,7 @@ const RequestStatus = () => {
                     <NegotiatePanel
                         provider={negotiatingWith}
                         requestId={id}
+                        request={request}
                         category={request?.category}
                         onClose={() => {
                             setNegotiatingWith(null);

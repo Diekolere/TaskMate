@@ -472,9 +472,25 @@ export function DataProvider({ children }) {
     }
   };
 
-  const startNegotiation = async (jobId) => {
-    await updateJobStatus(jobId, 'negotiating');
-  };
+    const startNegotiation = async (jobId) => {
+        await updateJobStatus(jobId, 'negotiating');
+    };
+
+    const reopenNegotiation = async (jobId, initiatorRole, otherPartyId, jobTitle, initiatorName) => {
+        await updateJobStatus(jobId, 'negotiating', { final_budget: null, agreed_price: null });
+        if (otherPartyId && jobTitle) {
+            await sendNotification(otherPartyId, {
+                type: 'job_update',
+                title: 'Negotiation Reopened 🔄',
+                body: `${initiatorName || 'The other party'} wants to renegotiate terms for "${jobTitle}". Tap to continue.`,
+                icon: 'autorenew', iconBg: 'bg-amber-100', iconColor: 'text-amber-600',
+                ctaPath: initiatorRole === 'customer' 
+                    ? `/provider/negotiation/${jobId}` 
+                    : `/customer/request-status/${jobId}?negotiate=true`,
+                ctaLabel: 'Continue Negotiating'
+            });
+        }
+    };
 
   const finalizeAgreement = async (jobId, finalBudget, providerId = null) => {
     const updates = { 
@@ -1294,7 +1310,7 @@ export function DataProvider({ children }) {
 
   const value = {
     requests, jobs, verifications, users, earnings, notifications, loading,
-    createRequest, updateJobStatus, acceptJob, startNegotiation,
+    createRequest, updateJobStatus, acceptJob, startNegotiation, reopenNegotiation,
     finalizeAgreement, securePayment, markJobInProgress, completeJob,
     releasePayment, getProviders, getProviderProfile, getInterestedProviders, savedProviderIds, toggleSavedProvider,
     submitReview, markNotificationRead, markAllNotificationsRead,
