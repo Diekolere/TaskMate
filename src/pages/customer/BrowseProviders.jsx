@@ -100,11 +100,18 @@ const BrowseProviders = () => {
             }
 
             try {
-                const mappedCategories = selectedCategories.map(c => {
+                const mappedCategories = [];
+                selectedCategories.forEach(c => {
                     const low = c.toLowerCase();
-                    if (low.includes('furniture') || low.includes('carpentry')) return 'carpentry';
-                    if (low.includes('appliance')) return 'appliance repair';
-                    return low;
+                    const cap = c.charAt(0).toUpperCase() + c.slice(1);
+                    
+                    if (low.includes('furniture') || low.includes('carpentry')) {
+                        mappedCategories.push('carpentry', 'Carpentry', 'Furniture (Carpentry)', 'furniture (carpentry)');
+                    } else if (low.includes('appliance')) {
+                        mappedCategories.push('appliance repair', 'Appliance Repair', 'Appliance repair');
+                    } else {
+                        mappedCategories.push(low, cap, c);
+                    }
                 });
 
                 // Call the new RPC
@@ -119,15 +126,49 @@ const BrowseProviders = () => {
 
                 if (error) throw error;
 
-                // Client-side text search (since text search wasn't easily combinable in simple RPC, though could be added)
+                // Client-side text search and strict cumulative filters
                 let finalData = data || [];
+
+                // 1. Enforce category strictly
+                if (mappedCategories.length > 0) {
+                    finalData = finalData.filter(p => {
+                        const cats = p.trade_category || (p.category ? [p.category] : []);
+                        if (!cats.length) return false;
+                        return cats.some(c => {
+                            if (!c) return false;
+                            const clow = c.toLowerCase();
+                            return mappedCategories.some(mc => mc.toLowerCase() === clow);
+                        });
+                    });
+                }
+
+                // 2. Enforce rating strictly
+                if (rpcMinRating > 0) {
+                    finalData = finalData.filter(p => Number(p.rating || 0) >= rpcMinRating);
+                }
+
+                // 3. Search query
                 if (searchQuery.trim()) {
                     const q = searchQuery.toLowerCase();
                     finalData = finalData.filter(p => 
                         (p.display_name?.toLowerCase().includes(q)) ||
                         (p.full_name?.toLowerCase().includes(q)) ||
-                        (p.bio?.toLowerCase().includes(q))
+                        (p.bio?.toLowerCase().includes(q)) ||
+                        (p.trade_category && p.trade_category.some(tc => tc.toLowerCase().includes(q))) ||
+                        (p.category && p.category.toLowerCase().includes(q))
                     );
+                }
+
+                // 4. Sort strictly
+                if (sortFilter === 'Highest Rated') {
+                    finalData.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
+                } else if (sortFilter === 'Most Jobs Done') {
+                    finalData.sort((a, b) => Number(b.completed_jobs || 0) - Number(a.completed_jobs || 0));
+                } else if (sortFilter === 'Nearest') {
+                    // if distance is provided by RPC
+                    if (finalData.length > 0 && finalData[0].distance != null) {
+                        finalData.sort((a, b) => Number(a.distance || 0) - Number(b.distance || 0));
+                    }
                 }
 
                 // Format data to match previous component structure expectations

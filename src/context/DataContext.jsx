@@ -1259,9 +1259,9 @@ export function DataProvider({ children }) {
       const providers = await getProviders('All');
       const available = new Set();
       providers.forEach(p => {
-        if (p.trade_category && Array.isArray(p.trade_category)) {
+        if (p.trade_category && Array.isArray(p.trade_category) && p.trade_category.length > 0) {
           p.trade_category.forEach(cat => available.add(cat.toLowerCase()));
-        } else if (p.category) {
+        } else if (p.category && p.category !== 'None') {
           available.add(p.category.toLowerCase());
         }
       });
