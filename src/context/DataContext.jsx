@@ -213,12 +213,15 @@ export function DataProvider({ children }) {
         const newMsg = {
           ...payload.new,
           type: payload.new.message_type || 'text',
-          metadata: payload.new.price != null ? {
-            price: payload.new.price,
-            proposed_price: payload.new.price,
-            budget: payload.new.price,
-            finalizePrice: payload.new.message_type === 'finalize_request' ? payload.new.price : undefined
-          } : {}
+          metadata: {
+            ...(payload.new.metadata || {}),
+            ...(payload.new.price != null ? {
+              price: payload.new.price,
+              proposed_price: payload.new.price,
+              budget: payload.new.price,
+              finalizePrice: payload.new.message_type === 'finalize_request' ? payload.new.price : undefined
+            } : {})
+          }
         };
         setMessages(prev => {
           if (prev.some(m => m.id === newMsg.id)) return prev;
@@ -605,12 +608,15 @@ export function DataProvider({ children }) {
         job_id: msg.job_id,
         message: msg.message,
         created_at: msg.created_at,
-        metadata: msg.price != null ? {
-          price: msg.price,
-          proposed_price: msg.price,
-          budget: msg.price,
-          finalizePrice: msg.message_type === 'finalize_request' ? msg.price : undefined
-        } : {}
+        metadata: {
+          ...(msg.metadata || {}),
+          ...(msg.price != null ? {
+            price: msg.price,
+            proposed_price: msg.price,
+            budget: msg.price,
+            finalizePrice: msg.message_type === 'finalize_request' ? msg.price : undefined
+          } : {})
+        }
       }));
       
       setMessages(transformedMessages);
@@ -637,12 +643,15 @@ export function DataProvider({ children }) {
           const newMsg = {
             ...payload.new,
             type: payload.new.message_type || 'text',
-            metadata: payload.new.price != null ? {
-              price: payload.new.price,
-              proposed_price: payload.new.price,
-              budget: payload.new.price,
-              finalizePrice: payload.new.message_type === 'finalize_request' ? payload.new.price : undefined
-            } : {}
+            metadata: {
+              ...(payload.new.metadata || {}),
+              ...(payload.new.price != null ? {
+                price: payload.new.price,
+                proposed_price: payload.new.price,
+                budget: payload.new.price,
+                finalizePrice: payload.new.message_type === 'finalize_request' ? payload.new.price : undefined
+              } : {})
+            }
           };
           setMessages(prev => {
             if (prev.some(m => m.id === newMsg.id)) return prev;
@@ -684,7 +693,7 @@ export function DataProvider({ children }) {
 
       const isPriceProposal = type === 'price_proposal' || type === 'budget_proposal';
       const isFinalizeRequest = type === 'finalize_request' || metadata?.finalizePrice != null;
-      const messageType = isFinalizeRequest ? 'finalize_request' : (isPriceProposal ? 'price_proposal' : (type === 'system' ? 'system' : 'text'));
+      const messageType = isFinalizeRequest ? 'finalize_request' : (isPriceProposal ? 'price_proposal' : (type === 'system' ? 'system' : (type === 'voice' ? 'voice' : 'text')));
       const price = metadata?.finalizePrice ?? metadata?.price ?? metadata?.proposed_price ?? metadata?.budget ?? null;
 
       const { error } = await supabase

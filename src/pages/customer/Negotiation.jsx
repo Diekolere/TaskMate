@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { supabase } from '../../lib/supabase';
+import VoiceRecorder from '../../components/ui/VoiceRecorder';
+import AudioPlayer from '../../components/ui/AudioPlayer';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
@@ -93,6 +95,8 @@ const Negotiation = () => {
             timestamp: new Date(m.created_at),
             type: m.type,
             budget: m.metadata?.budget,
+            audioUrl: m.metadata?.audioUrl,
+            duration: m.metadata?.duration,
         })));
     }, [liveMessages, id, currentUser?.id]);
 
@@ -120,6 +124,28 @@ const Negotiation = () => {
             setSending(false);
         }
     }, [newMessage, sending, sendLiveMessage, id, job, currentUser, sendNotification]);
+
+    const sendVoiceMessage = useCallback(async (audioUrl, duration) => {
+        try {
+            await sendLiveMessage(id, 'Voice note', 'voice', { audioUrl, duration });
+            // Notify provider
+            const targetId = job?.worker_id;
+            if (targetId && targetId !== currentUser.id) {
+                await sendNotification(targetId, {
+                    type: 'message',
+                    title: 'New Voice Message',
+                    body: `${currentUser.full_name} sent a voice note.`,
+                    icon: 'mic',
+                    iconBg: 'bg-blue-100',
+                    iconColor: 'text-blue-600',
+                    ctaPath: `/provider/jobs/${id}?negotiate=true`,
+                });
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error('Failed to send voice note');
+        }
+    }, [sendLiveMessage, id, job, currentUser, sendNotification]);
 
     const proposeBudget = useCallback(async () => {
         if (!proposedBudget || isNaN(proposedBudget)) { toast.error('Enter a valid amount'); return; }
@@ -281,7 +307,11 @@ const Negotiation = () => {
                                                         {(msg.type === 'budget_proposal' || msg.type === 'price_proposal') && (
                                                             <p className="text-xs font-bold opacity-70 mb-0.5 uppercase tracking-wide">💰 Budget Proposal</p>
                                                         )}
-                                                        <p className="text-sm">{msg.message}</p>
+                                                        {msg.type === 'voice' ? (
+                                                            <AudioPlayer src={msg.metadata?.audioUrl || msg.audioUrl} durationProp={msg.metadata?.duration || msg.duration} isMe={msg.isMe} />
+                                                        ) : (
+                                                            <p className="text-sm">{msg.message}</p>
+                                                        )}
                                                         <p className="text-xs opacity-50 mt-1">
                                                             {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                         </p>
@@ -291,26 +321,14 @@ const Negotiation = () => {
                                         </AnimatePresence>
                                         <div ref={messagesEndRef} />
                                     </div>
-
+ 
                                     {/* Input */}
                                     <div className="p-4 sm:p-6 border-t border-gray-100 space-y-3">
-                                        {/* Budget Proposal */}
-                                        <div className="flex gap-2">
-                                            <div className="relative flex-1">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">₦</span>
-                                                <input
-                                                    type="number"
-                                                    value={proposedBudget}
-                                                    onChange={e => setProposedBudget(e.target.value)}
-                                                    placeholder="Propose new budget..."
-                                                    className="block w-full rounded-xl border-gray-200 pl-8 focus:border-[#10B981] focus:ring-4 focus:ring-green-50 sm:text-sm py-3 px-4 border focus:outline-none transition-all"
-                                                />
-                                            </div>
-                                            <button onClick={proposeBudget} className="px-6 py-3 bg-[#10B981] hover:bg-[#059669] text-white text-sm font-bold rounded-xl transition-all">Propose</button>
-                                        </div>
-
                                         {/* Text Message */}
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 relative">
+                                            <div className="shrink-0 flex items-center justify-center">
+                                                <VoiceRecorder onVoiceRecorded={sendVoiceMessage} />
+                                            </div>
                                             <input
                                                 type="text"
                                                 value={newMessage}

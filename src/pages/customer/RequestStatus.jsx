@@ -9,7 +9,9 @@ import { toast } from 'sonner';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { getCategoryIcon, getCategoryColors } from '../../lib/utils';
-import { supabase } from '../../lib/supabase';
+import VoiceRecorder from '../../components/ui/VoiceRecorder';
+import AudioPlayer from '../../components/ui/AudioPlayer';
+import RejectionModal from '../../components/ui/RejectionModal';
 
 import { getPriceRange, getFairnessLabel, getSmartPriceLabel } from '../../lib/aiData';
 
@@ -41,6 +43,7 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
     const [finalizePrice, setFinalizePrice] = useState('');
     const [finalized, setFinalized] = useState(false);
     const [rejected, setRejected] = useState(false);
+    const [showRejectionModal, setShowRejectionModal] = useState(false);
 
     // Filter messages for this specific job AND this specific provider thread
     const messages = allMessages.filter(m => {
@@ -79,7 +82,8 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
     const send = async (text, extra = {}) => {
         if (!text.trim()) return;
         try {
-            await sendMessage(requestId, text, extra.isPriceProposal ? 'price_proposal' : 'text', extra, provider.id);
+            const msgType = extra.isVoice ? 'voice' : (extra.isPriceProposal ? 'price_proposal' : 'text');
+            await sendMessage(requestId, text, msgType, extra, provider.id);
             setInput('');
             // Immediately refresh messages after sending
             await fetchMessages(requestId, provider.id);
@@ -123,8 +127,13 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
     };
 
     const handleReject = () => {
+        setShowRejectionModal(true);
+    };
+
+    const submitRejection = (reason) => {
         setRejected(true);
-        sendMessage(requestId, 'Customer rejected the offer.', 'system', {}, provider.id);
+        setShowRejectionModal(false);
+        sendMessage(requestId, `Customer rejected the offer. Reason: ${reason}`, 'system', {}, provider.id);
     };
 
     return (
@@ -220,6 +229,10 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
                                                     </div>
                                                 )}
                                             </div>
+                                        ) : msg.type === 'voice' ? (
+                                            <div className={`px-4 py-2.5 rounded-2xl ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
+                                                <AudioPlayer src={msg.metadata?.audioUrl} durationProp={msg.metadata?.duration} isMe={isMe} />
+                                            </div>
                                         ) : (
                                             <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
                                                 {msg.message}
@@ -273,11 +286,15 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
                 )}
 
                 {/* Message input bar */}
-                <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2 bg-white shrink-0">
-                    <button onClick={() => { setShowPriceInput(v => !v); setShowFinalizeInput(false); }} title="Counter offer"
-                        className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-[#10B981]">
-                        <NairaSVG className="w-[18px] h-[18px]" />
-                    </button>
+                <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2 bg-white shrink-0 relative">
+                    <div className="shrink-0 flex items-center justify-center">
+                        <VoiceRecorder 
+                            disabled={finalized || rejected}
+                            onVoiceRecorded={async (audioUrl, duration) => {
+                                await send('Voice note', { isVoice: true, audioUrl, duration });
+                            }} 
+                        />
+                    </div>
                     <input ref={inputRef} type="text" value={input}
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send(input)}
@@ -289,6 +306,12 @@ function NegotiatePanel({ provider, requestId, category, onClose, onFinalized })
                     </button>
                 </div>
             </motion.div>
+
+            <RejectionModal 
+                isOpen={showRejectionModal} 
+                onClose={() => setShowRejectionModal(false)} 
+                onSubmit={submitRejection} 
+            />
         </>
     );
 }
@@ -299,7 +322,7 @@ const RequestStatus = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { currentUser } = useAuth();
-    const { requests, getProviders, getProviderProfile, getInterestedProviders, releasePayment, getJobMatches, inviteMatchedProvider } = useData();
+    const { requests, getProviders, getProviderProfile, getInterestedProviders, releasePayment, getJobMatches, inviteMatchedProvider, messages } = useData();
     const [request, setRequest] = useState(null);
     const [interestedProviders, setInterestedProviders] = useState([]);
     const [aiMatchedProviders, setAiMatchedProviders] = useState([]);
@@ -313,6 +336,20 @@ const RequestStatus = () => {
     const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
     const [showJobStartedSuccess, setShowJobStartedSuccess] = useState(false);
     const [showAllDetails, setShowAllDetails] = useState(false);
+
+    useEffect(() => {
+        if (!request || !messages) return;
+        const jobMessages = messages.filter(m => m.job_id === request.id);
+        const lastFinalizeMsg = [...jobMessages].reverse().find(m => m.type === 'system' && m.message.includes('✓ Job finalised at ₦'));
+        if (lastFinalizeMsg) {
+            const priceMatch = lastFinalizeMsg.message.match(/₦([\d,]+)/);
+            if (priceMatch && !finalizedDeal) {
+                const price = parseInt(priceMatch[1].replace(/,/g, ''), 10);
+                const provId = lastFinalizeMsg.provider_id || lastFinalizeMsg.sender_id || request.worker_id;
+                setFinalizedDeal({ price, provider: { id: provId } });
+            }
+        }
+    }, [messages, request, finalizedDeal]);
 
     useEffect(() => {
         if (location.state?.paymentConfirmed) {
