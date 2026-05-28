@@ -82,7 +82,7 @@ const InvoiceUploadModal = ({ isOpen, onClose, onUpload }) => {
                             {amount && (
                                 <p className="text-xs text-orange-600 mt-2 font-bold flex items-center gap-1">
                                     <span className="material-symbols-outlined text-sm">info</span>
-                                    Commission Fee (10%): ₦{(amount * 0.1).toLocaleString()}
+                                    Commission Fee (6%): ₦{(amount * 0.06).toLocaleString()}
                                 </p>
                             )}
                         </div>

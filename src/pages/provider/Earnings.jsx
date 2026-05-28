@@ -32,6 +32,8 @@ const Earnings = () => {
     const [payoutVersion, setPayoutVersion] = useState(0);
     const [ledger, setLedger] = useState([]);
     const [fullHistory, setFullHistory] = useState([]);
+    const [totalEarnings, setTotalEarnings] = useState(0);
+    const [monthlyEarnings, setMonthlyEarnings] = useState(0);
     const [loading, setLoading] = useState(true);
     const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
     const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
@@ -128,6 +130,52 @@ const Earnings = () => {
 
             setFullHistory(allTransactions);
             setLedger(allTransactions.slice(0, 15));
+
+            // 4. Calculate total earnings correctly from full wallet_ledger history
+            const { data: allWalletEntries } = await supabase
+                .from('wallet_ledger')
+                .select('amount, entry_type, metadata, created_at')
+                .eq('provider_id', currentUser.id);
+
+            if (allWalletEntries) {
+                let allTime = 0;
+                let monthly = 0;
+                const now = new Date();
+
+                for (const item of allWalletEntries) {
+                    let netEarningForThisEntry = 0;
+
+                    if (item.entry_type === 'credit') {
+                        // Both Old and New records: add the credit amount
+                        // Old record credit is Net. New record credit is Gross.
+                        netEarningForThisEntry = Number(item.amount);
+                    } else if (item.entry_type === 'debit' && item.metadata?.type === 'commission') {
+                        // Is this a commission debit for a New record?
+                        const relatedCredit = allWalletEntries.find(c => 
+                            c.entry_type === 'credit' && 
+                            c.metadata?.job_id === item.metadata?.job_id
+                        );
+                        if (relatedCredit && Number(relatedCredit.amount) === Number(relatedCredit.metadata?.gross)) {
+                            // New Record: we must subtract this commission debit (it's negative, so we add it)
+                            netEarningForThisEntry = Number(item.amount);
+                        } else {
+                            // Old Record: credit was already Net, so ignore this phantom debit
+                            netEarningForThisEntry = 0;
+                        }
+                    }
+
+                    if (netEarningForThisEntry !== 0) {
+                        allTime += netEarningForThisEntry;
+                        const d = new Date(item.created_at);
+                        if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+                            monthly += netEarningForThisEntry;
+                        }
+                    }
+                }
+                
+                setTotalEarnings(allTime);
+                setMonthlyEarnings(monthly);
+            }
             
         } catch (error) {
             console.error('Wallet fetch error:', error);
@@ -136,24 +184,7 @@ const Earnings = () => {
         }
     };
 
-    const { totalEarnings, monthlyEarnings } = useMemo(() => {
-        if (!currentUser || !fullHistory) return { totalEarnings: 0, monthlyEarnings: 0 };
 
-        const credits = fullHistory.filter(item => item.entry_type === 'credit' || item.entry_type === 'release');
-        const now = new Date();
-        
-        const monthly = credits.reduce((acc, item) => {
-            const d = new Date(item.created_at);
-            if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-                return acc + Number(item.amount);
-            }
-            return acc;
-        }, 0);
-
-        const allTime = credits.reduce((acc, item) => acc + Number(item.amount), 0);
-
-        return { totalEarnings: allTime, monthlyEarnings: monthly };
-    }, [fullHistory, currentUser]);
 
     const commissionPct = Math.min((commissionBalance / 5000) * 100, 100);
 

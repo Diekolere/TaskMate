@@ -10,7 +10,7 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import ProviderNegotiationDrawer from '../../components/provider/ProviderNegotiationDrawer';
-const COMMISSION = 0.10;
+const COMMISSION = 0.06;
 const AUTO_RELEASE_HOURS = 48;
 
 
@@ -513,7 +513,7 @@ export default function JobDetails() {
                                                 <div className="flex justify-between items-center text-sm">
                                                     <div className="flex items-center gap-1.5">
                                                         <span className="text-gray-500 font-medium">Service Fee</span>
-                                                        <span className="text-[9px] bg-gray-50 text-gray-400 px-1.5 py-0.5 rounded font-bold">10%</span>
+                                                        <span className="text-[9px] bg-gray-50 text-gray-400 px-1.5 py-0.5 rounded font-bold">6%</span>
                                                     </div>
                                                     <span className="text-gray-400 font-bold">− ₦{commission.toLocaleString()}</span>
                                                 </div>

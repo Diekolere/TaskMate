@@ -12,7 +12,7 @@ const Commission = () => {
             let revenue = 0;
             const completed = requests.filter(r => r.status === 'Completed' || r.status === 'Paid');
             const data = completed.map(req => {
-                const commission = (Number(req.budget) || 0) * 0.10; // 10% Commission
+                const commission = (Number(req.budget) || 0) * 0.06; // 6% Commission
                 revenue += commission;
                 return {
                     ...req,
@@ -70,7 +70,7 @@ const Commission = () => {
                                 <th className="px-6 py-4">Service</th>
                                 <th className="px-6 py-4">Provider</th>
                                 <th className="px-6 py-4 text-right">Job Amount</th>
-                                <th className="px-6 py-4 text-right">Commission (10%)</th>
+                                <th className="px-6 py-4 text-right">Commission (6%)</th>
                                 <th className="px-6 py-4 text-center">Status</th>
                             </tr>
                         </thead>

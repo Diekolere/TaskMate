@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const faqs = [
     { question: 'How do I get paid?', answer: 'Payments are processed weekly. Ensure your bank account details are up to date in the Earnings section.' },
-    { question: 'How is my commission calculated?', answer: 'TaskMate charges a flat 10% commission on all completed jobs. View your breakdown in the Earnings tab.' },
+    { question: 'How is my commission calculated?', answer: 'TaskMate charges a flat 6% commission on all completed jobs. View your breakdown in the Earnings tab.' },
     { question: 'Can I change my service area?', answer: 'Yes. Update your location in Profile settings to adjust the radius for job requests you receive.' },
     { question: 'What happens if a customer cancels?', answer: 'If a customer cancels within 24 hours of the scheduled time, you may be eligible for a cancellation fee.' },
     { question: 'How long does verification take?', answer: 'Verification is typically completed within 24–48 hours after you submit all required documents.' },
