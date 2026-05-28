@@ -195,7 +195,7 @@ const InboundRequests = () => {
                                                     ) : (
                                                         <>
                                                             <span>·</span>
-                                                            <span className="truncate max-w-[100px] shrink-0">{req.location || 'Location TBD'}</span>
+                                                            <span className="truncate max-w-[100px] shrink-0">{req.location_name || req.location || 'Location TBD'}</span>
                                                         </>
                                                     )}
                                                 </div>
