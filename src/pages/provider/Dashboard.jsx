@@ -257,16 +257,14 @@ const ProviderDashboard = () => {
                                                             {job.title || job.serviceType}
                                                         </p>
                                                         <p className="text-xs text-gray-400 truncate mt-0.5">
-                                                            {job.location || 'No location'} · {job.urgency || 'Normal'}
+                                                            {job.location_name || job.location || 'No location'}
                                                         </p>
                                                     </div>
 
-                                                    {/* Budget */}
-                                                    <div className="text-right shrink-0">
-                                                        <p className="font-bold text-gray-900 text-sm">
-                                                            ₦{Number(job.budget || 0).toLocaleString()}
-                                                        </p>
-                                                        <p className="text-[10px] text-[#10B981] font-semibold mt-0.5">Open</p>
+                                                    {/* Status / Chevron */}
+                                                    <div className="flex items-center gap-1.5 text-right shrink-0">
+                                                        <span className="text-[10px] text-[#10B981] font-bold mt-0.5 tracking-wide">Open</span>
+                                                        <span className="material-icons text-gray-300 text-sm">chevron_right</span>
                                                     </div>
                                                 </Link>
                                             </li>
