@@ -172,6 +172,7 @@ CREATE TABLE negotiations (
   message     TEXT NOT NULL,
   message_type TEXT DEFAULT 'text', -- text, price_proposal, system, finalize_request
   price       NUMERIC(12,2), -- for price proposals
+  metadata    JSONB DEFAULT '{}',
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -657,6 +658,7 @@ INSERT INTO storage.buckets (id, name, public) VALUES ('job-images', 'job-images
 INSERT INTO storage.buckets (id, name, public) VALUES ('service-posts', 'service-posts', true);
 INSERT INTO storage.buckets (id, name, public) VALUES ('verification-docs', 'verification-docs', false);
 INSERT INTO storage.buckets (id, name, public) VALUES ('invoices', 'invoices', false);
+INSERT INTO storage.buckets (id, name, public) VALUES ('chat_media', 'chat_media', true);
 
 -- Storage policies
 CREATE POLICY "avatars_select" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
@@ -676,6 +678,12 @@ CREATE POLICY "verification_docs_insert" ON storage.objects FOR INSERT WITH CHEC
 
 CREATE POLICY "invoices_select" ON storage.objects FOR SELECT USING (bucket_id = 'invoices' AND (auth.uid()::text = (storage.foldername(name))[1] OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')));
 CREATE POLICY "invoices_insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'invoices' AND auth.role() = 'authenticated');
+
+CREATE POLICY "chat_media_select" ON storage.objects FOR SELECT USING (bucket_id = 'chat_media');
+CREATE POLICY "chat_media_insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'chat_media' AND auth.role() = 'authenticated');
+CREATE POLICY "chat_media_update" ON storage.objects FOR UPDATE USING (bucket_id = 'chat_media' AND auth.uid()::text = (storage.foldername(name))[1]);
+CREATE POLICY "chat_media_delete" ON storage.objects FOR DELETE USING (bucket_id = 'chat_media' AND auth.uid()::text = (storage.foldername(name))[1]);
+
 
 -- ── 16. Realtime ──────────────────────────────────────────
 
