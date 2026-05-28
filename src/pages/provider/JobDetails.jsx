@@ -83,7 +83,7 @@ export default function JobDetails() {
     const [confirmComplete, setConfirmComplete] = useState(false);
     const [showNegotiation, setShowNegotiation] = useState(false);
     const [showAllDetails, setShowAllDetails] = useState(false);
-    const [showFinancials, setShowFinancials] = useState(false);
+    const [showFinancials, setShowFinancials] = useState(true);
     const [customerProfile, setCustomerProfile] = useState(null);
 
     useEffect(() => {
@@ -399,33 +399,9 @@ export default function JobDetails() {
                                 </Link>
                             )}
 
-                            {/* in_progress → Update progress + Mark complete */}
+                            {/* in_progress → Mark complete */}
                             {job.status === 'in_progress' && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setProgressOpen(v => !v)}
-                                            className="w-full h-full py-4 bg-[#0F172A] hover:bg-slate-700 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <span className="material-icons text-base">sync</span>
-                                            Update Progress
-                                            <span className={`material-icons text-base transition-transform ${progressOpen ? 'rotate-180' : ''}`}>expand_more</span>
-                                        </button>
-                                        <AnimatePresence>
-                                            {progressOpen && (
-                                                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                                                    className="absolute z-10 left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden">
-                                                    {PROGRESS_OPTS.map(opt => (
-                                                        <button key={opt.key} onClick={() => handleProgressUpdate(opt)}
-                                                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 font-semibold hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
-                                                            <span className="material-icons-outlined text-[#10B981] text-base">{opt.icon}</span>
-                                                            {opt.label}
-                                                        </button>
-                                                    ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                <div className="w-full">
                                     {!confirmComplete ? (
                                         <button
                                             onClick={() => setConfirmComplete(true)}

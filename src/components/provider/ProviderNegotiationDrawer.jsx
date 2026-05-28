@@ -156,6 +156,9 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                             {finalized ? 'Finalised' : rejected ? 'Rejected' : 'Online · Negotiating'}
                         </p>
                     </div>
+                    <a href={`tel:${customerProfile?.phone_number || job.customerPhone}`} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors flex-shrink-0">
+                        <span className="material-icons text-gray-500 text-xl">call</span>
+                    </a>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
