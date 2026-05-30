@@ -56,11 +56,17 @@ const RequestDetails = () => {
                 // 1. Fetch Job Details
                 const { data: jobData, error: jobError } = await supabase
                     .from('jobs')
-                    .select('*')
+                    .select('*, profiles!jobs_customer_id_fkey(full_name, location_name)')
                     .eq('id', id)
                     .single();
 
                 if (jobData) {
+                    if (jobData.profiles) {
+                        jobData.customerName = jobData.profiles.full_name || 'Anonymous';
+                        if (!jobData.location_name && !jobData.location) {
+                            jobData.location_name = jobData.profiles.location_name;
+                        }
+                    }
                     setRequest(jobData);
                 }
 

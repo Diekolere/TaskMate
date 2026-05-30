@@ -83,7 +83,7 @@ const InboundRequests = () => {
                         </div>
 
                         {/* Tabs — underline style */}
-                        <div className="flex gap-6 border-b border-gray-100">
+                        <div className="flex gap-6 border-b border-gray-100 overflow-x-auto scrollbar-hide whitespace-nowrap pb-0">
                             <button
                                 onClick={() => setTab('all')}
                                 className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px ${tab === 'all' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}

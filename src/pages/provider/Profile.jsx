@@ -318,7 +318,7 @@ const Profile = () => {
 
                             <div className="space-y-6">
                                 {/* Tabs */}
-                                <div className="flex border-b border-gray-100 overflow-x-auto">
+                                <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide whitespace-nowrap">
                                     {tabs.map(tab => (
                                         <button
                                             key={tab.id}

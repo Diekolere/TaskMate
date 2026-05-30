@@ -54,12 +54,12 @@ const MyJobs = () => {
                     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto space-y-6">
 
                         {/* Tabs — underline style */}
-                        <div className="flex gap-6 border-b border-gray-100">
+                        <div className="flex gap-6 border-b border-gray-100 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
                             {tabs.map(tab => (
                                 <button
                                     key={tab.key}
                                     onClick={() => setActiveTab(tab.key)}
-                                    className={`pb-3 text-sm font-semibold flex items-center gap-1.5 transition-all border-b-2 -mb-px ${
+                                    className={`pb-3 text-sm font-semibold flex items-center gap-1.5 transition-all border-b-2 -mb-px whitespace-nowrap shrink-0 ${
                                         activeTab === tab.key
                                             ? 'border-[#10B981] text-[#10B981]'
                                             : 'border-transparent text-gray-400 hover:text-gray-700'

@@ -111,7 +111,7 @@ const Schedule = () => {
                             </p>
                         </div>
 
-                        <div className="flex gap-6 border-b border-gray-100 overflow-x-auto">
+                        <div className="flex gap-6 border-b border-gray-100 overflow-x-auto scrollbar-hide whitespace-nowrap">
                             {tabs.map(tab => (
                                 <button
                                     key={tab.key}
