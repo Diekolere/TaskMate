@@ -28,7 +28,7 @@ const NairaSVG = ({ className = 'w-4 h-4' }) => (
 
 /* ─── Negotiate slide-over panel ───────────────────────── */
 function NegotiatePanel({ provider, requestId, request, category, onClose, onFinalized }) {
-    const { messages: allMessages, fetchMessages, sendMessage, finalizeAgreement, reopenNegotiation } = useData();
+    const { messages: allMessages, fetchMessages, sendMessage, deleteMessage, finalizeAgreement, reopenNegotiation } = useData();
     const { currentUser } = useAuth();
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
@@ -193,11 +193,17 @@ function NegotiatePanel({ provider, requestId, request, category, onClose, onFin
                         const isFinalizeRequest = msg.type === 'finalize_request' || msg.metadata?.finalizePrice;
 
                         return (
-                            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : isSystem ? 'justify-center' : 'justify-start'}`}>
+                            <div key={msg.id} className={`flex ${isSystem ? 'justify-center' : (isMe ? 'justify-end' : 'justify-start')}`}>
                                 {isSystem ? (
-                                    <span className="bg-gray-100 text-gray-500 text-[11px] font-semibold px-4 py-2 rounded-full max-w-[85%] text-center leading-relaxed">
-                                        {msg.message}
-                                    </span>
+                                    msg.message.includes('rejected') ? (
+                                        <span className="bg-red-50 text-red-500 text-[11px] font-semibold px-4 py-2 rounded-full max-w-[85%] text-center leading-relaxed">
+                                            {msg.message}
+                                        </span>
+                                    ) : (
+                                        <span className="bg-gray-100 text-gray-500 text-[11px] font-semibold px-4 py-2 rounded-full max-w-[85%] text-center leading-relaxed">
+                                            {msg.message}
+                                        </span>
+                                    )
                                 ) : !isMe && isFinalizeRequest ? (
                                     <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3.5 max-w-[85%]">
                                         <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide mb-1.5">Finalise Request</p>
@@ -248,12 +254,16 @@ function NegotiatePanel({ provider, requestId, request, category, onClose, onFin
                                                 )}
                                             </div>
                                         ) : msg.type === 'voice' ? (
-                                            <div className={`px-4 py-2.5 rounded-2xl ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
-                                                <AudioPlayer src={msg.metadata?.audioUrl} durationProp={msg.metadata?.duration} isMe={isMe} />
+                                            <div className="relative group/msg w-full flex justify-end">
+                                                <div className={`px-4 py-2.5 rounded-2xl ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
+                                                    <AudioPlayer src={msg.metadata?.audioUrl} durationProp={msg.metadata?.duration} isMe={isMe} />
+                                                </div>
                                             </div>
                                         ) : (
-                                            <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
-                                                {msg.message}
+                                            <div className="relative group/msg w-full flex justify-end">
+                                                <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
+                                                    {msg.message}
+                                                </div>
                                             </div>
                                         )}
                                         <span className="text-[10px] text-gray-400 px-1">{fmt(msg.created_at)}</span>
