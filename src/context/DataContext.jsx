@@ -69,6 +69,8 @@ export function DataProvider({ children }) {
       agreedPrice: job.agreed_price || job.agreedPrice,
       budget: job.budget_estimate,
       finalAmount: job.final_budget || job.agreed_price || job.budget_estimate,
+      customerName: job.profiles?.full_name || job.customerName || 'Anonymous',
+      location_name: job.profiles?.location_name || job.location_name || job.location,
       completedAt: job.completed_at ? {
         toDate: () => new Date(job.completed_at),
         toMillis: () => new Date(job.completed_at).getTime()
@@ -149,7 +151,7 @@ export function DataProvider({ children }) {
       
       let query = supabase
         .from('jobs')
-        .select('*');
+        .select('*, profiles!jobs_customer_id_fkey(full_name, location_name)');
       
       const orConditions = [`worker_id.eq.${currentUser.id}`, 'status.eq.open'];
       if (appliedJobIds.length > 0) {
@@ -755,6 +757,31 @@ export function DataProvider({ children }) {
     }
   };
 
+  const deleteMessage = async (messageId) => {
+    if (!currentUser) return;
+    try {
+      // Only delete if sender_id matches currentUser.id and it's not a finalize_request or system message
+      const { data: msg } = await supabase.from('negotiations').select('sender_id, message_type').eq('id', messageId).single();
+      if (!msg) return;
+      if (msg.sender_id !== currentUser.id) {
+          toast.error("You can only delete your own messages.");
+          return;
+      }
+      if (msg.message_type === 'finalize_request' || msg.message_type === 'system') {
+          toast.error("You cannot delete finalise or system messages.");
+          return;
+      }
+      const { error } = await supabase.from('negotiations').delete().eq('id', messageId);
+      if (error) throw error;
+      
+      // Update local state
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+    } catch (error) {
+        console.error("deleteMessage failed:", error);
+        toast.error("Failed to delete message");
+    }
+  };
+
   // ── Financial & Identity Operations ─────────────────────
 
   const processPayment = async (jobId, amount) => {
@@ -1319,7 +1346,7 @@ export function DataProvider({ children }) {
     // Phase 2 Matching Service
     getJobMatches, inviteMatchedProvider,
     // Messaging
-    messages, fetchMessages, sendMessage, subscribeToMessages,
+    messages, fetchMessages, sendMessage, deleteMessage, subscribeToMessages,
     // Notifications (exposed for components to send directly)
     sendNotification,
     // Production Operations:

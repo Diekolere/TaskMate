@@ -121,9 +121,9 @@ export default function VoiceRecorder({ onVoiceRecorded, disabled }) {
                 }
 
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                // We capture the recording duration immediately
-                const finalDuration = recordingTimeRef.current;
-                await uploadVoiceNote(audioBlob, finalDuration);
+                // We capture the recording duration exactly
+                const finalDuration = Math.ceil((Date.now() - mediaRecorderRef.current.startTime) / 1000);
+                await uploadVoiceNote(audioBlob, Math.max(1, finalDuration)); // At least 1 second
             };
 
             mediaRecorder.start(200); // deliver data chunks every 200ms
@@ -131,6 +131,8 @@ export default function VoiceRecorder({ onVoiceRecorded, disabled }) {
             setIsPaused(false);
             setRecordingTime(0);
             recordingTimeRef.current = 0;
+            const startTime = Date.now();
+            mediaRecorderRef.current.startTime = startTime;
             
             // Animation loop for volume indicator
             animationRef.current = requestAnimationFrame(tick);
@@ -138,13 +140,14 @@ export default function VoiceRecorder({ onVoiceRecorded, disabled }) {
             timerRef.current = setInterval(() => {
                 setRecordingTime(prev => {
                     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-                        const next = prev + 1;
-                        recordingTimeRef.current = next;
-                        return next;
+                        // Calculate actual elapsed seconds
+                        const elapsed = Math.floor((Date.now() - mediaRecorderRef.current.startTime) / 1000);
+                        recordingTimeRef.current = elapsed;
+                        return elapsed;
                     }
                     return prev;
                 });
-            }, 1000);
+            }, 500);
 
         } catch (error) {
             console.error('Error accessing microphone:', error);

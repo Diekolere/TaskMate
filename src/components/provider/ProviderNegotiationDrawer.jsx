@@ -20,7 +20,7 @@ const NairaSVG = ({ className = 'w-4 h-4' }) => (
 
 export default function ProviderNegotiationDrawer({ job, onClose }) {
     const { currentUser } = useAuth();
-    const { messages: allMessages, fetchMessages, sendMessage, finalizeAgreement, reopenNegotiation } = useData();
+    const { messages: allMessages, fetchMessages, sendMessage, deleteMessage, finalizeAgreement, reopenNegotiation } = useData();
     const messagesEndRef = useRef(null);
 
     const [input, setInput] = useState('');
@@ -205,11 +205,17 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                         const isFinalizeRequest = message.type === 'finalize_request' || finalizeRequestPrice > 0;
 
                         return (
-                            <div key={`${message.id || 'message'}-${message.created_at || index}`} className={`flex ${isMe ? 'justify-end' : isSystem ? 'justify-center' : 'justify-start'}`}>
+                            <div key={`${message.id || 'message'}-${message.created_at || index}`} className={`flex w-full ${isSystem ? 'justify-center' : isMe ? 'justify-end' : 'justify-start'}`}>
                                 {isSystem ? (
-                                    <span className="bg-gray-100 text-gray-500 text-[11px] font-semibold px-4 py-2 rounded-full max-w-[85%] text-center leading-relaxed">
-                                        {message.message}
-                                    </span>
+                                    message.message.includes('rejected') ? (
+                                        <span className="bg-red-50 text-red-500 text-[11px] font-semibold px-4 py-2 rounded-full max-w-[85%] text-center leading-relaxed">
+                                            {message.message}
+                                        </span>
+                                    ) : (
+                                        <span className="bg-gray-100 text-gray-500 text-[11px] font-semibold px-4 py-2 rounded-full max-w-[85%] text-center leading-relaxed">
+                                            {message.message}
+                                        </span>
+                                    )
                                 ) : !isMe && isFinalizeRequest ? (
                                     <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3.5 max-w-[85%]">
                                         <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide mb-1.5">Finalise Request</p>
@@ -259,12 +265,26 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                                                 )}
                                             </div>
                                         ) : message.type === 'voice' ? (
-                                            <div className={`px-4 py-2.5 rounded-2xl ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
-                                                <AudioPlayer src={message.metadata?.audioUrl} durationProp={message.metadata?.duration} isMe={isMe} />
+                                            <div className="relative group/msg w-full flex justify-end">
+                                                {isMe && !isFinalizeRequest && !isSystem && (
+                                                    <button onClick={() => deleteMessage(message.id)} className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full sm:flex hidden">
+                                                        <span className="material-icons-outlined text-sm">delete</span>
+                                                    </button>
+                                                )}
+                                                <div className={`px-4 py-2.5 rounded-2xl ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
+                                                    <AudioPlayer src={message.metadata?.audioUrl} durationProp={message.metadata?.duration} isMe={isMe} />
+                                                </div>
                                             </div>
                                         ) : (
-                                            <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
-                                                {message.message}
+                                            <div className="relative group/msg w-full flex justify-end">
+                                                {isMe && !isFinalizeRequest && !isSystem && (
+                                                    <button onClick={() => deleteMessage(message.id)} className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full sm:flex hidden">
+                                                        <span className="material-icons-outlined text-sm">delete</span>
+                                                    </button>
+                                                )}
+                                                <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
+                                                    {message.message}
+                                                </div>
                                             </div>
                                         )}
                                         <span className="text-[10px] text-gray-400 px-1">{formatTime(message.created_at)}</span>
