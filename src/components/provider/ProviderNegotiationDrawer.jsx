@@ -266,22 +266,12 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                                             </div>
                                         ) : message.type === 'voice' ? (
                                             <div className="relative group/msg w-full flex justify-end">
-                                                {isMe && !isFinalizeRequest && !isSystem && (
-                                                    <button onClick={() => deleteMessage(message.id)} className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full sm:flex hidden">
-                                                        <span className="material-icons-outlined text-sm">delete</span>
-                                                    </button>
-                                                )}
                                                 <div className={`px-4 py-2.5 rounded-2xl ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
                                                     <AudioPlayer src={message.metadata?.audioUrl} durationProp={message.metadata?.duration} isMe={isMe} />
                                                 </div>
                                             </div>
                                         ) : (
                                             <div className="relative group/msg w-full flex justify-end">
-                                                {isMe && !isFinalizeRequest && !isSystem && (
-                                                    <button onClick={() => deleteMessage(message.id)} className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full sm:flex hidden">
-                                                        <span className="material-icons-outlined text-sm">delete</span>
-                                                    </button>
-                                                )}
                                                 <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-[#0F172A] text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
                                                     {message.message}
                                                 </div>
