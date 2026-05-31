@@ -84,7 +84,7 @@ serve(async (req) => {
 
       console.log(`[Squad Function] Inputs: providerId=${providerId}, amount=${amount}, bankCode=${bankCode}`);
 
-      if (!amount || isNaN(amount)) {
+      if (!amount || isNaN(amount) || amount <= 0) {
         console.error("[Squad Function] Invalid amount error");
         return new Response(JSON.stringify({ success: false, message: `Invalid amount: ${body.amount}` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -284,8 +284,22 @@ serve(async (req) => {
 
     // ── 4. INITIALIZE PAYMENT (Checkout) ────────────────────
     if (action === "initialize-payment") {
-      const { jobId, amount, customerEmail } = body;
+      const { jobId, customerEmail } = body;
       const transactionRef = `TM_CHK_${jobId}_${Date.now()}`;
+
+      // SECURITY: Fetch the agreed price natively, do not trust client amount
+      const { data: job, error: jobError } = await supabaseClient
+        .from('jobs')
+        .select('agreed_price')
+        .eq('id', jobId)
+        .single();
+
+      if (jobError || !job?.agreed_price) {
+        console.error("[Squad Function] initialize-payment missing agreed_price:", jobError);
+        return new Response(JSON.stringify({ success: false, message: "Could not fetch agreed price for job" }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const amount = Number(job.agreed_price);
 
       const response = await fetch(`${squadBaseUrl}/transaction/initiate`, {
         method: "POST",
@@ -506,7 +520,21 @@ serve(async (req) => {
       if (payload.event_type === "virtual-account.incoming_transfer") {
         const customerId = payload.customer_identifier;
         const settledAmount = parseFloat(payload.settled_amount);
+        const transactionRef = payload.transaction_reference;
         const COMMISSION_RATE = 0.06;
+
+        // ── IDEMPOTENCY CHECK ─────────────────────────────────
+        // Prevent duplicate processing if Squad retries the webhook
+        const { data: existingTx } = await supabaseClient
+          .from("transactions")
+          .select("id")
+          .eq("reference", transactionRef)
+          .maybeSingle();
+
+        if (existingTx) {
+          console.log(`[Webhook] Idempotency hit: Transaction ${transactionRef} already processed.`);
+          return new Response(JSON.stringify({ success: true, message: "Already processed" }), { headers: corsHeaders });
+        }
 
         // ── Path A: Job Escrow VA (new escrow model) ──────────
         const { data: escrowVA } = await supabaseClient
