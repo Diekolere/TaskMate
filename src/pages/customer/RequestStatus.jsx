@@ -6,6 +6,7 @@ import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { supabase } from '../../lib/supabase';
 
 import { useAuth } from '../../context/AuthContext';
 import { getCategoryIcon, getCategoryColors } from '../../lib/utils';
@@ -480,7 +481,6 @@ const RequestStatus = () => {
             return; // Only poll for public+open requests
         }
 
-        // Fetch interested providers immediately and then every 3 seconds
         const refreshInterestedProviders = async () => {
             try {
                 const providers = await getInterestedProviders(request.id);
@@ -491,9 +491,17 @@ const RequestStatus = () => {
         };
 
         refreshInterestedProviders(); // Initial fetch
-        const interval = setInterval(refreshInterestedProviders, 3000); // Poll every 3 seconds
 
-        return () => clearInterval(interval);
+        const channel = supabase
+            .channel(`job_applications_${request.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'job_applications', filter: `job_id=eq.${request.id}` }, () => {
+                refreshInterestedProviders();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [request?.id, request?.request_type, request?.status, getInterestedProviders]);
 
     if (loading) return (

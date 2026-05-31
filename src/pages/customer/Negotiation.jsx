@@ -18,7 +18,7 @@ const Negotiation = () => {
     const { id } = useParams();
     const { currentUser } = useAuth();
     const { requests, jobs, finalizeAgreement } = useJobs();
-  const { messages: liveMessages, fetchMessages, sendMessage: sendLiveMessage } = useMessages();
+  const { messages: liveMessages, fetchMessages, sendMessage: sendLiveMessage, subscribeToMessages } = useMessages();
   const { sendNotification } = useNotifications();
     const navigate = useNavigate();
 
@@ -61,20 +61,15 @@ const Negotiation = () => {
             .then(({ data }) => { if (data) setOtherUser(data); });
     }, [job]);
 
-    // Fetch messages on mount
+    // Fetch messages on mount and subscribe to realtime updates
     useEffect(() => {
-        if (id) fetchMessages(id);
-    }, [id, fetchMessages]);
-
-    useEffect(() => {
-        if (!id) return undefined;
-
-        const intervalId = window.setInterval(() => {
-            fetchMessages(id);
-        }, 5000);
-
-        return () => window.clearInterval(intervalId);
-    }, [id, fetchMessages]);
+        if (!id) return;
+        fetchMessages(id);
+        const channel = subscribeToMessages?.(id);
+        return () => {
+            if (channel) supabase.removeChannel(channel);
+        };
+    }, [id, fetchMessages, subscribeToMessages]);
 
     // Scroll to bottom on new message
     useEffect(() => {

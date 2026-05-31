@@ -96,10 +96,20 @@ const RequestDetails = () => {
         };
 
         fetchRequestStatus();
-        
-        // Poll every 4 seconds to keep UI in sync
-        const interval = setInterval(fetchRequestStatus, 4000);
-        return () => clearInterval(interval);
+
+        const channel = supabase
+            .channel(`request_details_${id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs', filter: `id=eq.${id}` }, () => {
+                fetchRequestStatus();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'job_applications', filter: `job_id=eq.${id}` }, () => {
+                fetchRequestStatus();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [id, currentUser?.id]);
 
     const isRestricted = (currentUser?.commissionBalance || 0) > DEBT_LIMIT;

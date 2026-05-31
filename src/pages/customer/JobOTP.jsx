@@ -90,7 +90,7 @@ const JobOTP = () => {
         return () => clearInterval(tick);
     }, [status, secondsLeft]);
 
-    // Poll for status change
+    // Listen for status change via realtime
     useEffect(() => {
         if (status !== 'waiting') return;
         
@@ -108,22 +108,8 @@ const JobOTP = () => {
             })
             .subscribe();
 
-        // Fallback polling every 5 seconds
-        const poll = setInterval(async () => {
-            const { data } = await supabase
-                .from('jobs')
-                .select('status')
-                .eq('id', jobId)
-                .single();
-            
-            if (data?.status === 'in_progress') {
-                setStatus('started');
-            }
-        }, 5000);
-
         return () => {
             supabase.removeChannel(channel);
-            clearInterval(poll);
         };
     }, [status, jobId]);
     // Auto-navigate after success
