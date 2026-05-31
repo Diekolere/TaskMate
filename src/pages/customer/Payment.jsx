@@ -3,15 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
+import { useJobs } from '../../context/JobContext';
+import { useEarnings } from '../../context/EarningsContext';
 
 const Payment = () => {
     const { id } = useParams();
     const { currentUser } = useAuth();
-    const { requests, processPayment } = useData();
+    const { requests } = useJobs();
+  const { processPayment } = useEarnings();
     const navigate = useNavigate();
 
     const [job, setJob] = useState(null);

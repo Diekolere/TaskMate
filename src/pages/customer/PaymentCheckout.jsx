@@ -5,8 +5,9 @@ import { toast } from 'sonner';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
-import { useData } from '../../context/DataContext';
+
 import { supabase } from '../../lib/supabase';
+import { useJobs } from '../../context/JobContext';
 
 const COMMISSION_RATE = 0.1;
 
@@ -18,7 +19,7 @@ const PaymentCheckout = () => {
     const { requestId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { requests } = useData();
+    const { requests } = useJobs();
 
     const stateAgreedPrice = location.state?.agreedPrice;
     const stateProvider = location.state?.provider;

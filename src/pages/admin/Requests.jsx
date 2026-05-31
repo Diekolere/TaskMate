@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '../../context/DataContext';
+
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
+import { useJobs } from '../../context/JobContext';
+import { useAdmin } from '../../context/AdminContext';
 
 const Requests = () => {
-    const { requests: rawRequests, loading } = useData();
+    const { requests: rawRequests } = useJobs();
+  const { loading } = useAdmin();
     const [requests, setRequests] = useState([]);
     const navigate = useNavigate();
     const [filter, setFilter] = useState('All');

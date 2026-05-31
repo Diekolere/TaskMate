@@ -4,14 +4,15 @@ import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { useLocationHeartbeat } from '../../hooks/useLocationHeartbeat';
 import { formatDistanceToNow } from 'date-fns';
+import { useProvider } from '../../context/ProviderContext';
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const { getAllServicePosts, getProviders } = useData();
+    const { getAllServicePosts, getProviders } = useProvider();
 
     // Track customer location for optimal proximity matching
     useLocationHeartbeat();

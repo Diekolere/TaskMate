@@ -4,13 +4,14 @@ import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { supabase } from '../../lib/supabase';
+import { useProvider } from '../../context/ProviderContext';
 
 const BrowseProviders = () => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const { getProviders, savedProviderIds, toggleSavedProvider, getAvailableCategories } = useData();
+    const { getProviders, savedProviderIds, toggleSavedProvider, getAvailableCategories } = useProvider();
     const [providers, setProviders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [availableCats, setAvailableCats] = useState([]);

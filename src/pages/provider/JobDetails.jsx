@@ -3,13 +3,14 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { supabase } from '../../lib/supabase';
 import { getCategoryIcon, getCategoryColors } from '../../lib/utils';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import ProviderNegotiationDrawer from '../../components/provider/ProviderNegotiationDrawer';
+import { useJobs } from '../../context/JobContext';
 const COMMISSION = 0.06;
 const AUTO_RELEASE_HOURS = 48;
 
@@ -73,7 +74,7 @@ export default function JobDetails() {
     const navigate = useNavigate();
     const routeLocation = useLocation();
     const { currentUser } = useAuth();
-    const { jobs, completeJob, updateJobStatus } = useData();
+    const { jobs, completeJob, updateJobStatus } = useJobs();
 
     const [job, setJob] = useState(null);
     const [loading, setLoading] = useState(true);

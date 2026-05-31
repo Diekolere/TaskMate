@@ -6,12 +6,13 @@ import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { supabase } from '../../lib/supabase';
-import { useData } from '../../context/DataContext';
+import { useNotifications } from '../../context/NotificationContext';
+
 
 const JobOTP = () => {
     const { jobId } = useParams();
     const navigate = useNavigate();
-    const { sendNotification } = useData();
+    const { sendNotification } = useNotifications();
 
     const [job, setJob] = useState(null);
     const [otp, setOtp] = useState('');

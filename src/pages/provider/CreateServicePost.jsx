@@ -5,14 +5,15 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { uploadFile, generateFilePath } from '../../lib/supabase';
+import { useProvider } from '../../context/ProviderContext';
 
 const CreateServicePost = () => {
     const navigate = useNavigate();
     const routerLocation = useLocation();
     const { currentUser } = useAuth();
-    const { createServicePost, updateServicePost } = useData();
+    const { createServicePost, updateServicePost } = useProvider();
     const fileInputRef = useRef(null);
     const [category, setCategory] = useState('');
     const [locationField, setLocationField] = useState('');

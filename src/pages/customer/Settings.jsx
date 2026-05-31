@@ -4,12 +4,13 @@ import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { toast, Toaster } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { supabase, uploadFile, generateFilePath } from '../../lib/supabase';
+import { useAdmin } from '../../context/AdminContext';
 
 const Settings = () => {
     const { currentUser, updateUserProfile } = useAuth();
-    const { createSupportTicket } = useData();
+    const { createSupportTicket } = useAdmin();
     const [activeTab, setActiveTab] = useState('Profile');
     const [isLoading, setIsLoading] = useState(false);
     const fileInputRef = useRef(null);

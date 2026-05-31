@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { supabase } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useJobs } from '../../context/JobContext';
 
 const AIChat = () => {
     const { currentUser } = useAuth();
-    const { requests } = useData();
+    const { requests } = useJobs();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
         { role: 'model', text: 'Hello! I\'m your TaskMate AI assistant. Ask me anything about your requests, providers, or how TaskMate works.' }

@@ -5,7 +5,8 @@ import Reveal from '../../components/public/landing/Reveal';
 import LandingNavbar from '../../components/public/landing/LandingNavbar';
 import HeroSection from '../../components/public/landing/HeroSection';
 import LandingFooter from '../../components/public/landing/LandingFooter';
-import { useData } from '../../context/DataContext';
+import { useProvider } from '../../context/ProviderContext';
+
 
 const AccordionItem = ({ title, content, isOpen, onClick }) => {
   return (
@@ -46,7 +47,7 @@ const StepCard = ({ num, title, desc, delay = 0, className = '' }) => (
 );
 
 const Landing = () => {
-  const { getAvailableCategories } = useData();
+  const { getAvailableCategories } = useProvider();
   const [openFaq, setOpenFaq] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
   const [availableCats, setAvailableCats] = useState([]);

@@ -3,11 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import supabase, { uploadFile, generateFilePath } from '../../lib/supabase';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
+import { useJobs } from '../../context/JobContext';
+import { useProvider } from '../../context/ProviderContext';
 
 const COMMISSION_RATE = 0.1;
 const AUTO_RELEASE_HOURS = 48;
@@ -68,7 +70,8 @@ const ConfirmCompletion = () => {
     const { jobId } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const { releasePayment, submitReview } = useData();
+    const { releasePayment } = useJobs();
+  const { submitReview } = useProvider();
 
     const [job, setJob] = useState(null);
     const [loading, setLoading] = useState(true);

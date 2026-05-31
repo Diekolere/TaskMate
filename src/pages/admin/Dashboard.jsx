@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useData } from '../../context/DataContext';
+import { useJobs } from '../../context/JobContext';
+import { useAdmin } from '../../context/AdminContext';
+
 
 const AdminDashboard = () => {
-    const { requests, verifications, users, loading } = useData();
+    const { requests } = useJobs();
+  const { verifications, users, loading } = useAdmin();
     const [stats, setStats] = useState([
         { title: "Total Commission", value: "₦0.00", change: "+0%", icon: "monetization_on", color: "bg-green-600", trend: "up" },
         { title: "Pending Commission", value: "₦0.00", change: "0%", icon: "pending", color: "bg-orange-500", trend: "neutral" },

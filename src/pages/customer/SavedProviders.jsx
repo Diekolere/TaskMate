@@ -3,11 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
-import { useData } from '../../context/DataContext';
+import { useProvider } from '../../context/ProviderContext';
+
 
 const SavedProviders = () => {
     const navigate = useNavigate();
-    const { savedProviderIds, toggleSavedProvider, getProviders } = useData();
+    const { savedProviderIds, toggleSavedProvider, getProviders } = useProvider();
     const [savedProviders, setSavedProviders] = useState([]);
     const [loading, setLoading] = useState(true);
 

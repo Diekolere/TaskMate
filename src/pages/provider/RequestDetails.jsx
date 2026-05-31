@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { supabase } from '../../lib/supabase';
 import { getCategoryIcon, getCategoryColors } from '../../lib/utils';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
@@ -12,6 +12,7 @@ import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import ProviderNegotiationDrawer from '../../components/provider/ProviderNegotiationDrawer';
 import TopNavbar from '../../components/layout/TopNavbar';
 import { getPriceRange, getFairnessLabel, getSmartPriceLabel } from '../../lib/aiData';
+import { useJobs } from '../../context/JobContext';
 
 const DEBT_LIMIT = 5000;
 const rejectionReasons = ['Price is too low', 'Schedule conflict', 'Location is too far', 'Service not offered', 'Other'];
@@ -20,7 +21,7 @@ const rejectionReasons = ['Price is too low', 'Schedule conflict', 'Location is 
 const RequestDetails = () => {
     const { id } = useParams();
     const { currentUser } = useAuth();
-    const { jobs, acceptJob, updateJobStatus } = useData();
+    const { jobs, acceptJob, updateJobStatus } = useJobs();
     const navigate = useNavigate();
     const location = useLocation();
     

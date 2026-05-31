@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
-import { useData } from '../../context/DataContext';
+import { useJobs } from '../../context/JobContext';
+import { useAdmin } from '../../context/AdminContext';
+
 
 const RequestDetails = () => {
     const { id } = useParams();
-    const { requests, users, loading: dataLoading } = useData();
+    const { requests } = useJobs();
+  const { users, loading: dataLoading } = useAdmin();
     const [request, setRequest] = useState(null);
     const [loading, setLoading] = useState(true);
 

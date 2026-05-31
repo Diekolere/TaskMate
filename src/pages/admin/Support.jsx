@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
-import { useData } from '../../context/DataContext';
+import { useNotifications } from '../../context/NotificationContext';
+
 
 const Support = () => {
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { sendNotification } = useData();
+    const { sendNotification } = useNotifications();
 
     const fetchTickets = async () => {
         setLoading(true);

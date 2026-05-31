@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useData } from '../../context/DataContext';
+
 import { useAuth } from '../../context/AuthContext';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
@@ -8,6 +8,7 @@ import EditPayoutAccountModal from '../../components/provider/EditPayoutAccountM
 import WithdrawalModal from '../../components/provider/WithdrawalModal';
 import { supabase } from '../../lib/supabase';
 import TransactionDrawer from '../../components/provider/TransactionDrawer';
+import { useJobs } from '../../context/JobContext';
 
 function BankBuildingIllustration({ className }) {
     return (
@@ -23,7 +24,7 @@ function BankBuildingIllustration({ className }) {
 }
 
 const Earnings = () => {
-    const { jobs } = useData();
+    const { jobs } = useJobs();
     const { currentUser } = useAuth();
     const [commissionBalance, setCommissionBalance] = useState(0);
     const [walletBalance, setWalletBalance] = useState(0);

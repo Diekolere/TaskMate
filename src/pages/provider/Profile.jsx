@@ -6,8 +6,9 @@ import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { uploadFile, generateFilePath, supabase } from '../../lib/supabase';
+import { useProvider } from '../../context/ProviderContext';
 
 const CATEGORIES_LIST = [
   "Plumbing", "Electrical", "Furniture (Carpentry)", "Cleaning", "Painting",
@@ -30,7 +31,7 @@ const CATEGORY_STYLES = {
 
 const Profile = () => {
   const { currentUser, updateUserProfile } = useAuth();
-  const { getServicePosts, deleteServicePost: deleteServicePostDb } = useData();
+  const { getServicePosts, deleteServicePost: deleteServicePostDb } = useProvider();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('details'); 

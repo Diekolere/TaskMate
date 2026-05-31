@@ -5,8 +5,9 @@ import CategoryIcon from '../../components/ui/CategoryIcon';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
-import { useData } from '../../context/DataContext';
+
 import { useAuth } from '../../context/AuthContext';
+import { useJobs } from '../../context/JobContext';
 
 const statusConfig = {
     Completed:  { bg: 'bg-[#10B981]/10', text: 'text-[#10B981]', border: 'border-[#10B981]/20' },
@@ -24,7 +25,7 @@ const statusConfig = {
 const getStatusStyle = (status) => statusConfig[status] || statusConfig.default;
 
 const MyJobs = () => {
-    const { jobs: allJobs } = useData();
+    const { jobs: allJobs } = useJobs();
     const { currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState('active');
 

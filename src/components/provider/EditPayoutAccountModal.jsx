@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import BANKS from '../../data/banks.json';
+import { useEarnings } from '../../context/EarningsContext';
 
 function BankSelect({ value, onChange }) {
     const [open, setOpen] = useState(false);
@@ -108,7 +109,7 @@ function SquadBadge() {
 
 export default function EditPayoutAccountModal({ open, onClose, onSaved }) {
     const { currentUser, updateUserProfile, updateProviderProfile } = useAuth();
-    const { verifyBankAccount } = useData();
+    const { verifyBankAccount } = useEarnings();
     const [selectedBank, setSelectedBank] = useState(null);
     const [accountNumber, setAccountNumber] = useState('');
     const [accountName, setAccountName] = useState('');

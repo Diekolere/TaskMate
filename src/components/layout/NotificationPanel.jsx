@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { toast } from 'sonner';
 
 import { supabase } from '../../lib/supabase';
+import { useNotifications } from '../../context/NotificationContext';
 
 // ── OTP Entry Mini-modal ─────────────────────────────────────────
 function OTPModal({ jobId, onClose }) {
@@ -165,7 +166,7 @@ function OTPModal({ jobId, onClose }) {
 // ── Main Notification Panel ──────────────────────────────────────
 export default function NotificationPanel({ open, onClose }) {
     const { currentUser } = useAuth();
-    const { notifications, markNotificationRead, markAllNotificationsRead } = useData();
+    const { notifications, markNotificationRead, markAllNotificationsRead } = useNotifications();
     const navigate = useNavigate();
     const isProvider = currentUser?.role === 'provider';
 

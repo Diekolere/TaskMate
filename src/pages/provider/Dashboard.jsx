@@ -6,15 +6,16 @@ import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import KYCModal from '../../components/provider/KYCModal';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { useLocationHeartbeat } from '../../hooks/useLocationHeartbeat';
 import { supabase } from '../../lib/supabase';
 
 import { getCategoryIcon, getCategoryColors } from '../../lib/utils';
+import { useJobs } from '../../context/JobContext';
 
 const ProviderDashboard = () => {
     const { currentUser } = useAuth();
-    const { jobs } = useData();
+    const { jobs } = useJobs();
     const navigate = useNavigate();
     const [walletBalance, setWalletBalance] = useState(0);
     const [ledger, setLedger] = useState([]);

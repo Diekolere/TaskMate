@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
-import { useData } from '../../context/DataContext';
+
 import { toast } from 'sonner';
+import { useAdmin } from '../../context/AdminContext';
 
 const VerificationDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { verifications, loading: dataLoading, updateVerificationStatus } = useData();
+    const { verifications, loading: dataLoading, updateVerificationStatus } = useAdmin();
     const [verification, setVerification] = useState(null);
     const [loading, setLoading] = useState(true);
 

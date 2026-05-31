@@ -5,13 +5,14 @@ import CategoryIcon from '../../components/ui/CategoryIcon';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
-import { useData } from '../../context/DataContext';
+
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useJobs } from '../../context/JobContext';
 
 const InboundRequests = () => {
     const { currentUser } = useAuth();
-    const { jobs } = useData();
+    const { jobs } = useJobs();
     const [search, setSearch] = useState('');
     const [tab, setTab] = useState('all'); // 'all' | 'upcoming' | 'private' | 'public' | 'invited'
     const [invitedJobs, setInvitedJobs] = useState(new Set());

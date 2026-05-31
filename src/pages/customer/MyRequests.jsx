@@ -6,13 +6,14 @@ import CategoryIcon from '../../components/ui/CategoryIcon';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
-import { useData } from '../../context/DataContext';
+
 import { format } from 'date-fns';
+import { useJobs } from '../../context/JobContext';
 
 const MyRequests = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { requests: allRequests } = useData();
+    const { requests: allRequests } = useJobs();
     const [activeTab, setActiveTab] = useState('All');
     const [showStatusLegend, setShowStatusLegend] = useState(false);
 

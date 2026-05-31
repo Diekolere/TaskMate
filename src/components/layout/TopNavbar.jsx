@@ -3,11 +3,12 @@ import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationPanel from './NotificationPanel';
-import { useData } from '../../context/DataContext';
+import { useNotifications } from '../../context/NotificationContext';
+
 
 const TopNavbar = ({ breadcrumbs = [] }) => {
     const { currentUser, logout } = useAuth();
-    const { notifications, markAllNotificationsRead, markNotificationRead } = useData();
+    const { notifications, markAllNotificationsRead, markNotificationRead } = useNotifications();
     const navigate = useNavigate();
     const [notifDropOpen, setNotifDropOpen] = useState(false);
     const [panelOpen, setPanelOpen] = useState(false);

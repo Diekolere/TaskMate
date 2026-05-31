@@ -4,12 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../../components/layout/Sidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
-import { useData } from '../../context/DataContext';
+
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { supabase, uploadFile, generateFilePath } from '../../lib/supabase';
 import useImageModeration from '../../hooks/useImageModeration';
 import { enrichDescription } from '../../lib/aiData';
+import { useJobs } from '../../context/JobContext';
+import { useProvider } from '../../context/ProviderContext';
 
 const reverseGeocode = async (lat, lon, retries = 2) => {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
@@ -246,7 +248,8 @@ function PostRequestForm({ onClose, isModal }) {
     const providerName = location.state?.providerName || editingRequest?.providerName;
     const initialCategory = location.state?.category || editingRequest?.category;
 
-    const { createRequest, getAvailableCategories, getProviderProfile } = useData();
+    const { createRequest } = useJobs();
+  const { getAvailableCategories, getProviderProfile } = useProvider();
     const { currentUser } = useAuth();
     const { checkImage } = useImageModeration();
 

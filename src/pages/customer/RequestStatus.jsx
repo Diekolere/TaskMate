@@ -6,7 +6,7 @@ import TopNavbar from '../../components/layout/TopNavbar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { useData } from '../../context/DataContext';
+
 import { useAuth } from '../../context/AuthContext';
 import { getCategoryIcon, getCategoryColors } from '../../lib/utils';
 import VoiceRecorder from '../../components/ui/VoiceRecorder';
@@ -14,6 +14,9 @@ import AudioPlayer from '../../components/ui/AudioPlayer';
 import RejectionModal from '../../components/ui/RejectionModal';
 
 import { getPriceRange, getFairnessLabel, getSmartPriceLabel } from '../../lib/aiData';
+import { useMessages } from '../../context/MessageContext';
+import { useJobs } from '../../context/JobContext';
+import { useProvider } from '../../context/ProviderContext';
 
 /* ── Naira SVG icon ─────────────────────────────────────── */
 const NairaSVG = ({ className = 'w-4 h-4' }) => (
@@ -28,7 +31,8 @@ const NairaSVG = ({ className = 'w-4 h-4' }) => (
 
 /* ─── Negotiate slide-over panel ───────────────────────── */
 function NegotiatePanel({ provider, requestId, request, category, onClose, onFinalized }) {
-    const { messages: allMessages, fetchMessages, sendMessage, deleteMessage, finalizeAgreement, reopenNegotiation } = useData();
+    const { messages: allMessages, fetchMessages, sendMessage, deleteMessage } = useMessages();
+  const { finalizeAgreement, reopenNegotiation } = useJobs();
     const { currentUser } = useAuth();
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
@@ -357,7 +361,9 @@ const RequestStatus = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { currentUser } = useAuth();
-    const { requests, getProviders, getProviderProfile, getInterestedProviders, releasePayment, getJobMatches, inviteMatchedProvider, messages } = useData();
+    const { requests, releasePayment, getJobMatches, inviteMatchedProvider } = useJobs();
+  const { getProviders, getProviderProfile, getInterestedProviders } = useProvider();
+  const { messages } = useMessages();
     const [request, setRequest] = useState(null);
     const [interestedProviders, setInterestedProviders] = useState([]);
     const [aiMatchedProviders, setAiMatchedProviders] = useState([]);

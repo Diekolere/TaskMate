@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
-import { useData } from '../../context/DataContext';
+
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
+import { useAdmin } from '../../context/AdminContext';
+import { useJobs } from '../../context/JobContext';
 
 const UserDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { users, requests, loading: dataLoading, updateUserStatus } = useData();
+    const { users, loading: dataLoading, updateUserStatus } = useAdmin();
+  const { requests } = useJobs();
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [clearingDebt, setClearingDebt] = useState(false);

@@ -1,10 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '../../context/DataContext';
+import { useAdmin } from '../../context/AdminContext';
+
 
 const Verifications = () => {
     const navigate = useNavigate();
-    const { verifications, loading } = useData();
+    const { verifications, loading } = useAdmin();
 
     const handleAction = (id) => {
         navigate(`/admin/verifications/${id}`);

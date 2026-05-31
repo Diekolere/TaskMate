@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { useData } from '../../context/DataContext';
+
 import Sidebar from '../../components/layout/Sidebar';
 import MobileNavBar from '../../components/layout/MobileNavBar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import { supabase } from '../../lib/supabase';
+import { useProvider } from '../../context/ProviderContext';
 
 const ProviderProfile = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { savedProviderIds, toggleSavedProvider, getProviders, getServicePosts } = useData();
+    const { savedProviderIds, toggleSavedProvider, getProviders, getServicePosts } = useProvider();
     const [activeTab, setActiveTab] = useState('details');
     const [expandedPost, setExpandedPost] = useState(null);
     const [provider, setProvider] = useState(null);

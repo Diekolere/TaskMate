@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { supabase } from '../../lib/supabase';
 import VoiceRecorder from '../ui/VoiceRecorder';
 import AudioPlayer from '../ui/AudioPlayer';
 import RejectionModal from '../ui/RejectionModal';
+import { useMessages } from '../../context/MessageContext';
+import { useJobs } from '../../context/JobContext';
 
 const NairaSVG = ({ className = 'w-4 h-4' }) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
@@ -20,7 +22,8 @@ const NairaSVG = ({ className = 'w-4 h-4' }) => (
 
 export default function ProviderNegotiationDrawer({ job, onClose }) {
     const { currentUser } = useAuth();
-    const { messages: allMessages, fetchMessages, sendMessage, deleteMessage, finalizeAgreement, reopenNegotiation } = useData();
+    const { messages: allMessages, fetchMessages, sendMessage, deleteMessage } = useMessages();
+  const { finalizeAgreement, reopenNegotiation } = useJobs();
     const messagesEndRef = useRef(null);
 
     const [input, setInput] = useState('');

@@ -3,24 +3,21 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 import { supabase } from '../../lib/supabase';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
 import TopNavbar from '../../components/layout/TopNavbar';
 import ProviderMobileNavBar from '../../components/layout/ProviderMobileNavBar';
+import { useJobs } from '../../context/JobContext';
+import { useMessages } from '../../context/MessageContext';
+import { useNotifications } from '../../context/NotificationContext';
 
 const Negotiation = () => {
     const { id } = useParams();
     const { currentUser } = useAuth();
-    const {
-        requests,
-        jobs,
-        messages: liveMessages,
-        fetchMessages,
-        sendMessage: sendLiveMessage,
-        finalizeAgreement,
-        sendNotification,
-    } = useData();
+    const { requests, jobs, finalizeAgreement } = useJobs();
+  const { messages: liveMessages, fetchMessages, sendMessage: sendLiveMessage } = useMessages();
+  const { sendNotification } = useNotifications();
     const navigate = useNavigate();
 
     const [job, setJob] = useState(null);

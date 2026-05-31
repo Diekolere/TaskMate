@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+
 
 import BANKS from '../../data/banks.json';
+import { useEarnings } from '../../context/EarningsContext';
 
 const STEPS = [
     { id: 1, label: 'Identity' },
@@ -109,7 +110,7 @@ function BankSelect({ value, onChange }) {
 /* ── Main modal ──────────────────────────────────────── */
 export default function KYCModal({ open, onClose, onComplete }) {
     const { currentUser, updateUserProfile, updateProviderProfile } = useAuth();
-    const { submitKYC, verifyBankAccount } = useData();
+    const { submitKYC, verifyBankAccount } = useEarnings();
     const [step, setStep] = useState(1);
     const [dir, setDir] = useState(1);
 

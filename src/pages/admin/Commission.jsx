@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { useData } from '../../context/DataContext';
+import { useJobs } from '../../context/JobContext';
+import { useAdmin } from '../../context/AdminContext';
+
 
 const Commission = () => {
-    const { requests, loading } = useData();
+    const { requests } = useJobs();
+  const { loading } = useAdmin();
     const [transactions, setTransactions] = useState([]);
     const [totalRevenue, setTotalRevenue] = useState(0);
 

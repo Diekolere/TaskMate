@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '../../context/DataContext';
+import { useAdmin } from '../../context/AdminContext';
+
 
 const Users = () => {
-    const { users, loading, updateUserStatus } = useData();
+    const { users, loading, updateUserStatus } = useAdmin();
     const [providers, setProviders] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [activeTab, setActiveTab] = useState('Providers');
