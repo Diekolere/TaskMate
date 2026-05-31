@@ -56,6 +56,21 @@ serve(async (req) => {
 
     console.log(`[SQUAD FUNCTION] Received request: Action=${action}`, { body });
 
+    let user = null;
+    if (action !== "webhook") {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return new Response(JSON.stringify({ success: false, message: "Missing Authorization header" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const token = authHeader.replace("Bearer ", "");
+      const { data: userData, error: authError } = await supabaseClient.auth.getUser(token);
+      
+      if (authError || !userData?.user) {
+        return new Response(JSON.stringify({ success: false, message: "Invalid or expired token" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      user = userData.user;
+    }
+
     // ── 1. ACCOUNT LOOKUP (Verify Bank Details) ──────────────
     if (action === "account-lookup") {
       const { bankCode, accountNumber } = body;
@@ -83,6 +98,11 @@ serve(async (req) => {
       const bankCode = body.bankCode;
 
       console.log(`[Squad Function] Inputs: providerId=${providerId}, amount=${amount}, bankCode=${bankCode}`);
+
+      // SECURITY: Ensure caller matches providerId
+      if (user?.id !== providerId) {
+        return new Response(JSON.stringify({ success: false, message: 'Unauthorized: You can only initiate payouts for your own wallet.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
 
       if (!amount || isNaN(amount) || amount <= 0) {
         console.error("[Squad Function] Invalid amount error");

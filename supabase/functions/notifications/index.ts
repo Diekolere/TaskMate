@@ -20,6 +20,18 @@ serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: authError } = await supabaseClient.auth.getUser(token);
+    
+    if (authError || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const user = userData.user;
+
     // ── 1. SEND IN-APP NOTIFICATION ────────────────────────
     if (action === "send") {
       const { userId, title, body: notifBody, type, icon, iconBg, iconColor, ctaPath, ctaLabel, secondaryLabel } = body;
@@ -78,6 +90,10 @@ serve(async (req) => {
       const { userId } = body;
       if (!userId) throw new Error("userId is required");
 
+      if (user.id !== userId) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       const { error } = await supabaseClient
         .from("notifications")
         .update({ is_read: true })
@@ -95,6 +111,10 @@ serve(async (req) => {
     if (action === "get-preferences") {
       const { userId } = body;
       if (!userId) throw new Error("userId is required");
+
+      if (user.id !== userId) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
       const { data, error } = await supabaseClient
         .from("notification_preferences")
