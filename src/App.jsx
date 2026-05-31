@@ -115,7 +115,7 @@ function AnimatedRoutes() {
         <Route path="/provider/settings" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><ProviderSettings /></CategoryGate></ProtectedRoute>} />
         <Route path="/provider/settings/password" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><ChangePassword /></CategoryGate></ProtectedRoute>} />
         <Route path="/provider/posts/new" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><CreateServicePost /></KYCGate></CategoryGate></ProtectedRoute>} />
-        <Route path="/provider/support" element={<Support />} />
+        <Route path="/provider/support" element={<ProtectedRoute allowedRoles={['provider']}><Support /></ProtectedRoute>} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/provider/schedule" element={<ProtectedRoute allowedRoles={['provider']}><CategoryGate><KYCGate><Schedule /></KYCGate></CategoryGate></ProtectedRoute>} />
