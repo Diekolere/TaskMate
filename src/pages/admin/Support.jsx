@@ -37,7 +37,7 @@ const Support = () => {
             })
             .subscribe();
 
-        return () => supabase.removeChannel(channel);
+        return () => { supabase.removeChannel(channel); };
     }, []);
 
     const handleStatusChange = async (ticketId, newStatus, ticket) => {

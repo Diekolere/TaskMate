@@ -129,7 +129,7 @@ export function DataProvider({ children }) {
       })
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => { supabase.removeChannel(channel); };
   }, [currentUser]);
 
   // ── Provider Jobs (Realtime) ────────────────────────────
@@ -176,7 +176,7 @@ export function DataProvider({ children }) {
       })
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => { supabase.removeChannel(channel); };
   }, [currentUser]);
 
   // ── Notifications (Realtime) ────────────────────────────
@@ -1306,7 +1306,7 @@ export function DataProvider({ children }) {
     toast.success(`Verification ${status}`);
   };
 
-  const getAvailableCategories = async () => {
+  const getAvailableCategories = useCallback(async () => {
     try {
       const providers = await getProviders('All');
       const available = new Set();
@@ -1322,7 +1322,7 @@ export function DataProvider({ children }) {
       console.error('Error fetching available categories:', err);
       return [];
     }
-  };
+  }, [getProviders]);
 
   const updateUserStatus = async (userId, isActive) => {
     const { error } = await supabase.from('profiles')
