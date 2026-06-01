@@ -1,3 +1,0 @@
-IMPORTANT
-
-Supabase Configuration Required To use this flow, you will need to go to your Supabase Dashboard -> Authentication -> Providers -> Phone. You must enable "Phone Auth", select "Custom SMS Provider", and point the webhook URL to your new Edge Function URL. You will also need to store your Termii API Key and Sender ID in your Supabase Edge Function Secrets. Are you ready to configure these on your Supabase dashboard?
