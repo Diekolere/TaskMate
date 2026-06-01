@@ -9,10 +9,11 @@ import TopNavbar from '../../components/layout/TopNavbar';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useJobs } from '../../context/JobContext';
+import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 
 const InboundRequests = () => {
     const { currentUser } = useAuth();
-    const { jobs } = useJobs();
+    const { jobs, loading, providerJobsHasMore, loadMoreProviderJobs } = useJobs();
     const [search, setSearch] = useState('');
     const [tab, setTab] = useState('all'); // 'all' | 'upcoming' | 'private' | 'public' | 'invited'
     const [invitedJobs, setInvitedJobs] = useState(new Set());
@@ -66,6 +67,8 @@ const InboundRequests = () => {
         const db = b.createdAt?.seconds ? b.createdAt.seconds : 0;
         return db - da;
     });
+
+    const loadMoreRef = useIntersectionObserver(loadMoreProviderJobs, providerJobsHasMore && !loading);
 
     return (
         <div className="min-h-screen bg-white flex font-sans">
@@ -217,6 +220,13 @@ const InboundRequests = () => {
                                             <span className="material-icons text-gray-300 group-hover:text-gray-400 text-lg shrink-0 transition-colors">chevron_right</span>
                                         </Link>
                                     ))}
+
+                                    {/* Infinite Scroll Trigger */}
+                                    <div ref={loadMoreRef} className="py-4 flex justify-center">
+                                        {loading && (
+                                            <div className="w-5 h-5 border-2 border-gray-300 border-t-[#10B981] rounded-full animate-spin"></div>
+                                        )}
+                                    </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>

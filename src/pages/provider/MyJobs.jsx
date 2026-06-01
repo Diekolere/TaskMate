@@ -8,6 +8,7 @@ import TopNavbar from '../../components/layout/TopNavbar';
 
 import { useAuth } from '../../context/AuthContext';
 import { useJobs } from '../../context/JobContext';
+import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 
 const statusConfig = {
     Completed:  { bg: 'bg-[#10B981]/10', text: 'text-[#10B981]', border: 'border-[#10B981]/20' },
@@ -25,7 +26,7 @@ const statusConfig = {
 const getStatusStyle = (status) => statusConfig[status] || statusConfig.default;
 
 const MyJobs = () => {
-    const { jobs: allJobs } = useJobs();
+    const { jobs: allJobs, loading, providerJobsHasMore, loadMoreProviderJobs } = useJobs();
     const { currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState('active');
 
@@ -43,6 +44,8 @@ const MyJobs = () => {
         { key: 'active', label: 'Active', count: activeJobs.length },
         { key: 'completed', label: 'Completed', count: completedJobs.length },
     ];
+
+    const loadMoreRef = useIntersectionObserver(loadMoreProviderJobs, providerJobsHasMore && !loading);
 
     return (
         <div className="min-h-screen bg-white flex font-sans">
@@ -124,6 +127,13 @@ const MyJobs = () => {
                                             </Link>
                                         );
                                     })}
+                                    
+                                    {/* Infinite Scroll Trigger */}
+                                    <div ref={loadMoreRef} className="py-4 flex justify-center">
+                                        {loading && (
+                                            <div className="w-5 h-5 border-2 border-gray-300 border-t-[#10B981] rounded-full animate-spin"></div>
+                                        )}
+                                    </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>

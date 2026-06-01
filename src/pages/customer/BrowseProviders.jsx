@@ -7,12 +7,14 @@ import { useAuth } from '../../context/AuthContext';
 
 import { supabase } from '../../lib/supabase';
 import { useProvider } from '../../context/ProviderContext';
+import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 
 const BrowseProviders = () => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
     const { getProviders, savedProviderIds, toggleSavedProvider, getAvailableCategories } = useProvider();
     const [providers, setProviders] = useState([]);
+    const [displayCount, setDisplayCount] = useState(15);
     const [loading, setLoading] = useState(true);
     const [availableCats, setAvailableCats] = useState([]);
     
@@ -182,6 +184,7 @@ const BrowseProviders = () => {
                 }));
 
                 setProviders(formatted);
+                setDisplayCount(15);
             } catch (err) {
                 console.error("Error fetching providers:", err);
                 setProviders([]);
@@ -217,6 +220,8 @@ const BrowseProviders = () => {
             supabase.removeChannel(channel);
         };
     }, [getAvailableCategories]);
+
+    const loadMoreRef = useIntersectionObserver(() => setDisplayCount(prev => prev + 15), providers.length > displayCount);
 
     return (
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
@@ -376,7 +381,7 @@ const BrowseProviders = () => {
                                 </div>
                             ) : (
                                 <div className="flex flex-col relative">
-                                    {providers.map((provider, index) => (
+                                    {providers.slice(0, displayCount).map((provider, index) => (
                                         <div 
                                             key={provider.id} 
                                             onClick={() => navigate(`/customer/provider/${provider.id}`)}
@@ -433,6 +438,13 @@ const BrowseProviders = () => {
                                             </div>
                                         </div>
                                     ))}
+
+                                    {/* Infinite Scroll Trigger */}
+                                    <div ref={loadMoreRef} className="py-4 flex justify-center">
+                                        {providers.length > displayCount && (
+                                            <div className="w-5 h-5 border-2 border-gray-300 border-t-[#10B981] rounded-full animate-spin"></div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>

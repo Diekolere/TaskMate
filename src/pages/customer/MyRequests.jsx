@@ -9,11 +9,12 @@ import MobileNavBar from '../../components/layout/MobileNavBar';
 
 import { format } from 'date-fns';
 import { useJobs } from '../../context/JobContext';
+import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 
 const MyRequests = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { requests: allRequests } = useJobs();
+    const { requests: allRequests, loading, customerJobsHasMore, loadMoreCustomerJobs } = useJobs();
     const [activeTab, setActiveTab] = useState('All');
     const [showStatusLegend, setShowStatusLegend] = useState(false);
 
@@ -110,6 +111,8 @@ const MyRequests = () => {
                 : activeTab === 'Public'
                     ? allRequests.filter(isPublicForCustomer)
                     : allRequests.filter(r => !isTerminalHistory(r));
+
+    const loadMoreRef = useIntersectionObserver(loadMoreCustomerJobs, customerJobsHasMore && !loading);
 
     return (
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
@@ -244,6 +247,13 @@ const MyRequests = () => {
                                         </div>
                                     );
                                 })}
+
+                                {/* Infinite Scroll Trigger */}
+                                <div ref={loadMoreRef} className="py-4 flex justify-center">
+                                    {loading && (
+                                        <div className="w-5 h-5 border-2 border-gray-300 border-t-[#10B981] rounded-full animate-spin"></div>
+                                    )}
+                                </div>
                             </div>
                         ) : (
                             <div className="text-center py-20">

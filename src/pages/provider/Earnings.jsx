@@ -39,19 +39,7 @@ const Earnings = () => {
     const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
     const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
 
-    useEffect(() => {
-        if (currentUser) {
-            setCommissionBalance(currentUser.commissionBalance || 0);
-            fetchWalletData();
-        }
-    }, [currentUser, payoutVersion, fetchWalletData]);
 
-    const handlePayoutComplete = () => {
-        // Add a small delay to ensure DB triggers have finished
-        setTimeout(() => {
-            fetchWalletData();
-        }, 800);
-    };
 
     const fetchWalletData = useCallback(async () => {
         setLoading(true);
@@ -185,7 +173,19 @@ const Earnings = () => {
         }
     }, [currentUser?.id]);
 
+    useEffect(() => {
+        if (currentUser) {
+            setCommissionBalance(currentUser.commissionBalance || 0);
+            fetchWalletData();
+        }
+    }, [currentUser, payoutVersion, fetchWalletData]);
 
+    const handlePayoutComplete = () => {
+        // Add a small delay to ensure DB triggers have finished
+        setTimeout(() => {
+            fetchWalletData();
+        }, 800);
+    };
 
     const commissionPct = Math.min((commissionBalance / 5000) * 100, 100);
 
@@ -197,7 +197,7 @@ const Earnings = () => {
         const accountName = currentUser.accountName?.trim();
         if (!bankName && !accountNumber && !accountName) return null;
         return { bankName, bankCode, accountNumber, accountName };
-    }, [currentUser, payoutVersion]);
+    }, [currentUser, payoutVersion]); // Trigger Vite HMR
 
     return (
         <div className="min-h-screen bg-white flex font-sans">

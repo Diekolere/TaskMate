@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase, uploadFile, generateFilePath } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { useNotifications } from './NotificationContext';
@@ -91,22 +91,53 @@ const shimJob = (job) => {
   }, [currentUser]);
 
   // Customer Jobs
+  const [customerJobsPage, setCustomerJobsPage] = useState(1);
+  const [customerJobsHasMore, setCustomerJobsHasMore] = useState(true);
+
+  const fetchCustomerJobs = useCallback(async (page = 1) => {
+    if (!currentUser || currentUser.role !== 'customer') return;
+    setLoading(true);
+    const from = (page - 1) * 15;
+    const to = from + 14;
+
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('customer_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) { 
+        console.error('Fetch jobs error:', error); 
+        toast.error('Failed to load requests'); 
+    } else {
+        setCustomerJobsHasMore(data.length >= 15);
+        if (page === 1) {
+            setRequests(data.map(shimJob));
+        } else {
+            setRequests(prev => {
+                const newReqs = data.map(shimJob);
+                const existingIds = new Set(prev.map(r => r.id));
+                return [...prev, ...newReqs.filter(r => !existingIds.has(r.id))];
+            });
+        }
+    }
+    setLoading(false);
+  }, [currentUser]);
+
+  const loadMoreCustomerJobs = useCallback(() => {
+      if (!customerJobsHasMore || loading) return;
+      setCustomerJobsPage(prev => {
+          const next = prev + 1;
+          fetchCustomerJobs(next);
+          return next;
+      });
+  }, [customerJobsHasMore, loading, fetchCustomerJobs]);
+
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'customer') return;
 
-    const fetchJobs = async () => {
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('customer_id', currentUser.id)
-        .order('created_at', { ascending: false });
-
-      if (error) { console.error('Fetch jobs error:', error); toast.error('Failed to load requests'); }
-      else setRequests(data.map(shimJob));
-      setLoading(false);
-    };
-
-    fetchJobs();
+    fetchCustomerJobs(1);
 
     const channel = supabase
       .channel('jobs:customer')
@@ -129,46 +160,78 @@ const shimJob = (job) => {
   }, [currentUser]);
 
   // Provider Jobs
+  const [providerJobsPage, setProviderJobsPage] = useState(1);
+  const [providerJobsHasMore, setProviderJobsHasMore] = useState(true);
+
+  const fetchProviderJobs = useCallback(async (page = 1) => {
+    if (!currentUser || currentUser.role !== 'provider') return;
+    setLoading(true);
+
+    const { data: applications } = await supabase
+      .from('job_applications')
+      .select('job_id')
+      .eq('provider_id', currentUser.id);
+    
+    const appliedJobIds = (applications || []).map(a => a.job_id);
+    
+    let query = supabase
+      .from('jobs')
+      .select('*, profiles!jobs_customer_id_fkey(full_name, location_name)');
+    
+    const orConditions = [`worker_id.eq.${currentUser.id}`, 'status.eq.open'];
+    if (appliedJobIds.length > 0) {
+      orConditions.push(`id.in.(${appliedJobIds.map(id => `"${id}"`).join(',')})`);
+    }
+    
+    const from = (page - 1) * 15;
+    const to = from + 14;
+
+    const { data, error } = await query
+      .or(orConditions.join(','))
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) { 
+        console.error('Fetch provider jobs error:', error); 
+        toast.error('Failed to load jobs'); 
+    } else {
+        setProviderJobsHasMore(data.length >= 15);
+        if (page === 1) {
+            setJobs(data.map(shimJob));
+        } else {
+            setJobs(prev => {
+                const newJobs = data.map(shimJob);
+                const existingIds = new Set(prev.map(j => j.id));
+                return [...prev, ...newJobs.filter(j => !existingIds.has(j.id))];
+            });
+        }
+    }
+    setLoading(false);
+  }, [currentUser]);
+
+  const loadMoreProviderJobs = useCallback(() => {
+      if (!providerJobsHasMore || loading) return;
+      setProviderJobsPage(prev => {
+          const next = prev + 1;
+          fetchProviderJobs(next);
+          return next;
+      });
+  }, [providerJobsHasMore, loading, fetchProviderJobs]);
+
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'provider') return;
 
-    const fetchProviderJobs = async () => {
-      const { data: applications } = await supabase
-        .from('job_applications')
-        .select('job_id')
-        .eq('provider_id', currentUser.id);
-      
-      const appliedJobIds = (applications || []).map(a => a.job_id);
-      
-      let query = supabase
-        .from('jobs')
-        .select('*, profiles!jobs_customer_id_fkey(full_name, location_name)');
-      
-      const orConditions = [`worker_id.eq.${currentUser.id}`, 'status.eq.open'];
-      if (appliedJobIds.length > 0) {
-        orConditions.push(`id.in.(${appliedJobIds.map(id => `"${id}"`).join(',')})`);
-      }
-      
-      const { data, error } = await query
-        .or(orConditions.join(','))
-        .order('created_at', { ascending: false });
-
-      if (error) { console.error('Fetch provider jobs error:', error); toast.error('Failed to load jobs'); }
-      else setJobs(data.map(shimJob));
-      setLoading(false);
-    };
-
-    fetchProviderJobs();
+    fetchProviderJobs(1);
 
     const channel = supabase
       .channel('jobs:provider')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
-        fetchProviderJobs();
+        fetchProviderJobs(1); // Refresh page 1 on update
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [currentUser]);
+  }, [currentUser, fetchProviderJobs]);
 
   const createRequest = async (requestData) => {
     if (!currentUser) return;
@@ -408,6 +471,7 @@ const shimJob = (job) => {
 
   const value = {
     requests, jobs, loading,
+    customerJobsHasMore, loadMoreCustomerJobs, providerJobsHasMore, loadMoreProviderJobs,
     createRequest, updateJobStatus, acceptJob, startNegotiation, reopenNegotiation,
     finalizeAgreement, securePayment, markJobInProgress, completeJob, releasePayment,
     getJobMatches, inviteMatchedProvider
