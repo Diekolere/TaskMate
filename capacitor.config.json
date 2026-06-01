@@ -1,0 +1,5 @@
+{
+  "appId": "com.taskmate.app",
+  "appName": "Taskmate",
+  "webDir": "dist"
+}
