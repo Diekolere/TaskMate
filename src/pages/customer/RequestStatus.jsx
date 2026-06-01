@@ -316,7 +316,7 @@ function NegotiatePanel({ provider, requestId, request, category, onClose, onFin
                             Reject
                         </button>
                     </div>
-                ) : (
+                ) : !['payment_secured', 'in_progress', 'payment_released', 'completed'].includes(String(request?.status || '').toLowerCase()) && (
                     <div className="flex shrink-0 border-t border-gray-100 overflow-hidden">
                         <button onClick={handleRenegotiate}
                             className="flex-1 py-3 text-sm font-bold text-amber-600 bg-amber-500/[0.07] backdrop-blur-sm hover:bg-amber-500/[0.14] transition-colors">
@@ -329,7 +329,7 @@ function NegotiatePanel({ provider, requestId, request, category, onClose, onFin
                 <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2 bg-white shrink-0 relative">
                     <div className="shrink-0 flex items-center justify-center">
                         <VoiceRecorder 
-                            disabled={finalized || rejected}
+                            disabled={rejected}
                             onVoiceRecorded={async (audioUrl, duration) => {
                                 await send('Voice note', { isVoice: true, audioUrl, duration });
                             }} 
@@ -338,9 +338,9 @@ function NegotiatePanel({ provider, requestId, request, category, onClose, onFin
                     <input ref={inputRef} type="text" value={input}
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send(input)}
-                        placeholder="Message…" disabled={finalized || rejected}
+                        placeholder="Message…" disabled={rejected}
                         className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm outline-none text-gray-800 placeholder-gray-400 disabled:opacity-40" />
-                    <button onClick={() => send(input)} disabled={!input.trim() || finalized || rejected}
+                    <button onClick={() => send(input)} disabled={!input.trim() || rejected}
                         className="w-9 h-9 flex items-center justify-center rounded-full bg-[#0F172A] disabled:opacity-30 text-white hover:bg-slate-700 transition-colors">
                         <span className="material-icons text-[18px]">send</span>
                     </button>
@@ -1010,7 +1010,7 @@ const RequestStatus = () => {
                                                         className="w-full sm:w-auto py-2 sm:py-1.5 px-4 bg-[#0F172A] text-white text-xs font-bold rounded-xl sm:rounded-lg hover:bg-slate-700 transition-all flex items-center justify-center gap-1.5 shadow-sm"
                                                     >
                                                         <span className="material-icons text-[14px]">chat</span>
-                                                        Negotiate
+                                                        {['payment_secured', 'in_progress', 'payment_released', 'completed'].includes(normalizedStatus) ? 'Message' : 'Negotiate'}
                                                     </button>
                                                 </div>
                                             </div>
@@ -1090,7 +1090,7 @@ const RequestStatus = () => {
                                                         className="w-full sm:w-auto py-2 sm:py-1.5 px-4 bg-[#0F172A] text-white text-xs font-bold rounded-xl sm:rounded-lg hover:bg-slate-700 transition-all flex items-center justify-center gap-1.5 shadow-sm"
                                                     >
                                                         <span className="material-icons text-[14px]">chat</span>
-                                                        Negotiate
+                                                        {['payment_secured', 'in_progress', 'payment_released', 'completed'].includes(normalizedStatus) ? 'Message' : 'Negotiate'}
                                                     </button>
                                                 </div>
                                             </div>

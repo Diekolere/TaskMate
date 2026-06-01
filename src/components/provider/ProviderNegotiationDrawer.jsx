@@ -326,7 +326,7 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                             Reject
                         </button>
                     </div>
-                ) : (
+                ) : !['payment_secured', 'in_progress', 'payment_released', 'completed'].includes(String(job?.status || '').toLowerCase()) && (
                     <div className="flex shrink-0 border-t border-gray-100 overflow-hidden">
                         <button onClick={handleRenegotiate}
                             className="flex-1 py-3 text-sm font-bold text-amber-600 bg-amber-500/[0.07] backdrop-blur-sm hover:bg-amber-500/[0.14] transition-colors">
@@ -336,9 +336,9 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                 )}
 
                 <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2 bg-white shrink-0 relative">
-                    {/* We replace the Naira icon with the VoiceRecorder */}
                     <div className="shrink-0 flex items-center justify-center">
                         <VoiceRecorder 
+                            disabled={rejected}
                             onVoiceRecorded={async (audioUrl, duration) => {
                                 await sendMessage(job.id, 'Voice note', 'voice', { audioUrl, duration }, currentUser.id);
                             }} 
@@ -350,11 +350,12 @@ export default function ProviderNegotiationDrawer({ job, onClose }) {
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && sendText()}
                         placeholder="Message..."
-                        className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm outline-none text-gray-800 placeholder-gray-400"
+                        disabled={rejected}
+                        className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm outline-none text-gray-800 placeholder-gray-400 disabled:opacity-40"
                     />
                     <button
                         onClick={sendText}
-                        disabled={!input.trim()}
+                        disabled={!input.trim() || rejected}
                         className="w-9 h-9 flex items-center justify-center rounded-full bg-[#0F172A] disabled:opacity-30 text-white hover:bg-slate-700 transition-colors shrink-0"
                     >
                         <span className="material-icons text-[18px]">send</span>
