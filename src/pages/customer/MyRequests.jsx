@@ -10,6 +10,7 @@ import MobileNavBar from '../../components/layout/MobileNavBar';
 import { format } from 'date-fns';
 import { useJobs } from '../../context/JobContext';
 import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
+import CategoryFilterSelect from '../../components/ui/CategoryFilterSelect';
 
 const MyRequests = () => {
     const navigate = useNavigate();
@@ -17,8 +18,8 @@ const MyRequests = () => {
     const { requests: allRequests, loading, customerJobsHasMore, loadMoreCustomerJobs } = useJobs();
     const [activeTab, setActiveTab] = useState('All');
     const [showStatusLegend, setShowStatusLegend] = useState(false);
-
-
+    const [search, setSearch] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('');
 
     useEffect(() => {
         const handleResize = () => { if (window.innerWidth >= 640) setShowStatusLegend(false); };
@@ -102,7 +103,7 @@ const MyRequests = () => {
     const isPrivateForCustomer = (r) => String(r.request_type || r.visibility || '').toLowerCase() === 'private';
     const isPublicForCustomer = (r) => String(r.request_type || r.visibility || '').toLowerCase() === 'public';
 
-    const filteredRequests = activeTab === 'All'
+    const filteredByTab = activeTab === 'All'
         ? allRequests
         : activeTab === 'History'
             ? allRequests.filter(isTerminalHistory)
@@ -111,6 +112,18 @@ const MyRequests = () => {
                 : activeTab === 'Public'
                     ? allRequests.filter(isPublicForCustomer)
                     : allRequests.filter(r => !isTerminalHistory(r));
+
+    const filteredRequests = filteredByTab.filter(r => {
+        if (categoryFilter && (r.serviceType || r.category || '').toLowerCase() !== categoryFilter.toLowerCase()) return false;
+        
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return (
+            (r.title || r.serviceType || r.category || '').toLowerCase().includes(q) ||
+            (r.location || '').toLowerCase().includes(q) ||
+            (r.providerName || '').toLowerCase().includes(q)
+        );
+    });
 
     const loadMoreRef = useIntersectionObserver(loadMoreCustomerJobs, customerJobsHasMore && !loading);
 
@@ -177,7 +190,25 @@ const MyRequests = () => {
                             ))}
                         </div>
 
-
+                        {/* Search & Filter */}
+                        <div className="flex flex-row gap-2 sm:gap-3 mt-4 sm:mt-6 mb-2">
+                            <div className="relative flex-1">
+                                <span className="material-icons-outlined absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[18px] sm:text-[20px]">search</span>
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    placeholder="Search by service, location or provider..."
+                                    className="w-full pl-8 sm:pl-10 pr-3 py-2 sm:py-3 bg-white border border-gray-200 rounded-xl text-[13px] sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] transition-all"
+                                />
+                            </div>
+                            
+                            <CategoryFilterSelect 
+                                value={categoryFilter} 
+                                onChange={setCategoryFilter} 
+                                className="shrink-0 w-[140px] sm:w-48" 
+                            />
+                        </div>
 
                         {/* Request List */}
                         {filteredRequests.length > 0 ? (

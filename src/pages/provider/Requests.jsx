@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useJobs } from '../../context/JobContext';
 import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
+import CategoryFilterSelect from '../../components/ui/CategoryFilterSelect';
 
 const InboundRequests = () => {
     const { currentUser } = useAuth();
@@ -17,6 +18,7 @@ const InboundRequests = () => {
     const [search, setSearch] = useState('');
     const [tab, setTab] = useState('all'); // 'all' | 'upcoming' | 'private' | 'public' | 'invited'
     const [invitedJobs, setInvitedJobs] = useState(new Set());
+    const [categoryFilter, setCategoryFilter] = useState('');
 
     React.useEffect(() => {
         if (!currentUser?.id) return;
@@ -49,6 +51,9 @@ const InboundRequests = () => {
             tab === 'invited' ? invitedJobs.has(r.id) :
             true;
         if (!matchesTab) return false;
+
+        if (categoryFilter && (r.serviceType || r.category || '').toLowerCase() !== categoryFilter.toLowerCase()) return false;
+
         if (!search) return true;
         const q = search.toLowerCase();
         return (
@@ -140,15 +145,23 @@ const InboundRequests = () => {
                             </button>
                         </div>
 
-                        {/* Search */}
-                        <div className="relative">
-                            <span className="material-icons-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                placeholder="Search by service, location or customer..."
-                                className="w-full pl-10 pr-4 py-2 sm:py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] transition-all"
+                        {/* Search & Filter */}
+                        <div className="flex flex-row gap-2 sm:gap-3">
+                            <div className="relative flex-1">
+                                <span className="material-icons-outlined absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[18px] sm:text-[20px]">search</span>
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    placeholder="Search..."
+                                    className="w-full pl-8 sm:pl-10 pr-3 py-2 sm:py-3 bg-white border border-gray-200 rounded-xl text-[13px] sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] transition-all"
+                                />
+                            </div>
+                            
+                            <CategoryFilterSelect 
+                                value={categoryFilter} 
+                                onChange={setCategoryFilter} 
+                                className="shrink-0 w-[140px] sm:w-48" 
                             />
                         </div>
 
