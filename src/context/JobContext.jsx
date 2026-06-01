@@ -225,7 +225,12 @@ const shimJob = (job) => {
 
     const channel = supabase
       .channel('jobs:provider')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'jobs',
+        filter: `worker_id=eq.${currentUser.id}`
+      }, () => {
         fetchProviderJobs(1); // Refresh page 1 on update
       })
       .subscribe();

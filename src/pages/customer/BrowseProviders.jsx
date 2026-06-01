@@ -199,27 +199,7 @@ const BrowseProviders = () => {
         }
     }, [selectedCategories, sortFilter, ratingFilter, searchQuery, userLocation, locationError, getAvailableCategories]);
 
-    useEffect(() => {
-        const channel = supabase
-            .channel('provider-profiles-browse-changes')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'provider_profiles'
-                },
-                async () => {
-                    const avail = await getAvailableCategories();
-                    setAvailableCats(avail);
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [getAvailableCategories]);
+    // Removed global provider_profiles realtime subscription to reduce WAL load
 
     const loadMoreRef = useIntersectionObserver(() => setDisplayCount(prev => prev + 15), providers.length > displayCount);
 
