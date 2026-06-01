@@ -24,12 +24,6 @@ const ProviderDashboard = () => {
     // Start live location tracking for proximity matching
     useLocationHeartbeat();
 
-    useEffect(() => {
-        if (currentUser?.id) {
-            fetchWalletData();
-        }
-    }, [currentUser?.id, fetchWalletData]);
-
     const fetchWalletData = React.useCallback(async () => {
         try {
             const [profileRes, ledgerRes] = await Promise.all([
@@ -45,6 +39,12 @@ const ProviderDashboard = () => {
             setMetricsLoading(false);
         }
     }, [currentUser?.id]);
+
+    useEffect(() => {
+        if (currentUser?.id) {
+            fetchWalletData();
+        }
+    }, [currentUser?.id, fetchWalletData]);
 
     const isVerified = currentUser?.kycCompleted === true;
     const kycCompleted = currentUser?.kycCompleted === true;
