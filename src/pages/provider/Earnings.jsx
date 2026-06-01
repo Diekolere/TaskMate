@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { useAuth } from '../../context/AuthContext';
 import ProviderSidebar from '../../components/layout/ProviderSidebar';
@@ -44,7 +44,7 @@ const Earnings = () => {
             setCommissionBalance(currentUser.commissionBalance || 0);
             fetchWalletData();
         }
-    }, [currentUser, payoutVersion]);
+    }, [currentUser, payoutVersion, fetchWalletData]);
 
     const handlePayoutComplete = () => {
         // Add a small delay to ensure DB triggers have finished
@@ -53,7 +53,7 @@ const Earnings = () => {
         }, 800);
     };
 
-    const fetchWalletData = async () => {
+    const fetchWalletData = useCallback(async () => {
         setLoading(true);
         try {
             if (!currentUser?.id) return;
@@ -183,7 +183,7 @@ const Earnings = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentUser?.id]);
 
 
 

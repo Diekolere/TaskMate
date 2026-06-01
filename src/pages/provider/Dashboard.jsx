@@ -28,9 +28,9 @@ const ProviderDashboard = () => {
         if (currentUser?.id) {
             fetchWalletData();
         }
-    }, [currentUser]);
+    }, [currentUser?.id, fetchWalletData]);
 
-    const fetchWalletData = async () => {
+    const fetchWalletData = React.useCallback(async () => {
         try {
             const [profileRes, ledgerRes] = await Promise.all([
                 supabase.from('provider_profiles').select('wallet_balance').eq('id', currentUser.id).single(),
@@ -44,7 +44,7 @@ const ProviderDashboard = () => {
         } finally {
             setMetricsLoading(false);
         }
-    };
+    }, [currentUser?.id]);
 
     const isVerified = currentUser?.kycCompleted === true;
     const kycCompleted = currentUser?.kycCompleted === true;

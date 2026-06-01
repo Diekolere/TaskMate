@@ -26,6 +26,19 @@ export function useJobs() {
   return useContext(JobContext);
 }
 
+const normalizeStatus = (status) => {
+  const s = String(status || '').trim().toLowerCase().replace(/\s+/g, '_');
+  const map = {
+    open: 'open', pending: 'pending', interested: 'interested',
+    negotiating: 'negotiating', provider_accepted: 'provider_accepted',
+    awaiting_payment: 'awaiting_payment', payment_secured: 'payment_secured',
+    in_progress: 'in_progress', completed: 'completed',
+    payment_released: 'payment_released', cancelled: 'cancelled',
+    canceled: 'cancelled', paid: 'payment_released', inprogress: 'in_progress'
+  };
+  return map[s] || (s || 'open');
+};
+
 export function JobProvider({ children }) {
   const { currentUser } = useAuth();
   const { sendNotification } = useNotifications();
@@ -33,50 +46,37 @@ export function JobProvider({ children }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const normalizeStatus = (status) => {
-    const s = String(status || '').trim().toLowerCase().replace(/\s+/g, '_');
-    const map = {
-      open: 'open', pending: 'pending', interested: 'interested',
-      negotiating: 'negotiating', provider_accepted: 'provider_accepted',
-      awaiting_payment: 'awaiting_payment', payment_secured: 'payment_secured',
-      in_progress: 'in_progress', completed: 'completed',
-      payment_released: 'payment_released', cancelled: 'cancelled',
-      canceled: 'cancelled', paid: 'payment_released', inprogress: 'in_progress'
-    };
-    return map[s] || (s || 'open');
+const shimJob = (job) => {
+  if (!job) return null;
+  const hasTargetProvider = Boolean(job.providerId || job.worker_id);
+  const rType = job.request_type || (hasTargetProvider ? 'private' : 'public');
+  return {
+    ...job,
+    status: normalizeStatus(job.status),
+    request_type: rType,
+    visibility: rType,
+    customerId: job.customer_id,
+    providerId: job.worker_id,
+    agreedPrice: job.agreed_price || job.agreedPrice,
+    budget: job.budget_estimate,
+    finalAmount: job.final_budget || job.agreed_price || job.budget_estimate,
+    customerName: job.profiles?.full_name || job.customerName || 'Anonymous',
+    location_name: job.profiles?.location_name || job.location_name || job.location,
+    completedAt: job.completed_at ? {
+      toDate: () => new Date(job.completed_at),
+      toMillis: () => new Date(job.completed_at).getTime()
+    } : null,
+    createdAt: job.created_at ? {
+      toDate: () => new Date(job.created_at),
+      toMillis: () => new Date(job.created_at).getTime(),
+      seconds: Math.floor(new Date(job.created_at).getTime() / 1000)
+    } : null,
+    updatedAt: job.updated_at ? {
+      toDate: () => new Date(job.updated_at),
+      toMillis: () => new Date(job.updated_at).getTime()
+    } : null
   };
-
-  const shimJob = (job) => {
-    if (!job) return null;
-    const hasTargetProvider = Boolean(job.providerId || job.worker_id);
-    const rType = job.request_type || (hasTargetProvider ? 'private' : 'public');
-    return {
-      ...job,
-      status: normalizeStatus(job.status),
-      request_type: rType,
-      visibility: rType,
-      customerId: job.customer_id,
-      providerId: job.worker_id,
-      agreedPrice: job.agreed_price || job.agreedPrice,
-      budget: job.budget_estimate,
-      finalAmount: job.final_budget || job.agreed_price || job.budget_estimate,
-      customerName: job.profiles?.full_name || job.customerName || 'Anonymous',
-      location_name: job.profiles?.location_name || job.location_name || job.location,
-      completedAt: job.completed_at ? {
-        toDate: () => new Date(job.completed_at),
-        toMillis: () => new Date(job.completed_at).getTime()
-      } : null,
-      createdAt: job.created_at ? {
-        toDate: () => new Date(job.created_at),
-        toMillis: () => new Date(job.created_at).getTime(),
-        seconds: Math.floor(new Date(job.created_at).getTime() / 1000)
-      } : null,
-      updatedAt: job.updated_at ? {
-        toDate: () => new Date(job.updated_at),
-        toMillis: () => new Date(job.updated_at).getTime()
-      } : null
-    };
-  };
+};
 
   // Admin Jobs Fetching
   useEffect(() => {

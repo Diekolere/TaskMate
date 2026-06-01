@@ -95,7 +95,7 @@ const Profile = () => {
                 })));
             });
         }
-  }, [currentUser]);
+  }, [currentUser, getServicePosts]);
 
     useEffect(() => {
         const t = searchParams.get('tab');
