@@ -163,10 +163,35 @@ const shimJob = (job) => {
   const [providerJobsPage, setProviderJobsPage] = useState(1);
   const [providerJobsHasMore, setProviderJobsHasMore] = useState(true);
 
+  const [providerLocation, setProviderLocation] = useState(null);
+  const [locationError, setLocationError] = useState(null);
+
   const fetchProviderJobs = useCallback(async (page = 1) => {
     if (!currentUser || currentUser.role !== 'provider') return;
     setLoading(true);
+    
+    // 1. Try to get geolocation if we don't have it yet
+    let loc = providerLocation;
+    if (!loc && 'geolocation' in navigator && !locationError) {
+        try {
+            loc = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    pos => {
+                        setLocationError(null);
+                        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                    },
+                    err => reject(err),
+                    { timeout: 5000, maximumAge: 60000 }
+                );
+            });
+            setProviderLocation(loc);
+        } catch (e) {
+            console.warn('Geolocation failed or denied.');
+            setLocationError("Please enable location services to find jobs near you.");
+        }
+    }
 
+    // 2. Fetch applied jobs to always include them
     const { data: applications } = await supabase
       .from('job_applications')
       .select('job_id')
@@ -174,13 +199,47 @@ const shimJob = (job) => {
     
     const appliedJobIds = (applications || []).map(a => a.job_id);
     
+    // 3. Build dynamic open jobs filter
+    const categories = currentUser.tradeCategory || [];
+    let allowedOpenJobIds = null;
+
+    if (loc) {
+        // PostGIS Location Filtering
+        const { data: nearby } = await supabase.rpc('get_jobs_in_radius', {
+            user_lat: loc.lat, 
+            user_lng: loc.lng,
+            radius_meters: 50000, // 50km
+            category_filters: categories.length > 0 ? categories : null
+        });
+        if (nearby) allowedOpenJobIds = nearby.map(n => n.id);
+    }
+    
+    // 4. Assemble the OR conditions
     let query = supabase
       .from('jobs')
       .select('*, profiles!jobs_customer_id_fkey(full_name, location_name)');
     
-    const orConditions = [`worker_id.eq.${currentUser.id}`, 'status.eq.open'];
+    const orConditions = [`worker_id.eq.${currentUser.id}`];
+    
     if (appliedJobIds.length > 0) {
       orConditions.push(`id.in.(${appliedJobIds.map(id => `"${id}"`).join(',')})`);
+    }
+
+    if (allowedOpenJobIds !== null) {
+        if (allowedOpenJobIds.length > 0) {
+            orConditions.push(`and(status.eq.open,id.in.(${allowedOpenJobIds.map(id => `"${id}"`).join(',')}))`);
+        } else {
+            // No jobs match location/category, so we don't add open jobs to the feed at all.
+        }
+    } else {
+        // Fallback: Location failed, just filter by Category natively
+        if (categories.length > 0) {
+            const catsStr = categories.map(c => `"${c}"`).join(',');
+            orConditions.push(`and(status.eq.open,category.in.(${catsStr}))`);
+        } else {
+            // No location and no categories defined: just show all open jobs
+            orConditions.push('status.eq.open');
+        }
     }
     
     const from = (page - 1) * 15;
@@ -496,7 +555,7 @@ const shimJob = (job) => {
   };
 
   const value = {
-    requests, jobs, loading,
+    requests, jobs, loading, locationError,
     customerJobsHasMore, loadMoreCustomerJobs, providerJobsHasMore, loadMoreProviderJobs,
     createRequest, updateJobStatus, acceptJob, startNegotiation, reopenNegotiation,
     finalizeAgreement, securePayment, markJobInProgress, completeJob, releasePayment,
