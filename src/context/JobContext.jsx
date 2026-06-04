@@ -320,6 +320,27 @@ const shimJob = (job) => {
     }
   };
 
+  const deleteJob = async (jobId) => {
+    if (!currentUser) return;
+    try {
+      // Manually delete related records first to prevent foreign key errors if cascades are missing
+      await supabase.from('job_matches').delete().eq('job_id', jobId);
+      await supabase.from('job_applications').delete().eq('job_id', jobId);
+      
+      const { error } = await supabase.from('jobs').delete().eq('id', jobId);
+      if (error) throw error;
+      
+      // Update local state to immediately remove it from UI
+      setJobs(prev => prev.filter(j => j.id !== jobId));
+      setRequests(prev => prev.filter(r => r.id !== jobId));
+      toast.success('Request deleted successfully');
+    } catch (error) {
+      console.error('Delete job error:', error);
+      toast.error('Failed to delete request');
+      throw error;
+    }
+  };
+
   const acceptJob = async (jobId) => {
     const { data: job } = await supabase.from('jobs').select('budget_estimate, customer_id, title, request_type').eq('id', jobId).single();
     
@@ -479,7 +500,7 @@ const shimJob = (job) => {
     customerJobsHasMore, loadMoreCustomerJobs, providerJobsHasMore, loadMoreProviderJobs,
     createRequest, updateJobStatus, acceptJob, startNegotiation, reopenNegotiation,
     finalizeAgreement, securePayment, markJobInProgress, completeJob, releasePayment,
-    getJobMatches, inviteMatchedProvider
+    getJobMatches, inviteMatchedProvider, deleteJob
   };
 
   return (
