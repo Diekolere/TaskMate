@@ -362,7 +362,7 @@ const RequestStatus = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { currentUser } = useAuth();
-    const { requests, releasePayment, getJobMatches, inviteMatchedProvider } = useJobs();
+    const { requests, releasePayment, getJobMatches, inviteMatchedProvider, deleteJob } = useJobs();
   const { getProviders, getProviderProfile, getInterestedProviders } = useProvider();
   const { messages } = useMessages();
     const [request, setRequest] = useState(null);
@@ -374,6 +374,9 @@ const RequestStatus = () => {
     const [expandedProviderId, setExpandedProviderId] = useState(null);
     const [activeTab, setActiveTab] = useState('recommended');
     const [finalizedDeal, setFinalizedDeal] = useState(null); // { price, provider }
+    const [isLive, setIsLive] = useState(true); // Tracks if real-time subscriptions should be active
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
     const [showJobStartedSuccess, setShowJobStartedSuccess] = useState(false);
@@ -475,8 +478,9 @@ const RequestStatus = () => {
         setLoading(false);
     }, [id, requests, getProviders, getInterestedProviders, getJobMatches]);
 
-    // ── Polling for interested providers (real-time updates) ─────────────────
+    // ── Polling for interested providers & matches (real-time updates) ─────────────────
     useEffect(() => {
+        if (!isLive) return; // Optimization: Stop polling if user is inactive
         if (!request || request.request_type !== 'public' || String(request.status || '').toLowerCase() !== 'open') {
             return; // Only poll for public+open requests
         }
@@ -490,19 +494,100 @@ const RequestStatus = () => {
             }
         };
 
-        refreshInterestedProviders(); // Initial fetch
+        const refreshMatchedProviders = async () => {
+            try {
+                const matches = await getJobMatches(request.id);
+                setAiMatchedProviders(matches);
+            } catch (err) {
+                console.error('Failed to refresh matched providers:', err);
+            }
+        };
 
-        const channel = supabase
+        refreshInterestedProviders(); // Initial fetch
+        refreshMatchedProviders();
+
+        const applicationsChannel = supabase
             .channel(`job_applications_${request.id}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'job_applications', filter: `job_id=eq.${request.id}` }, () => {
                 refreshInterestedProviders();
             })
             .subscribe();
 
+        const matchesChannel = supabase
+            .channel(`job_matches_${request.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'job_matches', filter: `job_id=eq.${request.id}` }, () => {
+                refreshMatchedProviders();
+            })
+            .subscribe();
+
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(applicationsChannel);
+            supabase.removeChannel(matchesChannel);
         };
-    }, [request?.id, request?.request_type, request?.status, getInterestedProviders]);
+    }, [request?.id, request?.request_type, request?.status, getInterestedProviders, getJobMatches, isLive]);
+
+    // ── Hybrid Realtime Optimization (Visibility + Idle + Activity) ──────────
+    useEffect(() => {
+        let timeoutId;
+        
+        const resetIdleTimer = () => {
+            clearTimeout(timeoutId);
+            // 5 minutes of strict idle time before disconnecting
+            timeoutId = setTimeout(() => {
+                setIsLive(false);
+            }, 5 * 60 * 1000);
+        };
+
+        const handleActivity = () => {
+            if (!document.hidden) {
+                setIsLive(prev => {
+                    if (!prev) return true; // Reconnect automatically on user interaction after timeout
+                    return prev;
+                });
+                resetIdleTimer();
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                setIsLive(false); // Disconnect Realtime when document.hidden === true
+                clearTimeout(timeoutId);
+            } else {
+                setIsLive(true); // Reconnect when visible again
+                resetIdleTimer();
+            }
+        };
+
+        // Initial setup
+        if (!document.hidden) resetIdleTimer();
+        else setIsLive(false);
+
+        // Throttle activity listener to save CPU
+        let throttleTimer;
+        const throttledActivity = () => {
+            if (throttleTimer) return;
+            throttleTimer = setTimeout(() => {
+                handleActivity();
+                throttleTimer = null;
+            }, 1000);
+        };
+
+        window.addEventListener('mousemove', throttledActivity);
+        window.addEventListener('keydown', throttledActivity);
+        window.addEventListener('touchstart', throttledActivity);
+        window.addEventListener('scroll', throttledActivity);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            clearTimeout(timeoutId);
+            clearTimeout(throttleTimer);
+            window.removeEventListener('mousemove', throttledActivity);
+            window.removeEventListener('keydown', throttledActivity);
+            window.removeEventListener('touchstart', throttledActivity);
+            window.removeEventListener('scroll', throttledActivity);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
 
     if (loading) return (
             <div className="flex min-h-screen items-center justify-center bg-white">
@@ -535,6 +620,17 @@ const RequestStatus = () => {
         } catch { toast.error('Failed to release payment.'); }
     };
 
+    const handleDeleteRequest = async () => {
+        setIsDeleting(true);
+        try {
+            await deleteJob(id);
+            navigate('/customer/requests');
+        } catch (error) {
+            console.error("Failed to delete request:", error);
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <div className="flex min-h-screen bg-white font-sans text-gray-900">
             <Sidebar />
@@ -542,8 +638,24 @@ const RequestStatus = () => {
             <main className="flex-1 overflow-hidden flex flex-col min-w-0">
                 <TopNavbar breadcrumbs={['Customer', 'My Requests', 'Details']} />
 
-                <div className="flex-1 overflow-y-auto bg-white">
+                <div className="flex-1 overflow-y-auto bg-white relative">
                     <div className="max-w-5xl mx-auto w-full p-4 sm:p-6 md:p-8 pb-24 md:pb-10">
+
+                        {/* Inactivity Optimization Banner */}
+                        {!isLive && (
+                            <div className="mb-6 bg-amber-50 border border-amber-100 rounded-xl p-3 flex items-center justify-between shadow-sm cursor-pointer hover:bg-amber-100/50 transition-colors" onClick={() => setIsLive(true)}>
+                                <div className="flex items-center gap-3">
+                                    <span className="material-icons text-amber-500">pause_circle_outline</span>
+                                    <div>
+                                        <p className="text-sm font-bold text-amber-800">Live updates paused to save battery</p>
+                                        <p className="text-xs text-amber-600 mt-0.5">Click anywhere to resume real-time matching.</p>
+                                    </div>
+                                </div>
+                                <button className="px-4 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600 transition-colors">
+                                    Resume
+                                </button>
+                            </div>
+                        )}
 
                         {/* Inline Notifications */}
                         <AnimatePresence>
@@ -617,6 +729,16 @@ const RequestStatus = () => {
                                     <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70 shrink-0" />
                                     {STATUS_LABEL[normalizedStatus] || request.status}
                                 </span>
+                                {(normalizedStatus === 'open' || normalizedStatus === 'pending') && (
+                                    <button 
+                                        onClick={() => setShowDeleteModal(true)}
+                                        className="inline-flex items-center gap-1 mt-1 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                        title="Delete Request"
+                                    >
+                                        <span className="material-icons text-[14px]">delete_outline</span>
+                                        Delete Request
+                                    </button>
+                                )}
                             </div>
 
                             {/* CTA row — only after negotiation is finalised or awaiting payment */}
@@ -1104,6 +1226,50 @@ const RequestStatus = () => {
                 </div>
                 <MobileNavBar />
             </main>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {showDeleteModal && (
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden"
+                        >
+                            <div className="p-6">
+                                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                                    <span className="material-icons text-red-600">delete_forever</span>
+                                </div>
+                                <h3 className="text-xl font-black text-gray-900 mb-2">Delete Request?</h3>
+                                <p className="text-sm text-gray-500 font-medium">
+                                    Are you sure you want to permanently delete this request? This action cannot be undone.
+                                </p>
+                            </div>
+                            <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-end">
+                                <button
+                                    onClick={() => setShowDeleteModal(false)}
+                                    disabled={isDeleting}
+                                    className="px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDeleteRequest}
+                                    disabled={isDeleting}
+                                    className="px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 min-w-[120px] flex items-center justify-center"
+                                >
+                                    {isDeleting ? (
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        "Yes, I'm sure"
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Negotiate slide-over */}
             <AnimatePresence>
