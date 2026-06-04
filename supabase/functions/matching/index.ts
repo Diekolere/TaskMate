@@ -58,84 +58,36 @@ serve(async (req) => {
         );
       }
 
-      if (relevantProviders.length > 0 && openRouterKey) {
-        const providersText = relevantProviders.slice(0, 10).map((p: any) => 
-          `ID: ${p.id}, Bio: ${p.bio || 'N/A'}, Skills: ${p.trade_category?.join(', ') || 'N/A'}, Rating: ${p.average_rating || 0}, Distance: ${p.distance_meters ? (p.distance_meters/1000).toFixed(1) + 'km' : 'Unknown'}`
-        ).join("\n");
-
-        const prompt = `You are an AI matching engine for a local services marketplace.
-Job Title: "${job.title}"
-Job Description: "${job.description || ''}"
-
-Providers:
-${providersText}
-
-Evaluate the semantic relevance, specialization, and urgency fit.
-Rank the top 3 providers.
-Return ONLY a JSON array in the exact following format, without any markdown blocks or explanation:
-[{ "provider_id": "UUID", "ai_score": 85, "ai_rationale": "Strong fit because..." }]
-CRITICAL: The ai_rationale MUST be very concise, 10 words or less.`;
-
-        const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${openRouterKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: model,
-            messages: [{ role: "user", content: prompt }],
-            response_format: { type: "json_object" }
-          })
-        });
-
-        const aiData = await aiRes.json();
-        const content = aiData.choices?.[0]?.message?.content;
-        if (!content) throw new Error("No content returned from AI");
-
-        let aiMatches = [];
-        try {
-          // Attempt to parse JSON safely, sometimes AI returns markdown code block
-          const cleanContent = content.replace(/```json/g, '').replace(/```/g, '').trim();
-          const parsed = JSON.parse(cleanContent);
-          aiMatches = Array.isArray(parsed) ? parsed : (parsed.matches || parsed.providers || []);
-        } catch (e) {
-          console.error("Failed to parse AI JSON:", content);
-          throw new Error("Failed to parse AI response");
-        }
-
-        const finalMatches = aiMatches.map((m: any) => {
-          const provider = relevantProviders.find((p: any) => p.id === m.provider_id);
-          if (!provider) return null;
-
-          const aiScore = Number(m.ai_score || m.match_score || 0);
-          
+      if (relevantProviders.length > 0) {
+        const finalMatches = relevantProviders.slice(0, 10).map((p: any) => {
           // Proximity Score (0 to 100), closer is better. Max 50km
-          const distKm = (provider.distance_meters || 0) / 1000;
+          const distKm = (p.distance_meters || 0) / 1000;
           const proximityScore = Math.max(0, 100 - (distKm * 2)); // 0km = 100, 50km = 0
 
           // Rating Score (0 to 100)
-          const ratingScore = ((provider.average_rating || 0) / 5) * 100;
+          const ratingScore = ((p.average_rating || 0) / 5) * 100;
 
           // Completion Score (0 to 100), cap at 50 jobs for 100 points
-          const completionScore = Math.min(100, ((provider.completed_jobs_count || 0) / 50) * 100);
+          const completionScore = Math.min(100, ((p.completed_jobs_count || 0) / 50) * 100);
 
-          // Blended Score
+          // Blended Score without AI
           const finalScore = Math.round(
-            (aiScore * 0.5) +
-            (proximityScore * 0.2) +
-            (ratingScore * 0.2) +
-            (completionScore * 0.1)
+            (proximityScore * 0.4) +
+            (ratingScore * 0.4) +
+            (completionScore * 0.2)
           );
 
           return {
             job_id: jobId,
-            provider_id: provider.id,
+            provider_id: p.id,
             match_score: finalScore,
-            ai_rationale: m.ai_rationale || 'Matched based on AI recommendation.'
+            ai_rationale: 'Matched based on skills, location, and rating.'
           };
         }).filter(Boolean);
 
         if (finalMatches.length > 0) {
-          // Insert Matches
-          await supabaseClient.from("job_matches").insert(finalMatches);
+          // Upsert Matches
+          await supabaseClient.from("job_matches").upsert(finalMatches, { onConflict: 'job_id,provider_id' });
           await supabaseClient.from("jobs").update({ matched_providers_count: finalMatches.length }).eq("id", jobId);
 
           // Trigger In-App Notifications
