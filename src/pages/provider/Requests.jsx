@@ -14,7 +14,7 @@ import CategoryFilterSelect from '../../components/ui/CategoryFilterSelect';
 
 const InboundRequests = () => {
     const { currentUser } = useAuth();
-    const { jobs, loading, providerJobsHasMore, loadMoreProviderJobs } = useJobs();
+    const { jobs, loading, providerJobsHasMore, loadMoreProviderJobs, locationError } = useJobs();
     const [search, setSearch] = useState('');
     const [tab, setTab] = useState('all'); // 'all' | 'upcoming' | 'private' | 'public' | 'invited'
     const [invitedJobs, setInvitedJobs] = useState(new Set());
@@ -91,101 +91,118 @@ const InboundRequests = () => {
                             <p className="mt-1 text-[13px] font-medium text-gray-400">Public requests nearby and private requests sent directly to you.</p>
                         </div>
 
-                        {/* Tabs — underline style */}
-                        <div className="flex gap-6 border-b border-gray-100 overflow-x-auto scrollbar-hide whitespace-nowrap pb-0">
-                            <button
-                                onClick={() => setTab('all')}
-                                className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px ${tab === 'all' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
-                            >
-                                All Requests
-                            </button>
-                            <button
-                                onClick={() => setTab('public')}
-                                className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'public' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
-                            >
-                                Public
-                                {publicCount > 0 && (
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'public' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
-                                        {publicCount}
-                                    </span>
-                                )}
-                            </button>
-                            <button
-                                onClick={() => setTab('private')}
-                                className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'private' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
-                            >
-                                Private
-                                {privateCount > 0 && (
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'private' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
-                                        {privateCount}
-                                    </span>
-                                )}
-                            </button>
-                            <button
-                                onClick={() => setTab('invited')}
-                                className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'invited' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
-                            >
-                                Invited
-                                {invitedJobs.size > 0 && (
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'invited' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
-                                        {invitedJobs.size}
-                                    </span>
-                                )}
-                            </button>
-                            <button
-                                onClick={() => setTab('upcoming')}
-                                className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'upcoming' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
-                            >
-                                Upcoming
-                                {upcomingCount > 0 && (
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'upcoming' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
-                                        {upcomingCount}
-                                    </span>
-                                )}
-                            </button>
-                        </div>
-
-                        {/* Search & Filter */}
-                        <div className="flex flex-row gap-2 sm:gap-3">
-                            <div className="relative flex-1">
-                                <span className="material-icons-outlined absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[18px] sm:text-[20px]">search</span>
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                    placeholder="Search..."
-                                    className="w-full pl-8 sm:pl-10 pr-3 py-2 sm:py-3 bg-white border border-gray-200 rounded-xl text-[13px] sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] transition-all"
-                                />
+                        {/* Location Error State */}
+                        {locationError ? (
+                            <div className="py-20 text-center px-4">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-50 mb-4 text-red-500">
+                                    <span className="material-icons-outlined text-3xl">location_off</span>
+                                </div>
+                                <h3 className="text-lg font-extrabold text-gray-900">Location Access Required</h3>
+                                <p className="text-[14px] font-medium text-gray-500 mt-1.5 max-w-sm mx-auto">{locationError}</p>
+                                <button 
+                                    onClick={() => window.location.reload()}
+                                    className="mt-6 bg-[#0F172A] text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors"
+                                >
+                                    Try Again
+                                </button>
                             </div>
-                            
-                            <CategoryFilterSelect 
-                                value={categoryFilter} 
-                                onChange={setCategoryFilter} 
-                                className="shrink-0 w-[140px] sm:w-48" 
-                            />
-                        </div>
+                        ) : (
+                            <>
+                                {/* Tabs — underline style */}
+                                <div className="flex gap-6 border-b border-gray-100 overflow-x-auto scrollbar-hide whitespace-nowrap pb-0">
+                                    <button
+                                        onClick={() => setTab('all')}
+                                        className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px ${tab === 'all' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
+                                    >
+                                        All Requests
+                                    </button>
+                                    <button
+                                        onClick={() => setTab('public')}
+                                        className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'public' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
+                                    >
+                                        Public
+                                        {publicCount > 0 && (
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'public' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
+                                                {publicCount}
+                                            </span>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => setTab('private')}
+                                        className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'private' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
+                                    >
+                                        Private
+                                        {privateCount > 0 && (
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'private' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
+                                                {privateCount}
+                                            </span>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => setTab('invited')}
+                                        className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'invited' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
+                                    >
+                                        Invited
+                                        {invitedJobs.size > 0 && (
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'invited' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
+                                                {invitedJobs.size}
+                                            </span>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => setTab('upcoming')}
+                                        className={`pb-3 text-sm font-semibold transition-all border-b-2 -mb-px flex items-center gap-1.5 ${tab === 'upcoming' ? 'border-[#10B981] text-[#10B981]' : 'border-transparent text-gray-400 hover:text-gray-700'}`}
+                                    >
+                                        Upcoming
+                                        {upcomingCount > 0 && (
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === 'upcoming' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
+                                                {upcomingCount}
+                                            </span>
+                                        )}
+                                    </button>
+                                </div>
 
-                        {/* Count */}
-                        {sorted.length > 0 && (
-                            <p className="text-xs text-gray-400 font-medium">
-                                <span className="font-bold text-gray-700">{sorted.length}</span> {sorted.length === 1 ? 'request' : 'requests'} available
-                            </p>
-                        )}
-
-                        {/* Request List */}
-                        <AnimatePresence mode="popLayout">
-                            {sorted.length === 0 ? (
-                                <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                                    className="flex flex-col items-center justify-center py-20 text-center">
-                                    <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                                        <span className="material-icons-outlined text-2xl text-gray-300">inbox</span>
+                                {/* Search & Filter */}
+                                <div className="flex flex-row gap-2 sm:gap-3">
+                                    <div className="relative flex-1">
+                                        <span className="material-icons-outlined absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[18px] sm:text-[20px]">search</span>
+                                        <input
+                                            type="text"
+                                            value={search}
+                                            onChange={e => setSearch(e.target.value)}
+                                            placeholder="Search..."
+                                            className="w-full pl-8 sm:pl-10 pr-3 py-2 sm:py-3 bg-white border border-gray-200 rounded-xl text-[13px] sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] transition-all"
+                                        />
                                     </div>
-                                    <h3 className="font-bold text-gray-900 text-sm">No requests found</h3>
-                                    <p className="text-xs text-gray-400 mt-1">
-                                        {search ? 'Try a different search term.' : 'Check back later for new opportunities.'}
+                                    
+                                    <CategoryFilterSelect 
+                                        value={categoryFilter} 
+                                        onChange={setCategoryFilter} 
+                                        className="shrink-0 w-[140px] sm:w-48" 
+                                    />
+                                </div>
+
+                                {/* Count */}
+                                {sorted.length > 0 && (
+                                    <p className="text-xs text-gray-400 font-medium">
+                                        <span className="font-bold text-gray-700">{sorted.length}</span> {sorted.length === 1 ? 'request' : 'requests'} available
                                     </p>
-                                </motion.div>
-                            ) : (
+                                )}
+
+                                {/* Request List */}
+                                <AnimatePresence mode="popLayout">
+                                    {sorted.length === 0 ? (
+                                        <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                            className="flex flex-col items-center justify-center py-20 text-center">
+                                            <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                                <span className="material-icons-outlined text-2xl text-gray-300">inbox</span>
+                                            </div>
+                                            <h3 className="font-bold text-gray-900 text-sm">No requests found</h3>
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                {search ? 'Try a different search term.' : 'Check back later for new opportunities.'}
+                                            </p>
+                                        </motion.div>
+                                    ) : (
                                 <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                                     {sorted.map((req, idx) => (
                                         <Link
@@ -243,7 +260,8 @@ const InboundRequests = () => {
                                 </motion.div>
                             )}
                         </AnimatePresence>
-
+                        </>
+                        )}
                     </div>
                 </main>
             </div>

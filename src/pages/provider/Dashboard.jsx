@@ -15,7 +15,7 @@ import { useJobs } from '../../context/JobContext';
 
 const ProviderDashboard = () => {
     const { currentUser } = useAuth();
-    const { jobs } = useJobs();
+    const { jobs, locationError } = useJobs();
     const navigate = useNavigate();
     const [walletBalance, setWalletBalance] = useState(0);
     const [ledger, setLedger] = useState([]);
@@ -227,7 +227,6 @@ const ProviderDashboard = () => {
                         {/* ── Main grid ── */}
                         <div className={`grid grid-cols-1 lg:grid-cols-3 gap-5 ${!isVerified ? 'opacity-40 grayscale pointer-events-none select-none' : ''}`}>
 
-                            {/* Requests list — 2/3 width on desktop */}
                             <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                                 <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
@@ -239,7 +238,21 @@ const ProviderDashboard = () => {
                                     </Link>
                                 </div>
 
-                                {nearbyRequests.length > 0 ? (
+                                {locationError ? (
+                                    <div className="py-12 text-center px-4">
+                                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mb-3 text-red-500">
+                                            <span className="material-icons-outlined text-2xl">location_off</span>
+                                        </div>
+                                        <h3 className="text-[15px] font-extrabold text-gray-900">Location Access Required</h3>
+                                        <p className="text-xs font-medium text-gray-500 mt-1 max-w-[250px] mx-auto">{locationError}</p>
+                                        <button 
+                                            onClick={() => window.location.reload()}
+                                            className="mt-4 bg-[#0F172A] text-white px-5 py-2 rounded-xl font-bold text-xs hover:bg-slate-700 transition-colors"
+                                        >
+                                            Try Again
+                                        </button>
+                                    </div>
+                                ) : nearbyRequests.length > 0 ? (
                                     <ul className="divide-y divide-gray-50">
                                         {nearbyRequests.slice(0, 5).map((job) => (
                                             <li key={job.id}>
