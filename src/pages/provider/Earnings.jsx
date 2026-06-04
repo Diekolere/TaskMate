@@ -102,16 +102,16 @@ const Earnings = () => {
                 source: 'wallet'
             }));
 
-            const escrowHistory = (escrowLedgerRes.data || []).map(item => ({
-                ...item,
-                id: item.id,
-                amount: item.gross_amount,
-                description: item.entry_type === 'held' 
-                    ? `Payment Held in Escrow: ${item.jobs?.title || 'Job Payment'}`
-                    : `Escrow Released: ${item.jobs?.title || 'Job Payment'}`,
-                entry_type: item.entry_type === 'held' ? 'escrow' : 'release',
-                source: 'escrow'
-            }));
+            const escrowHistory = (escrowLedgerRes.data || [])
+                .filter(item => item.entry_type === 'held')
+                .map(item => ({
+                    ...item,
+                    id: item.id,
+                    amount: item.gross_amount,
+                    description: `Payment Held in Escrow: ${item.jobs?.title || 'Job Payment'}`,
+                    entry_type: 'escrow',
+                    source: 'escrow'
+                }));
 
             // Merge and sort by date
             const allTransactions = [...walletHistory, ...escrowHistory]
